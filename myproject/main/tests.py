@@ -204,14 +204,14 @@ class QuoteBasketTests(TestCase):
 
     def test_place_order_then_finalize_enrolls_and_notifies(self):
         """seed_data 與付款流程共用的組合：成立訂單 → 付款成功 → 開通。"""
-        from .views import _finalize_paid_order
+        from .transitions import fulfill_order
 
         order = place_order(self.user, quote_basket(self.user, [self.course_a]))
         self.assertFalse(
             Enrollment.objects.filter(student=self.user, course=self.course_a).exists()
         )
 
-        _finalize_paid_order(order)
+        fulfill_order(order)
         order.refresh_from_db()
 
         self.assertEqual(order.status, 'paid')
@@ -221,7 +221,7 @@ class QuoteBasketTests(TestCase):
         self.assertEqual(Notification.objects.filter(user=self.user).count(), 1)
 
         # 冪等：重複呼叫不會多開一次課、也不會多發一則通知
-        _finalize_paid_order(order)
+        fulfill_order(order)
         self.assertEqual(
             Enrollment.objects.filter(student=self.user, course=self.course_a).count(), 1
         )

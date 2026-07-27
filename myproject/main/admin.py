@@ -1,6 +1,9 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
+# 狀態轉換一律走 transitions —— 後台的批次動作與前台審核頁呼叫同一份，
+# 因此不會出現「從後台核准的退款沒有撤銷課程」這類分歧。
+from . import transitions
 from .models import (
     Profile,
     CourseCategory,
@@ -154,15 +157,22 @@ class CourseAdmin(admin.ModelAdmin):
         return status_badge('paid' if obj.is_published else 'pending',
                             '已上架' if obj.is_published else '未上架')
 
-    @admin.action(description='✅ 上架選取的課程')
+    @admin.action(description='✅ 審核通過並上架選取的課程')
     def make_published(self, request, queryset):
-        n = queryset.update(is_published=True)
-        self.message_user(request, f'已上架 {n} 門課程。')
+        courses = list(queryset.select_related('teacher'))
+        for course in courses:
+            transitions.approve_course(course, request.user, comment='後台批次核准')
+        self.message_user(
+            request,
+            f'已審核通過並上架 {len(courses)} 門課程，審核紀錄與講師通知都已產生。'
+        )
 
-    @admin.action(description='⛔ 下架選取的課程')
+    @admin.action(description='⛔ 退回並下架選取的課程')
     def make_unpublished(self, request, queryset):
-        n = queryset.update(is_published=False)
-        self.message_user(request, f'已下架 {n} 門課程。')
+        courses = list(queryset.select_related('teacher'))
+        for course in courses:
+            transitions.reject_course(course, request.user, comment='後台批次退回')
+        self.message_user(request, f'已退回並下架 {len(courses)} 門課程。')
 
 
 @admin.register(CourseChapter)
@@ -264,13 +274,20 @@ class RefundAdmin(admin.ModelAdmin):
 
     @admin.action(description='✅ 核准退款')
     def approve_refund(self, request, queryset):
-        n = queryset.filter(status='pending').update(status='approved')
-        self.message_user(request, f'已核准 {n} 筆退款。')
+        pending = list(queryset.filter(status='pending').select_related('order', 'user'))
+        for refund in pending:
+            transitions.approve_refund(refund)
+        self.message_user(
+            request,
+            f'已核准 {len(pending)} 筆退款，對應的課程存取權已收回、付款已回沖。'
+        )
 
     @admin.action(description='⛔ 拒絕退款')
     def reject_refund(self, request, queryset):
-        n = queryset.filter(status='pending').update(status='rejected')
-        self.message_user(request, f'已拒絕 {n} 筆退款。')
+        pending = list(queryset.filter(status='pending').select_related('order', 'user'))
+        for refund in pending:
+            transitions.reject_refund(refund)
+        self.message_user(request, f'已拒絕 {len(pending)} 筆退款。')
 
 
 @admin.register(Enrollment)

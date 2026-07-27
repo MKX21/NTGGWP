@@ -51,6 +51,13 @@ from .forms import (
 
 from .payments import gateway
 from .checkout import place_order, quote_basket, with_display_price
+from .transitions import (
+    approve_course,
+    approve_refund,
+    fulfill_order,
+    reject_course,
+    reject_refund,
+)
 
 
 def home(request):
@@ -1587,37 +1594,6 @@ def _mark_payment_paid(payment, result):
     payment.save()
 
 
-def _finalize_paid_order(order):
-    """付款成功後：開通課程、標記優惠券、發通知（具冪等性）。"""
-    if order.status == 'paid':
-        return
-    order.status = 'paid'
-    order.save()
-
-    for item in order.items.select_related('course').all():
-        Enrollment.objects.get_or_create(student=order.user, course=item.course)
-
-    if order.coupon:
-        CouponUsage.objects.get_or_create(
-            order=order,
-            defaults={
-                'user': order.user,
-                'coupon': order.coupon,
-                'discount_amount': order.discount_amount,
-            }
-        )
-        UserCoupon.objects.filter(
-            user=order.user, coupon=order.coupon, status='unused'
-        ).update(status='used', used_at=timezone.now())
-
-    titles = '、'.join(i.course.title for i in order.items.all())
-    Notification.objects.create(
-        user=order.user,
-        title='購買成功通知',
-        content=f'你已完成付款並開通課程：{titles}（實付 NT$ {order.final_price}）。'
-    )
-
-
 @login_required
 def payment(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
@@ -1663,7 +1639,7 @@ def payment(request, order_id):
             result = gateway.charge_credit_card(payment_obj, card)
             if result.success:
                 _mark_payment_paid(payment_obj, result)
-                _finalize_paid_order(order)
+                fulfill_order(order)
                 return redirect('order_success', order_id=order.id)
             error = result.message
             method = 'credit_card'
@@ -1673,7 +1649,7 @@ def payment(request, order_id):
             result = gateway.confirm_offline(payment_obj)
             if result.success:
                 _mark_payment_paid(payment_obj, result)
-                _finalize_paid_order(order)
+                fulfill_order(order)
                 return redirect('order_success', order_id=order.id)
             error = result.message
             method = payment_obj.method
@@ -1982,29 +1958,13 @@ def process_refund(request, refund_id):
     if not (request.user.is_superuser or is_teacher):
         return redirect('home')
 
-    if request.method == 'POST':
+    if request.method == 'POST' and refund.status == 'pending':
+        # 狀態轉換一律走 transitions —— 後台 admin 的批次動作呼叫的是同一份。
         action = request.POST.get('action')
-        if action == 'approve' and refund.status == 'pending':
-            refund.status = 'approved'
-            refund.processed_at = timezone.now()
-            refund.save()
-            order = refund.order
-            order.status = 'refunded'
-            order.save()
-            Notification.objects.create(
-                user=refund.user,
-                title='退款已通過',
-                content=f'訂單 #{order.id} 的退款申請已通過，將退還 NT$ {refund.amount}。'
-            )
-        elif action == 'reject' and refund.status == 'pending':
-            refund.status = 'rejected'
-            refund.processed_at = timezone.now()
-            refund.save()
-            Notification.objects.create(
-                user=refund.user,
-                title='退款未通過',
-                content=f'訂單 #{refund.order.id} 的退款申請未通過。'
-            )
+        if action == 'approve':
+            approve_refund(refund)
+        elif action == 'reject':
+            reject_refund(refund)
 
     return redirect('manage_refunds')
 
@@ -2114,37 +2074,15 @@ def process_audit(request, audit_id):
     audit = get_object_or_404(CourseAudit, id=audit_id)
 
     if request.method == 'POST':
+        # 上架/退回一律走 transitions —— 後台的批次上架呼叫的是同一份，
+        # 因此不存在繞過 CourseAudit 的旁路。
         action = request.POST.get('action')
         comment = request.POST.get('comment', '').strip()
 
         if action == 'approve':
-            audit.status = 'approved'
-            audit.reviewer = request.user
-            audit.comment = comment
-            audit.reviewed_at = timezone.now()
-            audit.save()
-            course = audit.course
-            course.is_published = True
-            course.save()
-            Notification.objects.create(
-                user=course.teacher,
-                title='課程審核通過',
-                content=f'你的課程「{course.title}」已通過審核並上架。'
-            )
+            approve_course(audit.course, request.user, comment)
         elif action == 'reject':
-            audit.status = 'rejected'
-            audit.reviewer = request.user
-            audit.comment = comment
-            audit.reviewed_at = timezone.now()
-            audit.save()
-            course = audit.course
-            course.is_published = False
-            course.save()
-            Notification.objects.create(
-                user=course.teacher,
-                title='課程審核未通過',
-                content=f'你的課程「{course.title}」未通過審核。原因：{comment or "未提供"}'
-            )
+            reject_course(audit.course, request.user, comment)
 
     return redirect('manage_audits')
 
