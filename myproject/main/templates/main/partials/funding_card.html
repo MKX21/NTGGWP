@@ -25,9 +25,12 @@
             <div class="flex justify-between items-center text-sm text-slate-500">
                 <span><i class="fas fa-user-group mr-1"></i>{{ course.funding_backers_count }} / {{ course.funding_goal }} 人</span>
                 <span class="flex items-baseline gap-1.5">
-                    {% if course.early_bird_price %}
+                    {# 售價一律走 get_effective_price：直接讀 early_bird_price 會跳過
+                       「須在募資期間內」「須低於定價」兩道 guard，顯示出一個結帳時
+                       不會生效的價格。詞彙見 CONTEXT.md。 #}
+                    {% if course.has_discount %}
                     <span class="text-xs text-red-500 line-through">NT$ {{ course.price }}</span>
-                    <span class="text-lg font-black text-red-600">NT$ {{ course.early_bird_price }}</span>
+                    <span class="text-lg font-black text-red-600">NT$ {{ course.get_effective_price }}</span>
                     {% else %}
                     <span class="text-lg font-black text-slate-900">NT$ {{ course.price }}</span>
                     {% endif %}

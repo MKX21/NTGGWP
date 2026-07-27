@@ -34,7 +34,6 @@ from .models import (
     CourseQuestion,
     CourseAnswer,
     CourseAudit,
-    Promotion,
     CourseCategory,
 )
 
@@ -51,6 +50,7 @@ from .forms import (
 )
 
 from .payments import gateway
+from .checkout import place_order, quote_basket, with_display_price
 
 
 def home(request):
@@ -526,65 +526,26 @@ def checkout(request, course_id):
 
     form = CouponApplyForm(request.POST or None)
 
-    list_price = course.price
-    original_price = course.get_effective_price()
-    coupon = None
-    discount_amount = 0
-    final_price = original_price
-    error_message = None
-    success_message = None
-    selected_code = ''
+    action = request.POST.get('action', 'buy') if request.method == 'POST' else ''
+    selected_code = request.POST.get('coupon_code', '').strip() if request.method == 'POST' else ''
 
-    if request.method == 'POST':
-        # action：apply=只套用預覽折扣、buy=確認購買
-        action = request.POST.get('action', 'buy')
-        coupon_code = request.POST.get('coupon_code', '').strip()
-        selected_code = coupon_code
+    # 定價與下單一律走 checkout module：單課只是「只有一項的購物籃」，
+    # 因此和購物車結帳算出完全相同的價格（含促銷）。詞彙見 CONTEXT.md。
+    quote = quote_basket(request.user, [course], selected_code)
+    if quote.is_empty:
+        # 上面的已購課檢查與這裡之間有購買發生（並行送出兩次表單）
+        return redirect('course_detail', course_id=course.id)
 
-        if coupon_code:
-            try:
-                coupon = Coupon.objects.get(code__iexact=coupon_code)
+    error_message = quote.coupon_error
+    success_message = (
+        f'優惠券已套用，折抵 NT$ {quote.coupon_total}。' if quote.coupon_total > 0 else None
+    )
 
-            except Coupon.DoesNotExist:
-                coupon = None
-                error_message = '找不到這張優惠券。'
-
-            if coupon:
-                if not coupon.is_valid_now():
-                    error_message = '這張優惠券目前不可使用。'
-                    coupon = None
-
-                else:
-                    discount_amount = coupon.calculate_discount(original_price)
-
-                    if discount_amount <= 0:
-                        error_message = '此優惠券未達最低消費金額或無法套用。'
-                        coupon = None
-                        discount_amount = 0
-
-                    else:
-                        final_price = original_price - discount_amount
-                        success_message = f'優惠券已套用，折抵 NT$ {discount_amount}。'
-        elif action == 'buy':
-            success_message = None  # 沒輸入券，直接原價購買
-
-        # 只有按「確認購買」且沒有錯誤時才成立「待付款」訂單，導向付款頁；
-        # 按「套用優惠券」只重新整理頁面顯示折扣預覽。付款完成後才會開通課程。
-        if action == 'buy' and not error_message:
-            order = Order.objects.create(
-                user=request.user,
-                course=course,
-                coupon=coupon,
-                original_price=original_price,
-                discount_amount=discount_amount,
-                final_price=final_price,
-                status='pending'
-            )
-            OrderItem.objects.create(order=order, course=course, price=original_price)
-            Payment.objects.create(
-                order=order, amount=final_price, status='pending', method='mock'
-            )
-            return redirect('payment', order_id=order.id)
+    # 只有按「確認購買」且沒有錯誤時才成立「待付款」訂單，導向付款頁；
+    # 按「套用優惠券」只重新整理頁面顯示折扣預覽。付款完成後才會開通課程。
+    if action == 'buy' and not error_message:
+        order = place_order(request.user, quote)
+        return redirect('payment', order_id=order.id)
 
     # A4：帶出使用者可用的優惠券供選擇
     now = timezone.now()
@@ -599,10 +560,11 @@ def checkout(request, course_id):
     return render(request, 'main/checkout.html', {
         'course': course,
         'form': form,
-        'list_price': list_price,
-        'original_price': original_price,
-        'discount_amount': discount_amount,
-        'final_price': final_price,
+        'list_price': quote.list_total,
+        'original_price': quote.subtotal,
+        'promo_discount': quote.promo_total,
+        'discount_amount': quote.coupon_total,
+        'final_price': quote.total,
         'error_message': error_message,
         'success_message': success_message,
         'my_coupons': my_coupons,
@@ -1559,8 +1521,10 @@ def add_to_cart(request, course_id):
 @login_required
 def view_cart(request):
     cart, _ = Cart.objects.get_or_create(user=request.user)
-    items = cart.items.select_related('course', 'course__teacher').all()
-    total = sum(item.course.get_effective_price() for item in items)
+    items = list(cart.items.select_related('course', 'course__teacher').all())
+    # 顯示價含促銷，才會和結帳實際收的錢一致（批次計算，不逐課查詢）
+    with_display_price([item.course for item in items])
+    total = sum(item.course.display_price for item in items)
 
     # 優惠券整合進購物車：可領取 + 我的優惠券
     now = timezone.now()
@@ -1592,69 +1556,20 @@ def remove_from_cart(request, item_id):
 
 @login_required
 def cart_checkout(request):
-    cart, _ = Cart.objects.get_or_create(user=request.user)
-    items = list(cart.items.select_related('course').all())
-    now = timezone.now()
-
-    # A5：有效促銷 → course_id 對應 Promotion
-    promo_map = {}
-    active_promos = Promotion.objects.filter(
-        is_active=True, start_date__lte=now, end_date__gte=now
-    ).prefetch_related('courses')
-    for promo in active_promos:
-        for c in promo.courses.all():
-            promo_map.setdefault(c.id, promo)
-
-    # A5：整車套用一張優惠券（依購物車總額計算，逐筆分攤）
-    coupon = None
-    if request.method == 'POST':
-        code = request.POST.get('coupon_code', '').strip()
-        if code:
-            coupon = Coupon.objects.filter(code__iexact=code).first()
-            if coupon and not coupon.is_valid_now():
-                coupon = None
-
-    # 只結帳尚未購買的課程
-    items = [i for i in items if not Enrollment.objects.filter(
-        student=request.user, course=i.course).exists()]
-    if not items:
+    # 成立訂單會改資料庫狀態，只接受 POST（cart.html 已經是 POST 表單）。
+    # 先前沒有這道檢查，一個 GET（含瀏覽器預抓、重新整理）就會多一張訂單。
+    if request.method != 'POST':
         return redirect('view_cart')
 
-    cart_total = sum(i.course.get_effective_price() for i in items)
-    coupon_discount = coupon.calculate_discount(cart_total) if coupon else 0
+    cart, _ = Cart.objects.get_or_create(user=request.user)
+    courses = [item.course for item in cart.items.select_related('course').all()]
 
-    total_original = 0
-    total_discount = 0
-    for item in items:
-        original = item.course.get_effective_price()
-        promo = promo_map.get(item.course.id)
-        promo_disc = 0
-        if promo:
-            if promo.discount_type == 'amount':
-                promo_disc = min(promo.discount_value, original)
-            else:
-                promo_disc = int(original * promo.discount_value / 100)
-        total_original += original
-        total_discount += promo_disc
-    total_discount += coupon_discount
-    final_price = max(total_original - total_discount, 0)
+    # 定價與下單一律走 checkout module；已購課過濾、促銷、券分攤都在裡面。
+    quote = quote_basket(request.user, courses, request.POST.get('coupon_code', ''))
+    if quote.is_empty:
+        return redirect('view_cart')
 
-    # 建立單一「待付款」訂單（多課程訂單，course=None），付款完成後才開通
-    order = Order.objects.create(
-        user=request.user,
-        course=None,
-        coupon=coupon if coupon_discount > 0 else None,
-        original_price=total_original,
-        discount_amount=total_discount,
-        final_price=final_price,
-        status='pending'
-    )
-    for item in items:
-        OrderItem.objects.create(order=order, course=item.course, price=item.course.get_effective_price())
-    Payment.objects.create(
-        order=order, amount=final_price, status='pending', method='mock'
-    )
-
+    order = place_order(request.user, quote)
     cart.items.all().delete()
 
     return redirect('payment', order_id=order.id)
@@ -1710,6 +1625,8 @@ def payment(request, order_id):
     if order.status == 'paid':
         return redirect('order_success', order_id=order.id)
 
+    # place_order 是原子性的，新訂單一定帶著 Payment。這個 get_or_create 只為了
+    # 修補在該修正之前建立、可能沒有 Payment 的舊待付款訂單。
     payment_obj, _ = Payment.objects.get_or_create(
         order=order,
         defaults={'amount': order.final_price, 'status': 'pending', 'method': 'mock'}

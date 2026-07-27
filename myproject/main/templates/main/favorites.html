@@ -15,7 +15,11 @@
       <div class="p-5 flex flex-col flex-1">
         <h3 class="font-bold text-slate-900 line-clamp-2 mb-1">{{ fav.course.title }}</h3>
         <p class="text-sm text-slate-500 mb-1">講師：{{ fav.course.teacher.username }}</p>
+        {% if fav.course.has_discount %}
+        <p class="mb-3"><span class="text-xs text-red-500 line-through decoration-2 mr-1.5">NT$ {{ fav.course.price }}</span><span class="text-lg font-black text-red-600">NT$ {{ fav.course.get_effective_price }}</span></p>
+        {% else %}
         <p class="text-lg font-black text-slate-900 mb-3">NT$ {{ fav.course.price }}</p>
+        {% endif %}
         <div class="flex gap-2 mt-auto">
           <a href="{% url 'course_detail' fav.course.id %}" class="flex-1 text-center bg-brand-600 hover:bg-brand-700 text-white font-bold py-2.5 rounded-lg text-sm transition">看課程</a>
           <form method="post" action="{% url 'toggle_favorite' fav.course.id %}" class="flex-1">

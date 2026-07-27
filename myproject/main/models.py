@@ -292,11 +292,12 @@ class Coupon(models.Model):
             return '已用完'
         return '使用中'
 
-    def calculate_discount(self, price):
-        # 期限/啟用/使用次數任一不符 → 一律 0 折扣（防止過期券被折抵）
-        if not self.is_valid_now():
-            return 0
+    def discount_for(self, price):
+        """純計算折扣金額，不檢查券是否有效。
 
+        有效性由呼叫端負責（見 checkout.quote_basket），因為 is_valid_now()
+        會查資料庫，而定價計算必須能在沒有資料庫的情況下被測。
+        """
         if price < self.min_spend:
             return 0
 
@@ -307,10 +308,13 @@ class Coupon(models.Model):
         else:
             discount = 0
 
-        if discount > price:
-            discount = price
+        return min(discount, price)
 
-        return discount
+    def calculate_discount(self, price):
+        # 期限/啟用/使用次數任一不符 → 一律 0 折扣（防止過期券被折抵）
+        if not self.is_valid_now():
+            return 0
+        return self.discount_for(price)
 
     class Meta:
         verbose_name = "優惠券"
@@ -366,6 +370,26 @@ class Promotion(models.Model):
 
     def __str__(self):
         return self.name
+
+    def is_active_now(self):
+        now = timezone.now()
+        return self.is_active and self.start_date <= now <= self.end_date
+
+    def discount_for(self, price):
+        """純計算折扣金額，作用於售價。不檢查活動是否在期間內。
+
+        期間判定由呼叫端負責（見 checkout._active_promotion_map，那裡用
+        資料庫過濾一次撈完，避免逐課查詢）。
+        """
+        if self.discount_type == 'amount':
+            discount = self.discount_value
+        elif self.discount_type == 'percent':
+            discount = int(price * self.discount_value / 100)
+        else:
+            discount = 0
+
+        # 夾住上限：discount_value 設成 150（%）也不會折出負數金額
+        return min(discount, price)
 
     class Meta:
         verbose_name = "促銷活動"
@@ -455,7 +479,11 @@ class OrderItem(models.Model):
         verbose_name="訂單"
     )
     course = models.ForeignKey(Course, on_delete=models.CASCADE, verbose_name="課程")
-    price = models.PositiveIntegerField(verbose_name="購買當下價格")
+    price = models.PositiveIntegerField(verbose_name="購買當下售價")
+    # 分攤到這一項的促銷 + 優惠券折扣；paid_amount = price - discount_amount。
+    # 同一張訂單所有明細的 paid_amount 加總，精確等於 Order.final_price。
+    discount_amount = models.PositiveIntegerField(default=0, verbose_name="分攤折扣")
+    paid_amount = models.PositiveIntegerField(default=0, verbose_name="實付金額")
 
     def __str__(self):
         return f"{self.order.id} - {self.course.title}"

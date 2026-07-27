@@ -2,6 +2,8 @@ from datetime import timedelta
 from django.contrib.auth.models import User
 from django.utils import timezone
 
+from main.checkout import place_order, quote_basket
+from main.views import _finalize_paid_order
 from main.models import (
     Profile,
     CourseCategory,
@@ -15,10 +17,6 @@ from main.models import (
     Promotion,
     Cart,
     CartItem,
-    Order,
-    OrderItem,
-    CouponUsage,
-    Payment,
     Favorite,
     Review,
     Notification,
@@ -337,55 +335,27 @@ purchase_plan = [
     (student3, courses[3], coupon1),
 ]
 
+# 種子購買一律走正式結帳路徑，種子資料的金額因此和真實流程算出來的完全一致
+# （含促銷與券的疊加順序）。開通課程、標記券、發通知交給 _finalize_paid_order。
 for student, course, coupon in purchase_plan:
-    original_price = course.price
-    discount_amount = coupon.calculate_discount(original_price) if coupon else 0
-    final_price = original_price - discount_amount
+    # place_order 的冪等性只認「待付款」訂單，種子訂單是已付款的，
+    # 所以重複執行的判斷由這裡負責：已購課就跳過。
+    if Enrollment.objects.filter(student=student, course=course).exists():
+        continue
 
-    order, created = Order.objects.get_or_create(
-        user=student,
-        course=course,
-        defaults={
-            "coupon": coupon,
-            "original_price": original_price,
-            "discount_amount": discount_amount,
-            "final_price": final_price,
-            "status": "paid",
-        }
-    )
+    quote = quote_basket(student, [course], coupon.code if coupon else '')
+    if quote.is_empty:
+        continue
 
-    if created:
-        OrderItem.objects.get_or_create(
-            order=order,
-            course=course,
-            defaults={"price": original_price}
-        )
+    order = place_order(student, quote)
 
-        Payment.objects.get_or_create(
-            order=order,
-            defaults={
-                "method": "mock",
-                "amount": final_price,
-                "status": "paid",
-                "transaction_no": f"MOCK-{order.id:05d}",
-                "paid_at": now,
-            }
-        )
+    payment = order.payments.order_by("-id").first()
+    payment.status = "paid"
+    payment.paid_at = now
+    payment.transaction_no = f"MOCK-{order.id:05d}"
+    payment.save()
 
-        if coupon:
-            CouponUsage.objects.get_or_create(
-                order=order,
-                defaults={
-                    "user": student,
-                    "coupon": coupon,
-                    "discount_amount": discount_amount,
-                }
-            )
-
-    Enrollment.objects.get_or_create(
-        student=student,
-        course=course
-    )
+    _finalize_paid_order(order)
 
 # =========================
 # 8. 學習紀錄
