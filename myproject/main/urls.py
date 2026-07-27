@@ -14,6 +14,7 @@ urlpatterns = [
     path('course/<int:course_id>/watch/', views.watch_course, name='watch_course'),
     path('lesson/<int:lesson_id>/watch/', views.watch_lesson, name='watch_lesson'),
     path('lesson/<int:lesson_id>/progress/', views.save_progress, name='save_progress'),
+    path('lesson/<int:lesson_id>/video/', views.stream_lesson_video, name='stream_lesson_video'),
     path('course/<int:course_id>/certificate/', views.certificate, name='certificate'),
     path('teacher/<int:teacher_id>/profile/', views.teacher_profile, name='teacher_profile'),
     path('course/<int:course_id>/edit/', views.edit_course, name='edit_course'),
@@ -101,4 +102,14 @@ urlpatterns = [
     path('password-reset/done/', auth_views.PasswordResetDoneView.as_view(
         template_name='main/password_reset_done.html'
     ), name='password_reset_done'),
+
+    # 少了這兩個，PasswordResetView 在產生信件內容時 reverse
+    # 'password_reset_confirm' 會 NoReverseMatch，整個流程一送出就 500。
+    path('password-reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(
+        template_name='main/password_reset_confirm.html'
+    ), name='password_reset_confirm'),
+
+    path('password-reset/complete/', auth_views.PasswordResetCompleteView.as_view(
+        template_name='main/password_reset_complete.html'
+    ), name='password_reset_complete'),
 ]

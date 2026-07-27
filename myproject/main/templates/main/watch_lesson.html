@@ -11,7 +11,7 @@
         <div class="video-box bg-black aspect-video flex items-center justify-center">
           {% if lesson.video_file %}
           <video class="w-full h-full" controls preload="metadata" controlslist="nodownload">
-            <source src="{{ lesson.video_file.url }}" />
+            <source src="{% url 'stream_lesson_video' lesson.id %}" />
             你的瀏覽器不支援影片播放。
           </video>
           {% elif lesson.video_url %}

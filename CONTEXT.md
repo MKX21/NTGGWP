@@ -36,14 +36,31 @@
 |---|---|---|
 | **購物籃** | 一次結帳要買的課程集合。單課直購是「只有一項的購物籃」，走同一條定價路徑。 | `quote_basket(user, courses, coupon_code)` |
 | **成立訂單** | 把報價寫成待付款的訂單（訂單 + 明細 + 付款紀錄三者原子性建立）。**成立訂單不代表付款完成，也不會開通課程。** | `place_order(user, quote)` |
-| **開通** | 付款成功後才發生：建立購課紀錄、標記優惠券已使用、發送通知。具冪等性。 | `views._finalize_paid_order` |
+| **開通** | 付款成功後才發生：建立購課紀錄、標記優惠券已使用、發送通知。具冪等性。 | `transitions.fulfill_order` |
+| **退款** | 開通的反向操作：**撤銷購課紀錄**、回沖付款、發送通知。撤銷的是存取權，不是歷史 —— 學習紀錄與評價一律保留。 | `transitions.approve_refund` |
 
 ### 三個階段
 
 ```
-結帳 checkout.py  →  付款 payments.py  →  開通 _finalize_paid_order
+結帳 checkout.py  →  付款 payments.py  →  開通 transitions.fulfill_order
 （算錢、成立待付款訂單）  （金流閘道）      （開課、標券、通知）
 ```
+
+### 狀態轉換只有一個入口
+
+`main/transitions.py` 是「訂單付款後會發生什麼」與「課程什麼時候能上架」的**唯一**
+答案。前台 view 與後台 admin 都呼叫同一份，因此不存在兩套行為：
+
+```
+fulfill_order      付款成功 → 開通
+approve_refund     核准退款 → 撤銷存取、回沖付款
+reject_refund      拒絕退款
+approve_course     審核通過 → 上架（上架的唯一路徑，必留審核紀錄）
+reject_course      審核退回 → 下架
+```
+
+五個入口皆具冪等性。**新增任何會改變訂單或課程狀態的動作時，加進這裡，
+不要在 view 或 admin 裡就地寫一套。**
 
 ### `OrderItem` 的三個金額
 
@@ -63,10 +80,24 @@
 | **講師** | 開課、管理章節單元、回答提問、審核自己課程的退款。 | `Profile.role == 'teacher'` |
 | **管理員** | 課程審核、退款審核、資料匯出、平台分析。 | `User.is_superuser` |
 
+## 課程的可見性
+
+未上架（`is_published=False`）的課程只有三種人看得到：**課程講師本人**、
+**管理員**（要能審核就得看得到內容）、**已購課的學生**（課程可能在購買後才下架，
+不該讓付過錢的人吃 404）。其餘一律 404。
+
+預覽權不等於購買權 —— 未上架的課程**任何人都不能購買**，包含講師與管理員。
+邏輯在 `views._visible_course_or_404` 與 `views._purchasable_course_or_404`。
+
+付費影片同理：`/media/course_videos/` 不再直出，一律走
+`views.stream_lesson_video`，權限與 `watch_lesson` 相同。
+
 ## 已知的語意債
 
 這些是目前程式碼與上面定義不符之處，**尚未修正**，不要當成規格：
 
-- `Order.course` 對多課程訂單為 `None`，導致講師營收、退款入口、退款權限都漏掉購物車訂單。每課營收應改由 `OrderItem` 推算。
+- `Order.course` 對多課程訂單為 `None`，導致講師營收、退款入口、退款權限都漏掉購物車訂單。每課營收應改由 `OrderItem` 推算。（2026-07-28 實測：共用資料庫中已付款且 `course` 為 `None` 的訂單為 0 筆，因此目前尚未造成實際漏算。）
 - 「課程進度」有四種算法（觀看分鐘制、單元數制、秒數制、證書門檻），畫面之間互相矛盾。
-- `admin.py` 的退款核准與上架 bulk action 各自是一套狀態機，與 `views.py` 的流程行為不同。
+- `Order.status` 與 `Payment.status` 的 model default 都是 `'paid'`。正式流程走 `place_order`（明確設 `pending`）不受影響，但從 admin 手動建立的訂單會直接被算進營收。
+- 授權檢查有 29 處手抄的 `profile.role` 判斷，沒有共用 decorator。
+- CSV 匯出是 11 個近乎相同的 view。

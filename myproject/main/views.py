@@ -1,13 +1,24 @@
 ﻿import csv
 import json
-from django.http import HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum, Avg, Count, Q
+from django.db.models import (
+    Avg,
+    Count,
+    FloatField,
+    IntegerField,
+    OuterRef,
+    Q,
+    Subquery,
+    Sum,
+)
+from django.db.models.functions import Coalesce
 from django.core.paginator import Paginator
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from django.utils import timezone
 
@@ -153,8 +164,71 @@ def home(request):
     })
 
 
-def course_detail(request, course_id):
+def _course_stats_annotations():
+    """課程統計（購課數／觀看分鐘／營收／平均評分）的子查詢。
+
+    為什麼用 Subquery 而不是四個 annotate：那些統計各自來自不同的 to-many
+    關聯，一起 annotate 會在 JOIN 後產生笛卡爾積，Sum 與 Avg 會被重複計算
+    放大。Subquery 各算各的，且整批課程只發一次查詢。
+
+    取代的是「每門課各發四次查詢」的迴圈 —— 在跨網路的共用資料庫上，
+    5 門課要 21 次往返、約 2.8 秒。
+    """
+    def _for(qs, expr, alias):
+        return qs.filter(course=OuterRef('pk')).values('course').annotate(
+            **{alias: expr}
+        ).values(alias)[:1]
+
+    return {
+        'purchase_count': Coalesce(
+            Subquery(_for(Enrollment.objects.all(), Count('id'), 'n'),
+                     output_field=IntegerField()), 0),
+        'watch_minutes': Coalesce(
+            Subquery(_for(LearningRecord.objects.all(), Sum('minutes'), 's'),
+                     output_field=IntegerField()), 0),
+        'revenue': Coalesce(
+            Subquery(_for(Order.objects.filter(status='paid'), Sum('final_price'), 's'),
+                     output_field=IntegerField()), 0),
+        'rating': Subquery(
+            _for(Review.objects.all(), Avg('rating'), 'a'), output_field=FloatField()),
+    }
+
+
+def _visible_course_or_404(request, course_id):
+    """取課程。未上架的只有講師本人、管理員、已購課者看得到。
+
+    回傳 (course, is_preview)。is_preview=True 表示這是未上架課程的預覽 ——
+    畫面要標示審核狀態，購買入口一律關閉（見 _purchasable_course_or_404）。
+
+    已購課者也放行，是因為課程可能在購買後才被下架；讓付過錢的人吃 404
+    等於沒收他買到的東西。
+    """
     course = get_object_or_404(Course, id=course_id)
+    if course.is_published:
+        return course, False
+
+    user = request.user
+    can_preview = user.is_authenticated and (
+        course.teacher_id == user.id
+        or user.is_superuser
+        or Enrollment.objects.filter(student=user, course=course).exists()
+    )
+    if not can_preview:
+        raise Http404('課程不存在或尚未上架')
+
+    return course, True
+
+
+def _purchasable_course_or_404(request, course_id):
+    """取可購買的課程。未上架者一律不可購買 —— 講師與管理員也不行。"""
+    course, is_preview = _visible_course_or_404(request, course_id)
+    if is_preview:
+        raise Http404('課程尚未上架，無法購買')
+    return course
+
+
+def course_detail(request, course_id):
+    course, is_preview = _visible_course_or_404(request, course_id)
 
     already_purchased = False
     can_review = False
@@ -250,6 +324,7 @@ def course_detail(request, course_id):
         'total_lessons': total_lessons,
         'total_minutes': total_minutes,
         'student_count': student_count,
+        'is_preview': is_preview,
     })
 
 
@@ -419,46 +494,21 @@ def teacher_dashboard(request):
     except Profile.DoesNotExist:
         return redirect('home')
 
+    # 一次查完所有統計，不再逐課發四次查詢（見 _course_stats_annotations）
     teacher_courses = Course.objects.filter(
         teacher=request.user
-    ).select_related('category')
+    ).select_related('category').annotate(**_course_stats_annotations())
 
-    course_data = []
-
-    for course in teacher_courses:
-        purchase_count = Enrollment.objects.filter(
-            course=course
-        ).count()
-
-        total_watch_minutes = LearningRecord.objects.filter(
-            course=course
-        ).aggregate(
-            total=Sum('minutes')
-        )['total'] or 0
-
-        total_revenue = Order.objects.filter(
-            course=course,
-            status='paid'
-        ).aggregate(
-            total=Sum('final_price')
-        )['total'] or 0
-
-        average_rating = Review.objects.filter(
-            course=course
-        ).aggregate(
-            avg=Avg('rating')
-        )['avg']
-
-        if average_rating:
-            average_rating = round(average_rating, 1)
-
-        course_data.append({
+    course_data = [
+        {
             'course': course,
-            'purchase_count': purchase_count,
-            'total_watch_minutes': total_watch_minutes,
-            'total_revenue': total_revenue,
-            'average_rating': average_rating,
-        })
+            'purchase_count': course.purchase_count,
+            'total_watch_minutes': course.watch_minutes,
+            'total_revenue': course.revenue,
+            'average_rating': round(course.rating, 1) if course.rating else None,
+        }
+        for course in teacher_courses
+    ]
 
     return render(request, 'main/teacher_dashboard.html', {
         'course_data': course_data
@@ -472,37 +522,53 @@ def my_courses(request):
     except Profile.DoesNotExist:
         return redirect('home')
 
-    enrollments = Enrollment.objects.filter(
-        student=request.user
-    ).select_related('course', 'course__teacher', 'course__category')
+    # 觀看分鐘與課程總長用子查詢一次算完，不再逐筆發查詢
+    enrollments = list(
+        Enrollment.objects.filter(student=request.user)
+        .select_related('course', 'course__teacher', 'course__category')
+        .annotate(
+            watch_minutes=Coalesce(
+                Subquery(
+                    LearningRecord.objects
+                    .filter(user=request.user, course=OuterRef('course'))
+                    .values('course').annotate(s=Sum('minutes')).values('s')[:1],
+                    output_field=IntegerField(),
+                ), 0),
+            course_total_minutes=Coalesce(
+                Subquery(
+                    CourseLesson.objects
+                    .filter(chapter__course=OuterRef('course'))
+                    .values('chapter__course')
+                    .annotate(s=Sum('duration_minutes')).values('s')[:1],
+                    output_field=IntegerField(),
+                ), 0),
+        )
+    )
+
+    # 退款整合進我的課程：訂單與退款狀態各用一次查詢批次取回，
+    # 依 id 遞增覆蓋 → 每門課留下的就是最新一筆。
+    course_ids = [e.course_id for e in enrollments]
+    orders_by_course = {
+        o.course_id: o
+        for o in Order.objects.filter(
+            user=request.user, course_id__in=course_ids, status='paid'
+        ).order_by('id')
+    }
+    refunds_by_order = {
+        r.order_id: r
+        for r in Refund.objects.filter(
+            order_id__in=[o.id for o in orders_by_course.values()]
+        ).order_by('id')
+    }
 
     for enrollment in enrollments:
-        enrollment.watch_minutes = LearningRecord.objects.filter(
-            user=request.user,
-            course=enrollment.course
-        ).aggregate(
-            total=Sum('minutes')
-        )['total'] or 0
-
-        course_total = CourseLesson.objects.filter(
-            chapter__course=enrollment.course
-        ).aggregate(total=Sum('duration_minutes'))['total'] or 0
-        enrollment.course_total_minutes = course_total
-
-        if course_total > 0:
-            pct = int(min(enrollment.watch_minutes, course_total) / course_total * 100)
-        else:
-            pct = 0
-        enrollment.progress = pct
-
-        # 退款整合進我的課程：找該課的已付款訂單與退款狀態
-        order = Order.objects.filter(
-            user=request.user, course=enrollment.course, status='paid'
-        ).order_by('-id').first()
+        total = enrollment.course_total_minutes
+        enrollment.progress = (
+            int(min(enrollment.watch_minutes, total) / total * 100) if total > 0 else 0
+        )
+        order = orders_by_course.get(enrollment.course_id)
         enrollment.order = order
-        enrollment.refund = None
-        if order:
-            enrollment.refund = Refund.objects.filter(order=order).order_by('-id').first()
+        enrollment.refund = refunds_by_order.get(order.id) if order else None
 
     total_minutes = LearningRecord.objects.filter(
         user=request.user
@@ -518,7 +584,7 @@ def my_courses(request):
 
 @login_required
 def checkout(request, course_id):
-    course = get_object_or_404(Course, id=course_id)
+    course = _purchasable_course_or_404(request, course_id)
 
     try:
         request.user.profile
@@ -909,9 +975,10 @@ def teacher_analytics(request):
     except Profile.DoesNotExist:
         return redirect('home')
 
+    # 逐課統計一次查完（見 _course_stats_annotations）
     teacher_courses = Course.objects.filter(
         teacher=request.user
-    )
+    ).annotate(**_course_stats_annotations())
 
     total_revenue = Order.objects.filter(
         course__teacher=request.user,
@@ -937,32 +1004,11 @@ def teacher_analytics(request):
     rating_data = []
 
     for course in teacher_courses:
-        purchase_count = Enrollment.objects.filter(course=course).count()
-
-        revenue = Order.objects.filter(
-            course=course,
-            status='paid'
-        ).aggregate(
-            total=Sum('final_price')
-        )['total'] or 0
-
-        watch_minutes = LearningRecord.objects.filter(
-            course=course
-        ).aggregate(
-            total=Sum('minutes')
-        )['total'] or 0
-
-        avg_rating = Review.objects.filter(
-            course=course
-        ).aggregate(
-            avg=Avg('rating')
-        )['avg'] or 0
-
         course_labels.append(course.title)
-        purchase_counts.append(purchase_count)
-        revenue_data.append(revenue)
-        watch_minutes_data.append(watch_minutes)
-        rating_data.append(round(avg_rating, 1))
+        purchase_counts.append(course.purchase_count)
+        revenue_data.append(course.revenue)
+        watch_minutes_data.append(course.watch_minutes)
+        rating_data.append(round(course.rating, 1) if course.rating else 0)
 
     return render(request, 'main/teacher_analytics.html', {
         'total_revenue': total_revenue,
@@ -1514,7 +1560,12 @@ def export_course_lessons_csv(request):
 
 @login_required
 def add_to_cart(request, course_id):
-    course = get_object_or_404(Course, id=course_id)
+    # 改資料庫狀態的動作只接受 POST —— GET 不受 CSRF middleware 保護，
+    # 一個 <img src> 或預抓就能代替使用者送出。畫面本來就是 POST 表單。
+    if request.method != 'POST':
+        return redirect('course_detail', course_id=course_id)
+
+    course = _purchasable_course_or_404(request, course_id)
 
     if Enrollment.objects.filter(student=request.user, course=course).exists():
         return redirect('course_detail', course_id=course.id)
@@ -1556,6 +1607,9 @@ def view_cart(request):
 
 @login_required
 def remove_from_cart(request, item_id):
+    if request.method != 'POST':
+        return redirect('view_cart')
+
     item = get_object_or_404(CartItem, id=item_id, cart__user=request.user)
     item.delete()
     return redirect('view_cart')
@@ -1669,6 +1723,9 @@ def payment(request, order_id):
 
 @login_required
 def toggle_favorite(request, course_id):
+    if request.method != 'POST':
+        return redirect('my_favorites')
+
     course = get_object_or_404(Course, id=course_id)
     favorite = Favorite.objects.filter(user=request.user, course=course).first()
 
@@ -1677,8 +1734,12 @@ def toggle_favorite(request, course_id):
     else:
         Favorite.objects.create(user=request.user, course=course)
 
-    next_url = request.POST.get('next') or request.GET.get('next')
-    if next_url:
+    # next 是使用者可控的輸入：未經驗證就 redirect 等於開放轉址，
+    # 可被拿來把人導去釣魚站再假裝是本站流程。
+    next_url = request.POST.get('next')
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
         return redirect(next_url)
     return redirect('my_favorites')
 
@@ -1748,6 +1809,9 @@ def coupon_list(request):
 
 @login_required
 def claim_coupon(request, coupon_id):
+    if request.method != 'POST':
+        return redirect('view_cart')
+
     coupon = get_object_or_404(Coupon, id=coupon_id)
 
     if coupon.is_valid_now():
@@ -2191,16 +2255,24 @@ def certificate(request, course_id):
 def teacher_profile(request, teacher_id):
     teacher = get_object_or_404(User, id=teacher_id)
 
+    # 評分統計用子查詢一次算完，不再逐課發查詢
+    review_stats = Review.objects.filter(course=OuterRef('pk')).values('course')
     courses = list(
         Course.objects.filter(teacher=teacher, is_published=True)
         .select_related('category')
-        .annotate(student_count=Count('enrollment', distinct=True))
+        .annotate(
+            student_count=Count('enrollment', distinct=True),
+            avg_rating_raw=Subquery(
+                review_stats.annotate(a=Avg('rating')).values('a')[:1],
+                output_field=FloatField()),
+            review_count=Coalesce(
+                Subquery(review_stats.annotate(n=Count('id')).values('n')[:1],
+                         output_field=IntegerField()), 0),
+        )
         .order_by('-created_at')
     )
     for c in courses:
-        stats = Review.objects.filter(course=c).aggregate(avg=Avg('rating'), n=Count('id'))
-        c.avg_rating = round(stats['avg'], 1) if stats['avg'] else None
-        c.review_count = stats['n']
+        c.avg_rating = round(c.avg_rating_raw, 1) if c.avg_rating_raw else None
 
     total_students = Enrollment.objects.filter(
         course__teacher=teacher
@@ -2247,17 +2319,12 @@ def _file_iterator(path, start, length, chunk=8192):
             yield data
 
 
-def serve_media(request, path):
+def _range_file_response(request, full):
+    """支援 HTTP Range 的檔案串流（影片才能拖曳進度條）。"""
     import os
     import re
     import mimetypes
-    from django.conf import settings
-    from django.http import StreamingHttpResponse, Http404
-
-    media_root = str(settings.MEDIA_ROOT)
-    full = os.path.normpath(os.path.join(media_root, path))
-    if not full.startswith(media_root) or not os.path.isfile(full):
-        raise Http404('media not found')
+    from django.http import StreamingHttpResponse
 
     ctype = mimetypes.guess_type(full)[0] or 'application/octet-stream'
     size = os.path.getsize(full)
@@ -2284,3 +2351,50 @@ def serve_media(request, path):
 
     resp['Accept-Ranges'] = 'bytes'
     return resp
+
+
+@login_required
+def stream_lesson_video(request, lesson_id):
+    """付費影片的唯一出口。權限與 watch_lesson 相同。
+
+    影片不再由 /media/ 直出 —— 那條路徑沒有任何存取檢查，等於只要知道
+    網址就能把課程內容整包拿走。
+    """
+    lesson = get_object_or_404(
+        CourseLesson.objects.select_related('chapter__course'), id=lesson_id
+    )
+    course = lesson.chapter.course
+
+    enrolled = Enrollment.objects.filter(student=request.user, course=course).exists()
+    is_teacher = course.teacher_id == request.user.id
+    if not (enrolled or is_teacher or lesson.is_free_preview):
+        raise Http404('沒有這個影片')
+
+    if not lesson.video_file:
+        raise Http404('這個單元沒有上傳影片')
+
+    return _range_file_response(request, lesson.video_file.path)
+
+
+def serve_media(request, path):
+    import os
+    from django.conf import settings
+
+    media_root = os.path.normpath(str(settings.MEDIA_ROOT))
+    full = os.path.normpath(os.path.join(media_root, path))
+
+    # 必須真的落在 MEDIA_ROOT 底下。startswith 會讓 <media_root>_evil/ 這種
+    # 同層兄弟目錄通過，commonpath 不會。
+    try:
+        inside = os.path.commonpath([full, media_root]) == media_root
+    except ValueError:          # 不同磁碟機
+        inside = False
+    if not inside or not os.path.isfile(full):
+        raise Http404('media not found')
+
+    # 課程影片一律改走 stream_lesson_video（會檢查購課），不從這裡直出。
+    rel = os.path.relpath(full, media_root).replace('\\', '/')
+    if rel.startswith('course_videos/'):
+        raise Http404('media not found')
+
+    return _range_file_response(request, full)

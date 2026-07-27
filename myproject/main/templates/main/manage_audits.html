@@ -13,6 +13,10 @@
           <div>
             <div class="font-bold text-slate-800">{{ a.course.title }}</div>
             <div class="text-sm text-slate-500">講師：{{ a.course.teacher.username }} ・ 送審：{{ a.created_at|date:"Y-m-d H:i" }}{% if a.comment %} ・ 意見：{{ a.comment }}{% endif %}</div>
+            <a href="{% url 'course_detail' a.course.id %}" target="_blank" rel="noopener"
+               class="inline-flex items-center gap-1.5 mt-1.5 text-sm font-bold text-brand-600 hover:text-brand-700 hover:underline">
+              <i class="fas fa-up-right-from-square"></i> 查看課程內容
+            </a>
           </div>
           <span class="px-3 py-1 rounded-full text-sm font-bold
             {% if a.status == 'pending' %}bg-amber-100 text-amber-700

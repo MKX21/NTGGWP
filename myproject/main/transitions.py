@@ -101,7 +101,10 @@ def approve_refund(refund):
     for course in _refunded_courses(order):
         Enrollment.objects.filter(student=order.user, course=course).delete()
 
-    order.payments.filter(status='paid').update(status='refunded')
+    # 已收的錢要退，還沒收的也不該再收 —— 一張訂單可能留著換付款方式時
+    # 產生的 pending 付款紀錄，只回沖 paid 會把它們留成孤兒。
+    # failed 不動：那筆錢從來沒進來過。
+    order.payments.filter(status__in=['paid', 'pending']).update(status='refunded')
 
     order.status = 'refunded'
     order.save(update_fields=['status'])

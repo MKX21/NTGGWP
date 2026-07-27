@@ -15,6 +15,10 @@ db.sqlite3-journal
 # 環境變數（資料庫密碼等機密）
 .env
 
+# 資料庫傾印（含 auth_user 的 email/password hash 與 django_session，
+# 不應該進版控）。要備份請放在專案目錄外。
+*.sql
+
 # 編輯器 / 系統
 .vscode/
 .idea/

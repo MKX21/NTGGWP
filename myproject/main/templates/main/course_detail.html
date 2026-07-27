@@ -190,7 +190,15 @@
                 </div>
                 {% endif %}
 
-                {% if user.is_authenticated %}
+                {% if is_preview %}
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5">
+                    <p class="font-black text-amber-800 flex items-center gap-2 mb-1"><i class="fas fa-eye"></i> 預覽模式・課程尚未上架</p>
+                    <p class="text-sm text-amber-700">這門課通過審核後才會公開，目前無法購買。只有講師本人、管理員與已購課的學生看得到這一頁。</p>
+                </div>
+                    {% if already_purchased %}
+                    <a href="{% url 'watch_course' course.id %}" class="block text-center w-full bg-green-600 text-white py-3 rounded-lg font-bold text-lg mb-3 hover:bg-green-700 transition">▶ 開始上課</a>
+                    {% endif %}
+                {% elif user.is_authenticated %}
                     {% if already_purchased %}
                     <p class="text-green-600 font-bold mb-3 flex items-center gap-2"><i class="fas fa-circle-check"></i> 你已擁有這門課程</p>
                     <a href="{% url 'watch_course' course.id %}" class="block text-center w-full bg-green-600 text-white py-3 rounded-lg font-bold text-lg mb-3 hover:bg-green-700 transition">▶ 開始上課</a>
