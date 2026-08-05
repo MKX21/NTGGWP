@@ -7,6 +7,7 @@ def nav_context(request):
         'nav_cart_count': 0,
         'nav_unread_count': 0,
         'nav_role': None,
+        'nav_can_teach': False,
         'nav_avatar_url': None,
         'nav_categories': CourseCategory.objects.order_by('name')[:8],
     }
@@ -17,6 +18,9 @@ def nav_context(request):
         try:
             profile = user.profile
             data['nav_role'] = profile.role
+            # 單一帳號體系：role=='teacher' 為傳統教師專屬帳號，is_teacher 則是
+            # Admin 額外賦予的教師權限（帳號本身仍是學生），兩者皆可進教師專區。
+            data['nav_can_teach'] = profile.role == 'teacher' or profile.is_teacher
             if profile.avatar:
                 data['nav_avatar_url'] = profile.avatar.url
         except Profile.DoesNotExist:

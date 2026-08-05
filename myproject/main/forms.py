@@ -9,12 +9,14 @@ from .models import (
     CourseQuestion,
     CourseAnswer,
     Profile,
+    TeacherBankAccount,
 )
 class CourseForm(forms.ModelForm):
     field_order = [
         'title', 'category', 'level', 'description', 'image',
         'price', 'discount_price',
         'is_crowdfunding', 'funding_goal', 'funding_start_date', 'funding_end_date', 'early_bird_price',
+        'promo_video_type',
     ]
 
     class Meta:
@@ -23,6 +25,7 @@ class CourseForm(forms.ModelForm):
             'title', 'category', 'level', 'price', 'description', 'image',
             'discount_price',
             'is_crowdfunding', 'funding_goal', 'funding_start_date', 'funding_end_date', 'early_bird_price',
+            'promo_video_type',
         ]
         labels = {
             'title': '課程名稱',
@@ -37,11 +40,13 @@ class CourseForm(forms.ModelForm):
             'funding_start_date': '募資開始時間',
             'funding_end_date': '募資結束時間',
             'early_bird_price': '早鳥優惠價（募資期間適用）',
+            'promo_video_type': '宣傳影片意向',
         }
         help_texts = {
             'discount_price': '設定後，課程將顯示原價刪除線與折扣價。',
             'funding_goal': '達到此人數即視為募資成功。',
             'early_bird_price': '募資期間內購買者適用此價格，需低於原價。',
+            'promo_video_type': '告訴行政人員你希望的宣傳影片拍攝方式，後續會由行政人員安排。',
         }
         widgets = {
             'funding_start_date': forms.DateTimeInput(
@@ -247,3 +252,34 @@ class ProfileEditForm(forms.ModelForm):
             self.user.save()
             profile.save()
         return profile
+
+
+class TeacherBankAccountForm(forms.ModelForm):
+    class Meta:
+        model = TeacherBankAccount
+        fields = ['bank_name', 'bank_code', 'branch_name', 'account_name', 'account_number']
+        labels = {
+            'bank_name': '銀行名稱',
+            'bank_code': '銀行代碼（選填）',
+            'branch_name': '分行名稱（選填）',
+            'account_name': '戶名',
+            'account_number': '帳號',
+        }
+
+
+class WithdrawalRequestForm(forms.Form):
+    amount = forms.IntegerField(label='提領金額', min_value=1)
+
+    def __init__(self, *args, available_balance=0, min_amount=0, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.available_balance = available_balance
+        self.min_amount = min_amount
+        self.fields['amount'].widget.attrs.update({'placeholder': f'最低 NT$ {min_amount}'})
+
+    def clean_amount(self):
+        amount = self.cleaned_data['amount']
+        if amount < self.min_amount:
+            raise forms.ValidationError(f'單次提領金額不得低於 NT$ {self.min_amount}。')
+        if amount > self.available_balance:
+            raise forms.ValidationError('提領金額不得超過目前可提領餘額。')
+        return amount

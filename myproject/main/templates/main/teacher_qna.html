@@ -1,0 +1,49 @@
+{% extends 'main/base_eduflow.html' %}
+{% block title %}學生問題區 | EduFlow{% endblock %}
+
+{% block content %}
+<main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-7">
+    <h1 class="text-2xl font-black text-slate-900 mb-1">學生問題區</h1>
+    <p class="text-slate-500 mb-5">回覆你課程中學生提出的問題，未回覆的排在最前面。</p>
+
+    {% if questions %}
+    <div class="divide-y divide-slate-100">
+      {% for q in questions %}
+      <div class="py-5">
+        <div class="flex items-center justify-between gap-3 flex-wrap mb-1">
+          <div>
+            <div class="font-bold text-slate-800">{{ q.title }}</div>
+            <div class="text-sm text-slate-500">課程「{{ q.course.title }}」・{{ q.user.username }} 提問於 {{ q.created_at|date:"Y-m-d H:i" }}</div>
+          </div>
+          {% if q.answer_count %}
+          <span class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">已回覆</span>
+          {% else %}
+          <span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700">待回覆</span>
+          {% endif %}
+        </div>
+        <p class="text-slate-600 text-sm mb-3">{{ q.content }}</p>
+
+        {% for a in q.answers.all %}
+        <div class="bg-slate-50 rounded-xl p-3 mb-2 text-sm">
+          <span class="font-bold text-brand-700">{{ a.user.username }}：</span>{{ a.content }}
+          <span class="text-slate-400 text-xs ml-2">{{ a.created_at|date:"Y-m-d H:i" }}</span>
+        </div>
+        {% endfor %}
+
+        <form method="post" action="{% url 'add_answer' q.id %}" class="flex items-start gap-2 mt-2">
+          {% csrf_token %}
+          <input type="hidden" name="source" value="teacher_qna">
+          <textarea name="content" rows="2" placeholder="輸入你的回答"
+                    class="flex-1 border border-slate-200 rounded-lg py-2 px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-200"></textarea>
+          <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition">送出回覆</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-slate-500">目前還沒有學生提問。</p>
+    {% endif %}
+  </div>
+</main>
+{% endblock %}

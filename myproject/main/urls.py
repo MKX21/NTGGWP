@@ -24,6 +24,9 @@ urlpatterns = [
 
     path('teacher/dashboard/', views.teacher_dashboard, name='teacher_dashboard'),
     path('teacher/analytics/', views.teacher_analytics, name='teacher_analytics'),
+    path('teacher/qna/', views.teacher_qna, name='teacher_qna'),
+    path('teacher/bank-account/', views.edit_bank_account, name='edit_bank_account'),
+    path('teacher/withdrawals/', views.request_withdrawal, name='request_withdrawal'),
 
     path('export-data/', views.export_data_page, name='export_data_page'),
     path('analytics/', views.platform_analytics, name='platform_analytics'),
@@ -43,6 +46,12 @@ urlpatterns = [
     path('register-success/', views.register_success, name='register_success'),
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
+
+    # 快速登入（OAuth）
+    path('oauth/google/login/', views.google_login, name='google_login'),
+    path('oauth/google/callback/', views.google_oauth_callback, name='google_oauth_callback'),
+    path('oauth/line/login/', views.line_login, name='line_login'),
+    path('oauth/line/callback/', views.line_oauth_callback, name='line_oauth_callback'),
 
     path('profile/', views.profile_view, name='profile'),
     path('profile/edit/', views.edit_profile, name='edit_profile'),

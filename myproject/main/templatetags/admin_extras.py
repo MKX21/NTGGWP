@@ -3,7 +3,7 @@ from django.db.models import Sum
 from django.urls import reverse
 
 from main.models import (
-    Course, Enrollment, Order, CourseAudit, Refund,
+    Course, Enrollment, Order, CourseAudit, Refund, WithdrawalRequest,
 )
 
 register = template.Library()
@@ -19,6 +19,7 @@ def platform_stats():
     revenue = Order.objects.filter(status='paid').aggregate(s=Sum('final_price'))['s'] or 0
     pending_audits = CourseAudit.objects.filter(status='pending').count()
     pending_refunds = Refund.objects.filter(status='pending').count()
+    pending_withdrawals = WithdrawalRequest.objects.filter(status='PENDING').count()
 
     order_paid_url = reverse('admin:main_order_changelist') + '?status__exact=paid'
 
@@ -37,4 +38,7 @@ def platform_stats():
         {'label': '待處理退款', 'value': pending_refunds, 'icon': '↩️', 'accent': '#ef4444',
          'alert': pending_refunds > 0,
          'url': reverse('admin:main_refund_changelist') + '?status__exact=pending'},
+        {'label': '待審核提領', 'value': pending_withdrawals, 'icon': '💸', 'accent': '#0891b2',
+         'alert': pending_withdrawals > 0,
+         'url': reverse('admin:main_withdrawalrequest_changelist') + '?status__exact=PENDING'},
     ]

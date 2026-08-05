@@ -9,7 +9,57 @@
     <div class="flex gap-3 flex-wrap">
       <a href="{% url 'create_course' %}" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-5 py-2.5 rounded-lg transition">＋ 新增課程</a>
       <a href="{% url 'teacher_analytics' %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-2.5 rounded-lg transition">課程分析圖表</a>
+      <a href="{% url 'teacher_qna' %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-2.5 rounded-lg transition relative">
+        學生問題區
+        {% if unanswered_questions %}<span class="absolute -top-2 -right-2 bg-accent-500 text-white text-[11px] font-bold rounded-full h-5 min-w-5 px-1 flex items-center justify-center">{{ unanswered_questions }}</span>{% endif %}
+      </a>
     </div>
+  </div>
+
+  <!-- 財務看板 -->
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8 mb-6">
+    <h2 class="text-xl font-black text-slate-900 mb-5">財務看板</h2>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+      <div class="bg-slate-50 rounded-xl p-4">
+        <div class="text-xs text-slate-500 font-semibold mb-1">總銷售額（原始）</div>
+        <div class="text-lg font-black text-slate-800">NT$ {{ finance.total_gross_revenue|floatformat:0 }}</div>
+      </div>
+      <div class="bg-brand-50 rounded-xl p-4">
+        <div class="text-xs text-brand-600 font-semibold mb-1">預估淨收入（分潤後）</div>
+        <div class="text-lg font-black text-brand-700">NT$ {{ finance.total_net_income|floatformat:0 }}</div>
+      </div>
+      <div class="bg-slate-50 rounded-xl p-4">
+        <div class="text-xs text-slate-500 font-semibold mb-1">已提領</div>
+        <div class="text-lg font-black text-slate-800">NT$ {{ finance.total_withdrawn|floatformat:0 }}</div>
+      </div>
+      <div class="bg-green-50 rounded-xl p-4">
+        <div class="text-xs text-green-700 font-semibold mb-1">可提領餘額</div>
+        <div class="text-lg font-black text-green-700">NT$ {{ finance.available_balance|floatformat:0 }}</div>
+      </div>
+    </div>
+    <div class="flex gap-3 flex-wrap items-center">
+      <a href="{% url 'request_withdrawal' %}" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-5 py-2.5 rounded-lg transition">錢包 / 提領申請</a>
+      <a href="{% url 'edit_bank_account' %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-2.5 rounded-lg transition">
+        {% if bank_account %}修改收款帳戶{% else %}＋ 綁定收款銀行帳戶{% endif %}
+      </a>
+      {% if not bank_account %}<span class="text-sm text-amber-600 font-semibold">尚未綁定銀行帳戶，將無法申請提領</span>{% endif %}
+    </div>
+    {% if recent_withdrawals %}
+    <div class="mt-6 border-t border-slate-100 pt-5">
+      <div class="text-sm font-bold text-slate-600 mb-3">最近提領申請</div>
+      <div class="space-y-2">
+        {% for w in recent_withdrawals %}
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-slate-500">{{ w.created_at|date:"Y-m-d H:i" }} ・ NT$ {{ w.amount }}</span>
+          <span class="px-3 py-1 rounded-full text-xs font-bold
+            {% if w.status == 'PENDING' %}bg-amber-100 text-amber-700
+            {% elif w.status == 'REJECTED' %}bg-red-50 text-red-600
+            {% else %}bg-green-100 text-green-700{% endif %}">{{ w.get_status_display }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
   </div>
 
   {% if course_data %}
@@ -42,6 +92,8 @@
         <div>購買 <b class="text-slate-800">{{ item.purchase_count }}</b> 人</div>
         <div>觀看 <b class="text-slate-800">{{ item.total_watch_minutes }}</b> 分</div>
         {% if item.average_rating %}<div>評分 <b class="text-amber-500">★ {{ item.average_rating }}</b></div>{% endif %}
+        <div>銷售額 <b class="text-slate-800">NT$ {{ item.total_revenue }}</b></div>
+        <div>淨收入（{{ item.course.teacher_revenue_share }}%）<b class="text-brand-700">NT$ {{ item.net_revenue }}</b></div>
       </div>
       {% if item.course.is_crowdfunding %}
       <div class="bg-slate-50 rounded-xl p-4 mb-4">

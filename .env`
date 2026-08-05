@@ -21,3 +21,14 @@ DEBUG=True
 
 # 正式部署時建議換成自己的隨機字串；本機開發可留空使用預設
 # SECRET_KEY=
+
+# 快速登入（Google / LINE Login）— 沒填的話登入頁就不會顯示對應按鈕，不影響其他功能
+# Google：https://console.cloud.google.com/apis/credentials 建立 OAuth 用戶端 ID，
+#         已授權的重新導向 URI 填 http://127.0.0.1:8000/oauth/google/callback/
+# GOOGLE_OAUTH_CLIENT_ID=
+# GOOGLE_OAUTH_CLIENT_SECRET=
+
+# LINE：https://developers.line.biz/console/ 建立 LINE Login channel，
+#       Callback URL 填 http://127.0.0.1:8000/oauth/line/callback/
+# LINE_LOGIN_CHANNEL_ID=
+# LINE_LOGIN_CHANNEL_SECRET=

@@ -1,3 +1,4 @@
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -14,6 +15,18 @@ class Profile(models.Model):
     avatar = models.ImageField(
         upload_to='avatars/', blank=True, null=True, verbose_name="大頭貼"
     )
+
+    # 快速登入（OAuth）綁定用的第三方帳號 ID
+    google_id = models.CharField(
+        max_length=255, unique=True, blank=True, null=True, verbose_name="Google 帳號 ID"
+    )
+    line_id = models.CharField(
+        max_length=255, unique=True, blank=True, null=True, verbose_name="LINE 帳號 ID"
+    )
+
+    # 單一帳號體系：is_teacher 由 Admin 後台賦予，具備教師權限後可在前台切換進教師專區，
+    # 與既有 role（學生/老師二選一）並存，兩者的整合會在後續 Phase 處理。
+    is_teacher = models.BooleanField(default=False, verbose_name="具備教師權限")
 
     def __str__(self):
         return f"{self.user.username} - {self.get_role_display()}"
@@ -82,6 +95,30 @@ class Course(models.Model):
     early_bird_price = models.PositiveIntegerField(
         blank=True, null=True, verbose_name="早鳥優惠價（募資期間適用，需低於原價）"
     )
+
+    # 分潤設定：Admin 於建立/編輯課程時以拉桿設定教師分潤比例，平台分潤 = 100 - 教師分潤
+    teacher_revenue_share = models.PositiveSmallIntegerField(
+        default=70,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="教師分潤比例（%）"
+    )
+
+    # 宣傳影片意向：教師於新課程需求單或課程設定中標示，供行政人員後續安排
+    PROMO_VIDEO_TYPE_CHOICES = [
+        ('NONE', '未設定'),
+        ('PHYSICAL_SHOOT', '實體拍攝'),
+        ('AI_GENERATED', 'AI 形象廣告'),
+    ]
+    promo_video_type = models.CharField(
+        max_length=20,
+        choices=PROMO_VIDEO_TYPE_CHOICES,
+        default='NONE',
+        verbose_name="宣傳影片模式"
+    )
+
+    def platform_revenue_share(self):
+        """平台分潤比例（%），為 100 減去教師分潤比例。"""
+        return 100 - self.teacher_revenue_share
 
     def __str__(self):
         return self.title
@@ -698,3 +735,50 @@ class CourseAudit(models.Model):
     class Meta:
         verbose_name = "課程審核"
         verbose_name_plural = "課程審核"
+
+
+class TeacherBankAccount(models.Model):
+    """教師收款銀行帳戶（一位教師一組，提領申請時會存快照，不受後續修改影響）。"""
+    teacher = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="bank_account", verbose_name="教師"
+    )
+    bank_name = models.CharField(max_length=100, verbose_name="銀行名稱")
+    bank_code = models.CharField(max_length=10, blank=True, null=True, verbose_name="銀行代碼")
+    branch_name = models.CharField(max_length=100, blank=True, null=True, verbose_name="分行名稱")
+    account_name = models.CharField(max_length=100, verbose_name="戶名")
+    account_number = models.CharField(max_length=50, verbose_name="帳號")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新時間")
+
+    def __str__(self):
+        return f"{self.teacher.username} - {self.bank_name} {self.account_number}"
+
+    class Meta:
+        verbose_name = "教師銀行帳戶"
+        verbose_name_plural = "教師銀行帳戶"
+
+
+class WithdrawalRequest(models.Model):
+    STATUS_CHOICES = [
+        ('PENDING', '審核中'),
+        ('APPROVED', '已核准'),
+        ('REJECTED', '已拒絕'),
+    ]
+
+    teacher = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="withdrawal_requests", verbose_name="教師"
+    )
+    amount = models.PositiveIntegerField(verbose_name="提領金額")
+    bank_info_snapshot = models.TextField(verbose_name="銀行帳戶快照（申請當下）")
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default='PENDING', verbose_name="審核狀態"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="申請時間")
+    processed_at = models.DateTimeField(blank=True, null=True, verbose_name="處理時間")
+
+    def __str__(self):
+        return f"{self.teacher.username} - NT$ {self.amount} - {self.get_status_display()}"
+
+    class Meta:
+        verbose_name = "提領申請"
+        verbose_name_plural = "提領申請"
+        ordering = ['-created_at']

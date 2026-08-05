@@ -65,6 +65,9 @@
                     <a href="{% url 'export_data_page' %}" class="hidden lg:inline text-slate-600 hover:text-brand-600 font-medium px-2">資料匯出</a>
                     {% else %}
                     <a href="{% url 'my_courses' %}" class="hidden lg:inline text-slate-600 hover:text-brand-600 font-medium px-2">我的課程</a>
+                    {% if nav_can_teach %}
+                    <a href="{% url 'teacher_dashboard' %}" class="hidden lg:inline text-slate-600 hover:text-brand-600 font-medium px-2">進入教師專區</a>
+                    {% endif %}
                     {% endif %}
 
                     <!-- 通知 -->
@@ -125,6 +128,9 @@
             {% else %}
             <a href="{% url 'my_courses' %}" class="px-3 py-3 rounded-lg hover:bg-slate-50 font-medium">我的課程</a>
             <a href="{% url 'student_dashboard' %}" class="px-3 py-3 rounded-lg hover:bg-slate-50 font-medium">學生專區</a>
+            {% if nav_can_teach %}
+            <a href="{% url 'teacher_dashboard' %}" class="px-3 py-3 rounded-lg hover:bg-slate-50 font-medium">進入教師專區</a>
+            {% endif %}
             {% endif %}
             <a href="{% url 'profile' %}" class="px-3 py-3 rounded-lg hover:bg-slate-50 font-medium">個人資料</a>
             <div class="border-t border-slate-100 my-3"></div>

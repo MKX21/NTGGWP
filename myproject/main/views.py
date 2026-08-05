@@ -1,5 +1,6 @@
 ﻿import csv
 import json
+from django.conf import settings
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.models import User
@@ -8,6 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Avg, Count, Q
 from django.core.paginator import Paginator
 from django.urls import reverse
+from django.utils.http import urlencode
 
 from django.utils import timezone
 
@@ -36,6 +38,8 @@ from .models import (
     CourseAudit,
     Promotion,
     CourseCategory,
+    TeacherBankAccount,
+    WithdrawalRequest,
 )
 
 from .forms import (
@@ -48,9 +52,19 @@ from .forms import (
     QuestionForm,
     AnswerForm,
     ProfileEditForm,
+    TeacherBankAccountForm,
+    WithdrawalRequestForm,
 )
 
+MIN_WITHDRAWAL_AMOUNT = 500
+
+
+def _is_teacher(profile):
+    """單一帳號體系：role=='teacher'（傳統教師帳號）或 is_teacher（Admin 額外授權）皆可使用教師專區。"""
+    return profile.role == 'teacher' or profile.is_teacher
+
 from .payments import gateway
+from . import oauth
 
 
 def home(request):
@@ -267,7 +281,9 @@ def register(request):
         form = RegisterForm()
 
     return render(request, 'main/register.html', {
-        'form': form
+        'form': form,
+        'google_oauth_enabled': bool(settings.GOOGLE_OAUTH_CLIENT_ID),
+        'line_oauth_enabled': bool(settings.LINE_LOGIN_CHANNEL_ID),
     })
 
 
@@ -275,8 +291,26 @@ def register_success(request):
     return render(request, 'main/register_success.html')
 
 
+def _post_login_redirect(user):
+    if user.is_superuser:
+        return redirect('/admin/')
+
+    try:
+        profile = user.profile
+
+        if profile.role == 'teacher':
+            return redirect('teacher_dashboard')
+        elif profile.role == 'student':
+            return redirect('student_dashboard')
+        else:
+            return redirect('home')
+
+    except Profile.DoesNotExist:
+        return redirect('home')
+
+
 def login_view(request):
-    error_message = None
+    error_message = request.GET.get('error') or None
 
     if request.method == 'POST':
         login_input = request.POST.get('username')
@@ -299,34 +333,88 @@ def login_view(request):
 
         if user is not None:
             login(request, user)
-
-            if user.is_superuser:
-                return redirect('/admin/')
-
-            try:
-                profile = user.profile
-
-                if profile.role == 'teacher':
-                    return redirect('teacher_dashboard')
-                elif profile.role == 'student':
-                    return redirect('student_dashboard')
-                else:
-                    return redirect('home')
-
-            except Profile.DoesNotExist:
-                return redirect('home')
-
+            return _post_login_redirect(user)
         else:
             error_message = '帳號 / Email 或密碼錯誤。'
 
     return render(request, 'main/login.html', {
-        'error_message': error_message
+        'error_message': error_message,
+        'google_oauth_enabled': bool(settings.GOOGLE_OAUTH_CLIENT_ID),
+        'line_oauth_enabled': bool(settings.LINE_LOGIN_CHANNEL_ID),
     })
 
 
 def logout_view(request):
     logout(request)
     return redirect('home')
+
+
+def _login_error_redirect(message):
+    return redirect(f"{reverse('login')}?{urlencode({'error': message})}")
+
+
+def google_login(request):
+    if not settings.GOOGLE_OAUTH_CLIENT_ID:
+        return _login_error_redirect('Google 登入尚未設定。')
+    state = oauth.new_state()
+    request.session['google_oauth_state'] = state
+    return redirect(oauth.build_google_auth_url(request, state))
+
+
+def google_oauth_callback(request):
+    error = request.GET.get('error')
+    if error:
+        return _login_error_redirect('Google 登入已取消。')
+
+    state = request.GET.get('state')
+    expected_state = request.session.pop('google_oauth_state', None)
+    if not state or not expected_state or state != expected_state:
+        return _login_error_redirect('登入驗證失敗，請再試一次。')
+
+    code = request.GET.get('code')
+    if not code:
+        return _login_error_redirect('Google 未提供授權碼。')
+
+    try:
+        provider_id, email, name = oauth.fetch_google_profile(request, code)
+        user = oauth.get_or_create_user('google', provider_id, email, name)
+    except oauth.OAuthError:
+        return _login_error_redirect('Google 登入失敗，請稍後再試。')
+
+    login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+    return _post_login_redirect(user)
+
+
+def line_login(request):
+    if not settings.LINE_LOGIN_CHANNEL_ID:
+        return _login_error_redirect('LINE 登入尚未設定。')
+    state = oauth.new_state()
+    request.session['line_oauth_state'] = state
+    return redirect(oauth.build_line_auth_url(request, state))
+
+
+def line_oauth_callback(request):
+    error = request.GET.get('error')
+    if error:
+        return _login_error_redirect('LINE 登入已取消。')
+
+    state = request.GET.get('state')
+    expected_state = request.session.pop('line_oauth_state', None)
+    if not state or not expected_state or state != expected_state:
+        return _login_error_redirect('登入驗證失敗，請再試一次。')
+
+    code = request.GET.get('code')
+    if not code:
+        return _login_error_redirect('LINE 未提供授權碼。')
+
+    try:
+        provider_id, email, name = oauth.fetch_line_profile(request, code)
+        user = oauth.get_or_create_user('line', provider_id, email, name)
+    except oauth.OAuthError:
+        return _login_error_redirect('LINE 登入失敗，請稍後再試。')
+
+    login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+    return _post_login_redirect(user)
 
 
 @login_required
@@ -401,12 +489,47 @@ def student_dashboard(request):
     })
 
 
+def _teacher_finance_summary(user):
+    """依各課程的分潤比例，計算教師目前的預估淨收入與可提領餘額。"""
+    courses = Course.objects.filter(teacher=user)
+    course_net = {}
+    total_gross = 0
+    total_net = 0
+
+    for course in courses:
+        gross = Order.objects.filter(
+            course=course, status='paid'
+        ).aggregate(total=Sum('final_price'))['total'] or 0
+        net = gross * course.teacher_revenue_share // 100
+        course_net[course.id] = {'gross_revenue': gross, 'net_revenue': net}
+        total_gross += gross
+        total_net += net
+
+    already_withdrawn = WithdrawalRequest.objects.filter(
+        teacher=user, status='APPROVED'
+    ).aggregate(s=Sum('amount'))['s'] or 0
+    pending_withdrawal = WithdrawalRequest.objects.filter(
+        teacher=user, status='PENDING'
+    ).aggregate(s=Sum('amount'))['s'] or 0
+
+    available_balance = max(0, total_net - already_withdrawn - pending_withdrawal)
+
+    return {
+        'course_net': course_net,
+        'total_gross_revenue': total_gross,
+        'total_net_income': total_net,
+        'total_withdrawn': already_withdrawn,
+        'pending_withdrawal_amount': pending_withdrawal,
+        'available_balance': available_balance,
+    }
+
+
 @login_required
 def teacher_dashboard(request):
     try:
         profile = request.user.profile
 
-        if profile.role != 'teacher':
+        if not _is_teacher(profile):
             return redirect('home')
 
     except Profile.DoesNotExist:
@@ -416,6 +539,7 @@ def teacher_dashboard(request):
         teacher=request.user
     ).select_related('category')
 
+    finance = _teacher_finance_summary(request.user)
     course_data = []
 
     for course in teacher_courses:
@@ -429,13 +553,6 @@ def teacher_dashboard(request):
             total=Sum('minutes')
         )['total'] or 0
 
-        total_revenue = Order.objects.filter(
-            course=course,
-            status='paid'
-        ).aggregate(
-            total=Sum('final_price')
-        )['total'] or 0
-
         average_rating = Review.objects.filter(
             course=course
         ).aggregate(
@@ -445,16 +562,33 @@ def teacher_dashboard(request):
         if average_rating:
             average_rating = round(average_rating, 1)
 
+        net_info = finance['course_net'].get(course.id, {'gross_revenue': 0, 'net_revenue': 0})
+
         course_data.append({
             'course': course,
             'purchase_count': purchase_count,
             'total_watch_minutes': total_watch_minutes,
-            'total_revenue': total_revenue,
+            'total_revenue': net_info['gross_revenue'],
+            'net_revenue': net_info['net_revenue'],
             'average_rating': average_rating,
         })
 
+    unanswered_questions = CourseQuestion.objects.filter(
+        course__teacher=request.user
+    ).exclude(answers__isnull=False).count()
+
+    bank_account = TeacherBankAccount.objects.filter(teacher=request.user).first()
+    recent_withdrawals = WithdrawalRequest.objects.filter(
+        teacher=request.user
+    ).order_by('-created_at')[:5]
+
     return render(request, 'main/teacher_dashboard.html', {
-        'course_data': course_data
+        'course_data': course_data,
+        'finance': finance,
+        'min_withdrawal_amount': MIN_WITHDRAWAL_AMOUNT,
+        'unanswered_questions': unanswered_questions,
+        'bank_account': bank_account,
+        'recent_withdrawals': recent_withdrawals,
     })
 
 
@@ -789,7 +923,7 @@ def create_course(request):
     try:
         profile = request.user.profile
 
-        if profile.role != 'teacher':
+        if not _is_teacher(profile):
             return redirect('home')
 
     except Profile.DoesNotExist:
@@ -827,7 +961,7 @@ def edit_course(request, course_id):
     try:
         profile = request.user.profile
 
-        if profile.role != 'teacher':
+        if not _is_teacher(profile):
             return redirect('home')
 
     except Profile.DoesNotExist:
@@ -864,7 +998,7 @@ def delete_course(request, course_id):
     try:
         profile = request.user.profile
 
-        if profile.role != 'teacher':
+        if not _is_teacher(profile):
             return redirect('home')
 
     except Profile.DoesNotExist:
@@ -935,7 +1069,7 @@ def student_analytics(request):
 def teacher_analytics(request):
     try:
         profile = request.user.profile
-        if profile.role != 'teacher':
+        if not _is_teacher(profile):
             return redirect('home')
     except Profile.DoesNotExist:
         return redirect('home')
@@ -1884,7 +2018,7 @@ def _require_course_teacher(request, course_id):
     except Profile.DoesNotExist:
         return None, redirect('home')
 
-    if profile.role != 'teacher':
+    if not _is_teacher(profile):
         return None, redirect('home')
 
     course = get_object_or_404(Course, id=course_id, teacher=request.user)
@@ -2041,7 +2175,7 @@ def manage_refunds(request):
             profile = request.user.profile
         except Profile.DoesNotExist:
             return redirect('home')
-        if profile.role != 'teacher':
+        if not _is_teacher(profile):
             return redirect('home')
         refunds = Refund.objects.filter(
             order__course__teacher=request.user
@@ -2151,8 +2285,8 @@ def add_answer(request, question_id):
     question = get_object_or_404(CourseQuestion, id=question_id)
     course = question.course
 
-    is_teacher = course.teacher_id == request.user.id
-    if not (is_teacher or request.user.is_superuser):
+    is_course_teacher = course.teacher_id == request.user.id
+    if not (is_course_teacher or request.user.is_superuser):
         return redirect('course_detail', course_id=course.id)
 
     if request.method == 'POST':
@@ -2168,7 +2302,120 @@ def add_answer(request, question_id):
                 content=f'課程「{course.title}」中你的問題「{question.title}」已有回答。'
             )
 
+    if request.POST.get('source') == 'teacher_qna':
+        return redirect('teacher_qna')
     return redirect('course_detail', course_id=course.id)
+
+
+# =========================
+# 教師專區：Q&A 管理
+# =========================
+
+@login_required
+def teacher_qna(request):
+    try:
+        profile = request.user.profile
+        if not _is_teacher(profile):
+            return redirect('home')
+    except Profile.DoesNotExist:
+        return redirect('home')
+
+    questions = CourseQuestion.objects.filter(
+        course__teacher=request.user
+    ).select_related('user', 'course').prefetch_related('answers').annotate(
+        answer_count=Count('answers')
+    ).order_by('answer_count', '-created_at')
+
+    return render(request, 'main/teacher_qna.html', {
+        'questions': questions,
+        'answer_form': AnswerForm(),
+    })
+
+
+# =========================
+# 教師專區：銀行帳戶與提領
+# =========================
+
+@login_required
+def edit_bank_account(request):
+    try:
+        profile = request.user.profile
+        if not _is_teacher(profile):
+            return redirect('home')
+    except Profile.DoesNotExist:
+        return redirect('home')
+
+    bank_account, _created = TeacherBankAccount.objects.get_or_create(
+        teacher=request.user,
+        defaults={'bank_name': '', 'account_name': '', 'account_number': ''}
+    )
+
+    if request.method == 'POST':
+        form = TeacherBankAccountForm(request.POST, instance=bank_account)
+        if form.is_valid():
+            form.save()
+            return redirect('teacher_dashboard')
+    else:
+        form = TeacherBankAccountForm(instance=bank_account)
+
+    return render(request, 'main/edit_bank_account.html', {
+        'form': form,
+    })
+
+
+@login_required
+def request_withdrawal(request):
+    try:
+        profile = request.user.profile
+        if not _is_teacher(profile):
+            return redirect('home')
+    except Profile.DoesNotExist:
+        return redirect('home')
+
+    bank_account = TeacherBankAccount.objects.filter(teacher=request.user).first()
+    finance = _teacher_finance_summary(request.user)
+
+    form = None
+    if request.method == 'POST':
+        if not bank_account:
+            return redirect('edit_bank_account')
+
+        form = WithdrawalRequestForm(
+            request.POST,
+            available_balance=finance['available_balance'],
+            min_amount=MIN_WITHDRAWAL_AMOUNT,
+        )
+        if form.is_valid():
+            snapshot = (
+                f"{bank_account.bank_name}"
+                f"{' ' + bank_account.branch_name if bank_account.branch_name else ''} - "
+                f"{bank_account.account_name} {bank_account.account_number}"
+            )
+            WithdrawalRequest.objects.create(
+                teacher=request.user,
+                amount=form.cleaned_data['amount'],
+                bank_info_snapshot=snapshot,
+                status='PENDING',
+            )
+            return redirect('request_withdrawal')
+
+    if form is None:
+        form = WithdrawalRequestForm(
+            available_balance=finance['available_balance'],
+            min_amount=MIN_WITHDRAWAL_AMOUNT,
+        )
+
+    withdrawals = WithdrawalRequest.objects.filter(
+        teacher=request.user
+    ).order_by('-created_at')
+
+    return render(request, 'main/withdrawals.html', {
+        'form': form,
+        'bank_account': bank_account,
+        'finance': finance,
+        'min_withdrawal_amount': MIN_WITHDRAWAL_AMOUNT,
+        'withdrawals': withdrawals,
+    })
 
 
 # =========================

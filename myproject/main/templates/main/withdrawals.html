@@ -1,0 +1,72 @@
+{% extends 'main/base_eduflow.html' %}
+{% block title %}提領申請 | EduFlow{% endblock %}
+
+{% block content %}
+<main class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8 mb-6">
+    <h1 class="text-2xl font-black text-slate-900 mb-1">錢包 / 提領申請</h1>
+    <p class="text-slate-500 mb-6">最低提領金額 NT$ {{ min_withdrawal_amount }}。核准後將依綁定的銀行帳戶撥款。</p>
+
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+      <div class="bg-green-50 rounded-xl p-4">
+        <div class="text-xs text-green-700 font-semibold mb-1">可提領餘額</div>
+        <div class="text-lg font-black text-green-700">NT$ {{ finance.available_balance|floatformat:0 }}</div>
+      </div>
+      <div class="bg-slate-50 rounded-xl p-4">
+        <div class="text-xs text-slate-500 font-semibold mb-1">審核中金額</div>
+        <div class="text-lg font-black text-slate-800">NT$ {{ finance.pending_withdrawal_amount|floatformat:0 }}</div>
+      </div>
+      <div class="bg-slate-50 rounded-xl p-4">
+        <div class="text-xs text-slate-500 font-semibold mb-1">已提領</div>
+        <div class="text-lg font-black text-slate-800">NT$ {{ finance.total_withdrawn|floatformat:0 }}</div>
+      </div>
+    </div>
+
+    {% if not bank_account %}
+    <div class="bg-amber-50 text-amber-700 font-medium px-4 py-3 rounded-lg mb-5 text-sm flex items-center justify-between gap-3 flex-wrap">
+      <span>尚未綁定收款銀行帳戶，請先完成綁定才能申請提領。</span>
+      <a href="{% url 'edit_bank_account' %}" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition shrink-0">前往綁定</a>
+    </div>
+    {% else %}
+    <div class="bg-slate-50 rounded-xl p-4 mb-5 text-sm text-slate-600 flex items-center justify-between gap-3 flex-wrap">
+      <span>收款帳戶：{{ bank_account.bank_name }}{% if bank_account.branch_name %} {{ bank_account.branch_name }}{% endif %} - {{ bank_account.account_name }} {{ bank_account.account_number }}</span>
+      <a href="{% url 'edit_bank_account' %}" class="text-brand-600 hover:underline font-medium shrink-0">修改</a>
+    </div>
+
+    <form method="post" class="ef-form">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-lg transition mt-2"
+        {% if finance.available_balance < min_withdrawal_amount %}disabled aria-disabled="true" style="opacity:.5;cursor:not-allowed;"{% endif %}>
+        申請提領
+      </button>
+    </form>
+    {% if finance.available_balance < min_withdrawal_amount %}
+    <p class="text-xs text-slate-400 mt-2 text-center">可提領餘額未達最低門檻 NT$ {{ min_withdrawal_amount }}。</p>
+    {% endif %}
+    {% endif %}
+  </div>
+
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8">
+    <h2 class="text-xl font-black text-slate-900 mb-4">提領歷史紀錄</h2>
+    {% if withdrawals %}
+    <div class="divide-y divide-slate-100">
+      {% for w in withdrawals %}
+      <div class="py-3 flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <div class="font-bold text-slate-800">NT$ {{ w.amount }}</div>
+          <div class="text-xs text-slate-500">申請於 {{ w.created_at|date:"Y-m-d H:i" }}{% if w.processed_at %} ・處理於 {{ w.processed_at|date:"Y-m-d H:i" }}{% endif %}</div>
+        </div>
+        <span class="px-3 py-1 rounded-full text-xs font-bold
+          {% if w.status == 'PENDING' %}bg-amber-100 text-amber-700
+          {% elif w.status == 'REJECTED' %}bg-red-50 text-red-600
+          {% else %}bg-green-100 text-green-700{% endif %}">{{ w.get_status_display }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-slate-500">目前沒有提領紀錄。</p>
+    {% endif %}
+  </div>
+</main>
+{% endblock %}
