@@ -44,7 +44,6 @@ from .models import (
 
 from .forms import (
     RegisterForm,
-    CourseForm,
     CouponApplyForm,
     ReviewForm,
     ChapterForm,
@@ -271,10 +270,8 @@ def register(request):
                 password=form.cleaned_data['password']
             )
 
-            Profile.objects.create(
-                user=user,
-                role=form.cleaned_data['role']
-            )
+            # 所有新註冊帳號一律為學生身分；教師權限只能由 Admin 後台另外授予。
+            Profile.objects.create(user=user, role='student')
 
             return redirect('register_success')
     else:
@@ -282,8 +279,6 @@ def register(request):
 
     return render(request, 'main/register.html', {
         'form': form,
-        'google_oauth_enabled': bool(settings.GOOGLE_OAUTH_CLIENT_ID),
-        'line_oauth_enabled': bool(settings.LINE_LOGIN_CHANNEL_ID),
     })
 
 
@@ -292,21 +287,11 @@ def register_success(request):
 
 
 def _post_login_redirect(user):
+    # 不論學生或具備教師權限的使用者，登入後一律回到主頁；教師專區只能透過
+    # 導覽列的「進入教師專區」按鈕主動進入，絕不在登入當下直接跳轉過去。
     if user.is_superuser:
         return redirect('/admin/')
-
-    try:
-        profile = user.profile
-
-        if profile.role == 'teacher':
-            return redirect('teacher_dashboard')
-        elif profile.role == 'student':
-            return redirect('student_dashboard')
-        else:
-            return redirect('home')
-
-    except Profile.DoesNotExist:
-        return redirect('home')
+    return redirect('home')
 
 
 def login_view(request):
@@ -339,8 +324,6 @@ def login_view(request):
 
     return render(request, 'main/login.html', {
         'error_message': error_message,
-        'google_oauth_enabled': bool(settings.GOOGLE_OAUTH_CLIENT_ID),
-        'line_oauth_enabled': bool(settings.LINE_LOGIN_CHANNEL_ID),
     })
 
 
@@ -464,12 +447,9 @@ def edit_profile(request):
 
 @login_required
 def student_dashboard(request):
+    # 每個帳號本質上都具備學生身份（教師權限只是額外附加），此頁不限角色。
     try:
-        profile = request.user.profile
-
-        if profile.role != 'student':
-            return redirect('home')
-
+        request.user.profile
     except Profile.DoesNotExist:
         return redirect('home')
 
@@ -526,6 +506,7 @@ def _teacher_finance_summary(user):
 
 @login_required
 def teacher_dashboard(request):
+    """單頁式財務與提領儀表板：淨收入、提領申請、提領明細，不含任何課程資訊。"""
     try:
         profile = request.user.profile
 
@@ -535,60 +516,52 @@ def teacher_dashboard(request):
     except Profile.DoesNotExist:
         return redirect('home')
 
-    teacher_courses = Course.objects.filter(
-        teacher=request.user
-    ).select_related('category')
-
+    bank_account = TeacherBankAccount.objects.filter(teacher=request.user).first()
     finance = _teacher_finance_summary(request.user)
-    course_data = []
 
-    for course in teacher_courses:
-        purchase_count = Enrollment.objects.filter(
-            course=course
-        ).count()
+    form = None
+    if request.method == 'POST':
+        if bank_account:
+            form = WithdrawalRequestForm(
+                request.POST,
+                available_balance=finance['available_balance'],
+                min_amount=MIN_WITHDRAWAL_AMOUNT,
+            )
+            if form.is_valid():
+                snapshot = (
+                    f"{bank_account.bank_name}"
+                    f"{' ' + bank_account.branch_name if bank_account.branch_name else ''} - "
+                    f"{bank_account.account_name} {bank_account.account_number}"
+                )
+                WithdrawalRequest.objects.create(
+                    teacher=request.user,
+                    amount=form.cleaned_data['amount'],
+                    bank_info_snapshot=snapshot,
+                    status='PENDING',
+                )
+                return redirect('teacher_dashboard')
 
-        total_watch_minutes = LearningRecord.objects.filter(
-            course=course
-        ).aggregate(
-            total=Sum('minutes')
-        )['total'] or 0
-
-        average_rating = Review.objects.filter(
-            course=course
-        ).aggregate(
-            avg=Avg('rating')
-        )['avg']
-
-        if average_rating:
-            average_rating = round(average_rating, 1)
-
-        net_info = finance['course_net'].get(course.id, {'gross_revenue': 0, 'net_revenue': 0})
-
-        course_data.append({
-            'course': course,
-            'purchase_count': purchase_count,
-            'total_watch_minutes': total_watch_minutes,
-            'total_revenue': net_info['gross_revenue'],
-            'net_revenue': net_info['net_revenue'],
-            'average_rating': average_rating,
-        })
+    if form is None:
+        form = WithdrawalRequestForm(
+            available_balance=finance['available_balance'],
+            min_amount=MIN_WITHDRAWAL_AMOUNT,
+        )
 
     unanswered_questions = CourseQuestion.objects.filter(
         course__teacher=request.user
     ).exclude(answers__isnull=False).count()
 
-    bank_account = TeacherBankAccount.objects.filter(teacher=request.user).first()
-    recent_withdrawals = WithdrawalRequest.objects.filter(
+    withdrawals = WithdrawalRequest.objects.filter(
         teacher=request.user
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
 
     return render(request, 'main/teacher_dashboard.html', {
-        'course_data': course_data,
         'finance': finance,
         'min_withdrawal_amount': MIN_WITHDRAWAL_AMOUNT,
-        'unanswered_questions': unanswered_questions,
         'bank_account': bank_account,
-        'recent_withdrawals': recent_withdrawals,
+        'form': form,
+        'withdrawals': withdrawals,
+        'unanswered_questions': unanswered_questions,
     })
 
 
@@ -919,112 +892,9 @@ def save_progress(request, lesson_id):
 
 
 @login_required
-def create_course(request):
-    try:
-        profile = request.user.profile
-
-        if not _is_teacher(profile):
-            return redirect('home')
-
-    except Profile.DoesNotExist:
-        return redirect('home')
-
-    if request.method == 'POST':
-        form = CourseForm(request.POST, request.FILES)
-
-        if form.is_valid():
-            course = form.save(commit=False)
-            course.teacher = request.user
-            course.is_published = False  # A8：送審前不上架
-            course.save()
-
-            CourseAudit.objects.create(course=course, status='pending')
-
-            Notification.objects.create(
-                user=request.user,
-                title='課程已送審',
-                content=f'你的課程「{course.title}」已送出審核，通過後才會上架。'
-            )
-
-            return redirect('teacher_dashboard')
-
-    else:
-        form = CourseForm()
-
-    return render(request, 'main/create_course.html', {
-        'form': form
-    })
-
-
-@login_required
-def edit_course(request, course_id):
-    try:
-        profile = request.user.profile
-
-        if not _is_teacher(profile):
-            return redirect('home')
-
-    except Profile.DoesNotExist:
-        return redirect('home')
-
-    course = get_object_or_404(
-        Course,
-        id=course_id,
-        teacher=request.user
-    )
-
-    if request.method == 'POST':
-        form = CourseForm(
-            request.POST,
-            request.FILES,
-            instance=course
-        )
-
-        if form.is_valid():
-            form.save()
-            return redirect('teacher_dashboard')
-
-    else:
-        form = CourseForm(instance=course)
-
-    return render(request, 'main/edit_course.html', {
-        'form': form,
-        'course': course
-    })
-
-
-@login_required
-def delete_course(request, course_id):
-    try:
-        profile = request.user.profile
-
-        if not _is_teacher(profile):
-            return redirect('home')
-
-    except Profile.DoesNotExist:
-        return redirect('home')
-
-    course = get_object_or_404(
-        Course,
-        id=course_id,
-        teacher=request.user
-    )
-
-    if request.method == 'POST':
-        course.delete()
-        return redirect('teacher_dashboard')
-
-    return render(request, 'main/delete_course.html', {
-        'course': course
-    })
-
-
-@login_required
 def student_analytics(request):
     try:
-        profile = request.user.profile
-        if profile.role != 'student':
-            return redirect('home')
+        request.user.profile
     except Profile.DoesNotExist:
         return redirect('home')
 
@@ -1065,80 +935,6 @@ def student_analytics(request):
     })
 
 
-@login_required
-def teacher_analytics(request):
-    try:
-        profile = request.user.profile
-        if not _is_teacher(profile):
-            return redirect('home')
-    except Profile.DoesNotExist:
-        return redirect('home')
-
-    teacher_courses = Course.objects.filter(
-        teacher=request.user
-    )
-
-    total_revenue = Order.objects.filter(
-        course__teacher=request.user,
-        status='paid'
-    ).aggregate(
-        total=Sum('final_price')
-    )['total'] or 0
-
-    total_purchase_count = Enrollment.objects.filter(
-        course__teacher=request.user
-    ).count()
-
-    total_watch_minutes = LearningRecord.objects.filter(
-        course__teacher=request.user
-    ).aggregate(
-        total=Sum('minutes')
-    )['total'] or 0
-
-    course_labels = []
-    purchase_counts = []
-    revenue_data = []
-    watch_minutes_data = []
-    rating_data = []
-
-    for course in teacher_courses:
-        purchase_count = Enrollment.objects.filter(course=course).count()
-
-        revenue = Order.objects.filter(
-            course=course,
-            status='paid'
-        ).aggregate(
-            total=Sum('final_price')
-        )['total'] or 0
-
-        watch_minutes = LearningRecord.objects.filter(
-            course=course
-        ).aggregate(
-            total=Sum('minutes')
-        )['total'] or 0
-
-        avg_rating = Review.objects.filter(
-            course=course
-        ).aggregate(
-            avg=Avg('rating')
-        )['avg'] or 0
-
-        course_labels.append(course.title)
-        purchase_counts.append(purchase_count)
-        revenue_data.append(revenue)
-        watch_minutes_data.append(watch_minutes)
-        rating_data.append(round(avg_rating, 1))
-
-    return render(request, 'main/teacher_analytics.html', {
-        'total_revenue': total_revenue,
-        'total_purchase_count': total_purchase_count,
-        'total_watch_minutes': total_watch_minutes,
-        'course_labels_json': json.dumps(course_labels, ensure_ascii=False),
-        'purchase_counts_json': json.dumps(purchase_counts),
-        'revenue_data_json': json.dumps(revenue_data),
-        'watch_minutes_data_json': json.dumps(watch_minutes_data),
-        'rating_data_json': json.dumps(rating_data),
-    })
 @login_required
 def export_data_page(request):
     if not request.user.is_superuser:
@@ -2360,61 +2156,6 @@ def edit_bank_account(request):
 
     return render(request, 'main/edit_bank_account.html', {
         'form': form,
-    })
-
-
-@login_required
-def request_withdrawal(request):
-    try:
-        profile = request.user.profile
-        if not _is_teacher(profile):
-            return redirect('home')
-    except Profile.DoesNotExist:
-        return redirect('home')
-
-    bank_account = TeacherBankAccount.objects.filter(teacher=request.user).first()
-    finance = _teacher_finance_summary(request.user)
-
-    form = None
-    if request.method == 'POST':
-        if not bank_account:
-            return redirect('edit_bank_account')
-
-        form = WithdrawalRequestForm(
-            request.POST,
-            available_balance=finance['available_balance'],
-            min_amount=MIN_WITHDRAWAL_AMOUNT,
-        )
-        if form.is_valid():
-            snapshot = (
-                f"{bank_account.bank_name}"
-                f"{' ' + bank_account.branch_name if bank_account.branch_name else ''} - "
-                f"{bank_account.account_name} {bank_account.account_number}"
-            )
-            WithdrawalRequest.objects.create(
-                teacher=request.user,
-                amount=form.cleaned_data['amount'],
-                bank_info_snapshot=snapshot,
-                status='PENDING',
-            )
-            return redirect('request_withdrawal')
-
-    if form is None:
-        form = WithdrawalRequestForm(
-            available_balance=finance['available_balance'],
-            min_amount=MIN_WITHDRAWAL_AMOUNT,
-        )
-
-    withdrawals = WithdrawalRequest.objects.filter(
-        teacher=request.user
-    ).order_by('-created_at')
-
-    return render(request, 'main/withdrawals.html', {
-        'form': form,
-        'bank_account': bank_account,
-        'finance': finance,
-        'min_withdrawal_amount': MIN_WITHDRAWAL_AMOUNT,
-        'withdrawals': withdrawals,
     })
 
 

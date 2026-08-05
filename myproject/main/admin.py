@@ -1,5 +1,7 @@
 from django import forms
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
+from django.contrib.auth.models import User
 from django.utils import timezone
 from django.utils.html import format_html
 
@@ -150,6 +152,25 @@ class ProfileAdmin(admin.ModelAdmin):
         self.message_user(request, f'已收回 {n} 位使用者的教師權限。')
 
 
+class ProfileInline(admin.StackedInline):
+    """讓 Admin 直接在使用者編輯頁勾選是否給予教師身分，不用切去另一頁。"""
+    model = Profile
+    can_delete = False
+    extra = 0
+    max_num = 1
+    fields = ('is_teacher',)
+    verbose_name = '教師專區權限'
+    verbose_name_plural = '教師專區權限'
+
+
+class CustomUserAdmin(DjangoUserAdmin):
+    inlines = [ProfileInline]
+
+
+admin.site.unregister(User)
+admin.site.register(User, CustomUserAdmin)
+
+
 # ===== 課程 =====
 class RevenueShareSliderWidget(forms.NumberInput):
     """分潤比例拉桿：拖動時即時顯示百分比，平台分潤 = 100 - 教師分潤。"""
@@ -194,10 +215,19 @@ class CourseAdmin(admin.ModelAdmin):
     list_display_links = ('title',)
     search_fields = ('title', 'teacher__username', 'category__name')
     list_filter = ('is_published', 'level', 'category', 'teacher', 'promo_video_type')
-    autocomplete_fields = ('teacher', 'category')
+    # 'teacher' 改用限制過名單的一般下拉選單（見 formfield_for_foreignkey），
+    # 不用 autocomplete：AJAX 搜尋走 User 自己的 admin，不會套用這裡的名單限制。
+    autocomplete_fields = ('category',)
     list_per_page = 25
     inlines = [CourseChapterInline]
     actions = ['make_published', 'make_unpublished']
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'teacher':
+            kwargs['queryset'] = User.objects.filter(
+                profile__is_teacher=True
+            ).order_by('username')
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     @admin.display(description='上架狀態')
     def published_badge(self, obj):

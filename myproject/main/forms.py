@@ -1,7 +1,6 @@
 from django import forms
 from django.contrib.auth.models import User
 from .models import (
-    Course,
     CourseCategory,
     Review,
     CourseChapter,
@@ -11,93 +10,6 @@ from .models import (
     Profile,
     TeacherBankAccount,
 )
-class CourseForm(forms.ModelForm):
-    field_order = [
-        'title', 'category', 'level', 'description', 'image',
-        'price', 'discount_price',
-        'is_crowdfunding', 'funding_goal', 'funding_start_date', 'funding_end_date', 'early_bird_price',
-        'promo_video_type',
-    ]
-
-    class Meta:
-        model = Course
-        fields = [
-            'title', 'category', 'level', 'price', 'description', 'image',
-            'discount_price',
-            'is_crowdfunding', 'funding_goal', 'funding_start_date', 'funding_end_date', 'early_bird_price',
-            'promo_video_type',
-        ]
-        labels = {
-            'title': '課程名稱',
-            'category': '課程分類',
-            'level': '課程難度',
-            'price': '原價',
-            'description': '課程介紹',
-            'image': '課程封面',
-            'discount_price': '折扣價（選填）',
-            'is_crowdfunding': '這是一門募資課程',
-            'funding_goal': '募資門檻人數',
-            'funding_start_date': '募資開始時間',
-            'funding_end_date': '募資結束時間',
-            'early_bird_price': '早鳥優惠價（募資期間適用）',
-            'promo_video_type': '宣傳影片意向',
-        }
-        help_texts = {
-            'discount_price': '設定後，課程將顯示原價刪除線與折扣價。',
-            'funding_goal': '達到此人數即視為募資成功。',
-            'early_bird_price': '募資期間內購買者適用此價格，需低於原價。',
-            'promo_video_type': '告訴行政人員你希望的宣傳影片拍攝方式，後續會由行政人員安排。',
-        }
-        widgets = {
-            'funding_start_date': forms.DateTimeInput(
-                attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M'
-            ),
-            'funding_end_date': forms.DateTimeInput(
-                attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M'
-            ),
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['funding_start_date'].input_formats = ['%Y-%m-%dT%H:%M']
-        self.fields['funding_end_date'].input_formats = ['%Y-%m-%dT%H:%M']
-        self.fields['funding_goal'].required = False
-        self.fields['funding_start_date'].required = False
-        self.fields['funding_end_date'].required = False
-        self.fields['early_bird_price'].required = False
-        self.fields['discount_price'].required = False
-
-        # 分類改為固定清單挑選（由管理員在後台維護），教師不可自訂新分類
-        self.fields['category'].queryset = CourseCategory.objects.order_by('name')
-        self.fields['category'].required = True
-        self.fields['category'].empty_label = '請選擇課程分類'
-
-    def clean(self):
-        cleaned = super().clean()
-        price = cleaned.get('price')
-        discount_price = cleaned.get('discount_price')
-        is_crowdfunding = cleaned.get('is_crowdfunding')
-        funding_goal = cleaned.get('funding_goal')
-        funding_start = cleaned.get('funding_start_date')
-        funding_end = cleaned.get('funding_end_date')
-        early_bird_price = cleaned.get('early_bird_price')
-
-        if discount_price and price and discount_price >= price:
-            self.add_error('discount_price', '折扣價必須低於原價。')
-
-        if is_crowdfunding:
-            if not funding_goal:
-                self.add_error('funding_goal', '募資課程請設定門檻人數（大於 0）。')
-            if not funding_start or not funding_end:
-                self.add_error('funding_end_date', '募資課程請設定募資起訖時間。')
-            elif funding_end <= funding_start:
-                self.add_error('funding_end_date', '募資結束時間必須晚於開始時間。')
-            if early_bird_price and price and early_bird_price >= price:
-                self.add_error('early_bird_price', '早鳥優惠價必須低於原價。')
-
-        return cleaned
-
-
 class ChapterForm(forms.ModelForm):
     class Meta:
         model = CourseChapter
@@ -156,13 +68,6 @@ class RegisterForm(forms.Form):
     email = forms.EmailField(label='Email')
     password = forms.CharField(label='密碼', widget=forms.PasswordInput)
     confirm_password = forms.CharField(label='確認密碼', widget=forms.PasswordInput)
-
-    ROLE_CHOICES = [
-        ('student', '學生'),
-        ('teacher', '老師'),
-    ]
-
-    role = forms.ChoiceField(label='身分', choices=ROLE_CHOICES)
 
     def clean_username(self):
         username = self.cleaned_data['username']
@@ -274,7 +179,11 @@ class WithdrawalRequestForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.available_balance = available_balance
         self.min_amount = min_amount
-        self.fields['amount'].widget.attrs.update({'placeholder': f'最低 NT$ {min_amount}'})
+        self.fields['amount'].widget.attrs.update({
+            'placeholder': f'最低 NT$ {min_amount}',
+            'class': 'w-full border border-slate-200 rounded-lg py-2.5 px-3 outline-none '
+                     'focus:border-brand-300 focus:ring-2 focus:ring-brand-200 transition',
+        })
 
     def clean_amount(self):
         amount = self.cleaned_data['amount']

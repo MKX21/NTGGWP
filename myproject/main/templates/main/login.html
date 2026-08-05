@@ -26,27 +26,21 @@
       <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-lg transition">登入</button>
     </form>
 
-    {% if google_oauth_enabled or line_oauth_enabled %}
     <div class="flex items-center gap-3 my-5">
       <div class="flex-1 h-px bg-slate-200"></div>
       <span class="text-xs text-slate-400">或使用快速登入</span>
       <div class="flex-1 h-px bg-slate-200"></div>
     </div>
     <div class="space-y-3">
-      {% if google_oauth_enabled %}
       <a href="{% url 'google_login' %}"
          class="flex items-center justify-center gap-2 w-full border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold py-2.5 rounded-lg transition">
         <span>使用 Google 登入</span>
       </a>
-      {% endif %}
-      {% if line_oauth_enabled %}
       <a href="{% url 'line_login' %}"
          class="flex items-center justify-center gap-2 w-full bg-[#06C755] hover:bg-[#05b34c] text-white font-semibold py-2.5 rounded-lg transition">
         <span>使用 LINE 登入</span>
       </a>
-      {% endif %}
     </div>
-    {% endif %}
 
     <div class="flex items-center justify-between mt-4 text-sm">
       <a href="{% url 'password_reset' %}" class="text-brand-600 hover:underline">忘記密碼？</a>

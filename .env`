@@ -22,7 +22,8 @@ DEBUG=True
 # 正式部署時建議換成自己的隨機字串；本機開發可留空使用預設
 # SECRET_KEY=
 
-# 快速登入（Google / LINE Login）— 沒填的話登入頁就不會顯示對應按鈕，不影響其他功能
+# 快速登入（Google / LINE Login）— 登入頁的按鈕一律會顯示，但沒填的話點下去
+# 會被導回登入頁並顯示「尚未設定」，不影響帳號密碼登入等其他功能
 # Google：https://console.cloud.google.com/apis/credentials 建立 OAuth 用戶端 ID，
 #         已授權的重新導向 URI 填 http://127.0.0.1:8000/oauth/google/callback/
 # GOOGLE_OAUTH_CLIENT_ID=

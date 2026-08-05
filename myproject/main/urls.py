@@ -16,17 +16,13 @@ urlpatterns = [
     path('lesson/<int:lesson_id>/progress/', views.save_progress, name='save_progress'),
     path('course/<int:course_id>/certificate/', views.certificate, name='certificate'),
     path('teacher/<int:teacher_id>/profile/', views.teacher_profile, name='teacher_profile'),
-    path('course/<int:course_id>/edit/', views.edit_course, name='edit_course'),
-    path('course/<int:course_id>/delete/', views.delete_course, name='delete_course'),
 
     path('student/dashboard/', views.student_dashboard, name='student_dashboard'),
     path('student/analytics/', views.student_analytics, name='student_analytics'),
 
     path('teacher/dashboard/', views.teacher_dashboard, name='teacher_dashboard'),
-    path('teacher/analytics/', views.teacher_analytics, name='teacher_analytics'),
     path('teacher/qna/', views.teacher_qna, name='teacher_qna'),
     path('teacher/bank-account/', views.edit_bank_account, name='edit_bank_account'),
-    path('teacher/withdrawals/', views.request_withdrawal, name='request_withdrawal'),
 
     path('export-data/', views.export_data_page, name='export_data_page'),
     path('analytics/', views.platform_analytics, name='platform_analytics'),
@@ -56,8 +52,6 @@ urlpatterns = [
     path('profile/', views.profile_view, name='profile'),
     path('profile/edit/', views.edit_profile, name='edit_profile'),
     path('my-courses/', views.my_courses, name='my_courses'),
-
-    path('create-course/', views.create_course, name='create_course'),
 
     # 購物車
     path('cart/', views.view_cart, name='view_cart'),
