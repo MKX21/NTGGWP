@@ -1,0 +1,44 @@
+{% extends 'main/base_eduflow.html' %}
+{% block title %}老師課程分析 | EduFlow{% endblock %}
+{% block extra_head %}<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>{% endblock %}
+
+{% block content %}
+<main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-7 mb-6">
+    <h1 class="text-2xl font-black text-slate-900 mb-1">老師課程分析</h1>
+    <p class="text-slate-500 mb-5">依課程訂單、觀看紀錄與評價即時產生分析圖表。</p>
+    <div class="grid sm:grid-cols-3 gap-4">
+      <div class="bg-slate-50 rounded-xl p-5"><h3 class="text-sm text-slate-500 mb-1">總營收</h3><div class="text-3xl font-black text-brand-700">NT$ {{ total_revenue }}</div></div>
+      <div class="bg-slate-50 rounded-xl p-5"><h3 class="text-sm text-slate-500 mb-1">總購買數</h3><div class="text-3xl font-black text-brand-700">{{ total_purchase_count }}</div></div>
+      <div class="bg-slate-50 rounded-xl p-5"><h3 class="text-sm text-slate-500 mb-1">總觀看分鐘</h3><div class="text-3xl font-black text-brand-700">{{ total_watch_minutes }}</div></div>
+    </div>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-6 mb-6">
+    <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6"><h2 class="font-black text-slate-900 mb-4">各課程購買數</h2><div class="relative h-72"><canvas id="purchaseChart"></canvas></div></div>
+    <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6"><h2 class="font-black text-slate-900 mb-4">各課程營收</h2><div class="relative h-72"><canvas id="revenueChart"></canvas></div></div>
+    <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6"><h2 class="font-black text-slate-900 mb-4">各課程觀看分鐘</h2><div class="relative h-72"><canvas id="watchChart"></canvas></div></div>
+    <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6"><h2 class="font-black text-slate-900 mb-4">各課程平均評分</h2><div class="relative h-72"><canvas id="ratingChart"></canvas></div></div>
+  </div>
+
+  <a href="{% url 'teacher_dashboard' %}" class="inline-block text-brand-600 hover:underline font-medium">← 回教師專區</a>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const courseLabels = {{ course_labels_json|safe }};
+  const purchaseCounts = {{ purchase_counts_json|safe }};
+  const revenueData = {{ revenue_data_json|safe }};
+  const watchMinutesData = {{ watch_minutes_data_json|safe }};
+  const ratingData = {{ rating_data_json|safe }};
+  const opts = { responsive: true, maintainAspectRatio: false };
+  function bar(id, label, data, color, extra) {
+    new Chart(document.getElementById(id), { type: "bar", data: { labels: courseLabels, datasets: [{ label: label, data: data, backgroundColor: color, borderRadius: 6 }] }, options: Object.assign({}, opts, extra || {}) });
+  }
+  bar("purchaseChart", "購買數", purchaseCounts, "#4f46e5");
+  bar("revenueChart", "營收", revenueData, "#7c3aed");
+  bar("watchChart", "觀看分鐘", watchMinutesData, "#ec4899");
+  bar("ratingChart", "平均評分", ratingData, "#f59e0b", { scales: { y: { min: 0, max: 5 } } });
+</script>
+{% endblock %}

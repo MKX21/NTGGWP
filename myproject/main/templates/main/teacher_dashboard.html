@@ -84,17 +84,26 @@
     {% endif %}
   </div>
 
-  <!-- 學生問答（獨立卡片，不混入課程設定） -->
-  <a href="{% url 'teacher_qna' %}" class="block bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 hover:ring-brand-200 transition flex items-center justify-between gap-3">
-    <div>
-      <div class="font-black text-slate-900">學生問答區</div>
-      <div class="text-sm text-slate-500">回覆學生對你課程的提問</div>
-    </div>
-    {% if unanswered_questions %}
-    <span class="bg-accent-500 text-white text-xs font-bold rounded-full h-6 min-w-6 px-2 flex items-center justify-center">{{ unanswered_questions }}</span>
-    {% else %}
-    <i class="fas fa-chevron-right text-slate-300"></i>
-    {% endif %}
-  </a>
+  <!-- 學生問答 / 課程分析（獨立卡片，不混入財務區塊） -->
+  <div class="grid sm:grid-cols-2 gap-4">
+    <a href="{% url 'teacher_qna' %}" class="block bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 hover:ring-brand-200 transition flex items-center justify-between gap-3">
+      <div>
+        <div class="font-black text-slate-900">學生問答區</div>
+        <div class="text-sm text-slate-500">回覆學生對你課程的提問</div>
+      </div>
+      {% if unanswered_questions %}
+      <span class="bg-accent-500 text-white text-xs font-bold rounded-full h-6 min-w-6 px-2 flex items-center justify-center">{{ unanswered_questions }}</span>
+      {% else %}
+      <i class="fas fa-chevron-right text-slate-300"></i>
+      {% endif %}
+    </a>
+    <a href="{% url 'teacher_analytics' %}" class="block bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 hover:ring-brand-200 transition flex items-center justify-between gap-3">
+      <div>
+        <div class="font-black text-slate-900">課程分析圖表</div>
+        <div class="text-sm text-slate-500">各課程購買數、營收、觀看與評分</div>
+      </div>
+      <i class="fas fa-chevron-right text-slate-300"></i>
+    </a>
+  </div>
 </main>
 {% endblock %}

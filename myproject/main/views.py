@@ -936,6 +936,82 @@ def student_analytics(request):
 
 
 @login_required
+def teacher_analytics(request):
+    try:
+        profile = request.user.profile
+        if not _is_teacher(profile):
+            return redirect('home')
+    except Profile.DoesNotExist:
+        return redirect('home')
+
+    teacher_courses = Course.objects.filter(
+        teacher=request.user
+    )
+
+    total_revenue = Order.objects.filter(
+        course__teacher=request.user,
+        status='paid'
+    ).aggregate(
+        total=Sum('final_price')
+    )['total'] or 0
+
+    total_purchase_count = Enrollment.objects.filter(
+        course__teacher=request.user
+    ).count()
+
+    total_watch_minutes = LearningRecord.objects.filter(
+        course__teacher=request.user
+    ).aggregate(
+        total=Sum('minutes')
+    )['total'] or 0
+
+    course_labels = []
+    purchase_counts = []
+    revenue_data = []
+    watch_minutes_data = []
+    rating_data = []
+
+    for course in teacher_courses:
+        purchase_count = Enrollment.objects.filter(course=course).count()
+
+        revenue = Order.objects.filter(
+            course=course,
+            status='paid'
+        ).aggregate(
+            total=Sum('final_price')
+        )['total'] or 0
+
+        watch_minutes = LearningRecord.objects.filter(
+            course=course
+        ).aggregate(
+            total=Sum('minutes')
+        )['total'] or 0
+
+        avg_rating = Review.objects.filter(
+            course=course
+        ).aggregate(
+            avg=Avg('rating')
+        )['avg'] or 0
+
+        course_labels.append(course.title)
+        purchase_counts.append(purchase_count)
+        revenue_data.append(revenue)
+        watch_minutes_data.append(watch_minutes)
+        rating_data.append(round(avg_rating, 1))
+
+    return render(request, 'main/teacher_analytics.html', {
+        'total_revenue': total_revenue,
+        'total_purchase_count': total_purchase_count,
+        'total_watch_minutes': total_watch_minutes,
+        'course_labels_json': json.dumps(course_labels, ensure_ascii=False),
+        'purchase_counts_json': json.dumps(purchase_counts),
+        'revenue_data_json': json.dumps(revenue_data),
+        'watch_minutes_data_json': json.dumps(watch_minutes_data),
+        'rating_data_json': json.dumps(rating_data),
+    })
+
+
+@login_required
 def export_data_page(request):
     if not request.user.is_superuser:
         return redirect('home')
