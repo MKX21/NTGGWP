@@ -11,14 +11,27 @@
             theme: {
                 extend: {
                     colors: {
+                        // 日系極簡配色：brand/accent 是全站按鈕、標籤、價格等元件既有沿用的語意色名，
+                        // 直接改色階數值即可讓全站自動套用新配色，不必逐一模板改 class 名稱。
                         brand: {
-                            50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc',
-                            400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca',
-                            800: '#3730a3', 900: '#312e81',
+                            50: '#eef2f7', 100: '#dce5ef', 200: '#b9cbdf', 300: '#8fa9c8',
+                            400: '#5f7fa8', 500: '#3d628c', 600: '#2b4c7e', 700: '#1f375c',
+                            800: '#182b47', 900: '#101d30',
                         },
                         accent: {
-                            50: '#fff7ed', 100: '#ffedd5', 300: '#fdba74',
-                            400: '#fb923c', 500: '#f97316', 600: '#ea580c',
+                            50: '#fdf3e7', 100: '#fbe7ce', 300: '#f0b36c',
+                            400: '#e89a44', 500: '#d9822b', 600: '#bd6a1c',
+                        },
+                        // 日系設計規範明確點名的語意色（背景/卡片/邊框/文字），供新版元件直接引用
+                        jp: {
+                            bg: '#fbf9f5',
+                            surface: '#ffffff',
+                            border: '#ebe8e1',
+                            text: '#2b2b2b',
+                            muted: '#7a7a7a',
+                            primary: '#2b4c7e',
+                            primaryHover: '#1f375c',
+                            accent: '#d9822b',
                         },
                     },
                     fontFamily: { sans: ['"Noto Sans TC"', '"Inter"', 'system-ui', 'sans-serif'] },
@@ -54,21 +67,21 @@
         /* Django 表單控制項在 EduFlow 版型的基礎樣式（Tailwind preflight 會 reset） */
         .ef-form input:not([type=checkbox]):not([type=radio]):not([type=file]),
         .ef-form select, .ef-form textarea {
-            width: 100%; border: 1px solid #e2e8f0; border-radius: 0.6rem;
-            padding: 0.625rem 0.75rem; font-size: 0.95rem; background: #fff; color: #0f172a;
+            width: 100%; border: 1px solid #ebe8e1; border-radius: 0.6rem;
+            padding: 0.625rem 0.75rem; font-size: 0.95rem; background: #fff; color: #2b2b2b;
         }
         .ef-form input:focus, .ef-form select:focus, .ef-form textarea:focus {
-            outline: none; border-color: #818cf8; box-shadow: 0 0 0 3px rgba(129,140,248,.25);
+            outline: none; border-color: #5f7fa8; box-shadow: 0 0 0 3px rgba(43,76,126,.15);
         }
-        .ef-form label { font-weight: 600; color: #334155; display: block; margin: 0.6rem 0 0.25rem; }
+        .ef-form label { font-weight: 600; color: #2b2b2b; display: block; margin: 0.6rem 0 0.25rem; }
         .ef-form p { margin-bottom: 0.6rem; }
         .ef-form ul.errorlist { color: #dc2626; font-size: 0.85rem; list-style: none; padding: 0; margin: 0.25rem 0; }
-        .ef-form .helptext { color: #94a3b8; font-size: 0.8rem; }
+        .ef-form .helptext { color: #7a7a7a; font-size: 0.8rem; }
         .ef-form input[type=file] { font-size: 0.9rem; }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-slate-50 font-sans text-slate-800 antialiased">
+<body class="bg-jp-bg font-sans text-jp-text antialiased">
 
     {% include 'main/partials/eduflow_navbar.html' %}
 

@@ -3,68 +3,63 @@
 
 {% block content %}
 <!-- ============ Hero ============ -->
-<header class="relative overflow-hidden bg-gradient-to-br from-brand-700 via-brand-600 to-violet-600 text-white">
-    <div class="pointer-events-none absolute -top-24 -right-24 h-96 w-96 rounded-full bg-white/10 blur-3xl"></div>
-    <div class="pointer-events-none absolute -bottom-32 -left-16 h-80 w-80 rounded-full bg-violet-400/20 blur-3xl"></div>
+<header class="relative overflow-hidden bg-jp-bg border-b border-jp-border">
+    <div class="pointer-events-none absolute -top-24 -right-24 h-96 w-96 rounded-full bg-brand-100/40 blur-3xl"></div>
+    <div class="pointer-events-none absolute -bottom-32 -left-16 h-80 w-80 rounded-full bg-accent-100/40 blur-3xl"></div>
 
-    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
-        <div class="grid lg:grid-cols-2 gap-12 items-center">
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32">
+        <div class="grid lg:grid-cols-2 gap-16 items-center">
             <div class="animate-fade-up">
-                <span class="inline-flex items-center gap-2 bg-white/15 backdrop-blur px-3 py-1 rounded-full text-sm font-medium mb-6">
-                    <i class="fas fa-star text-accent-300"></i> 全台學員信賴的線上學習平台
+                <span class="inline-flex items-center gap-2 bg-jp-surface border border-jp-border px-3 py-1 rounded-full text-sm font-medium mb-6 text-jp-muted">
+                    <i class="fas fa-star text-jp-accent"></i> 全台學員信賴的線上學習平台
                 </span>
-                <h1 class="text-4xl md:text-5xl lg:text-6xl font-black leading-tight mb-6">
+                <h1 class="text-3xl md:text-5xl font-bold tracking-wide leading-tight mb-6 text-jp-text">
                     學習不設限，<br>
-                    <span class="bg-gradient-to-r from-accent-300 to-amber-200 bg-clip-text text-transparent">開啟你的知識新篇章</span>
+                    <span class="text-jp-primary">開啟你的知識新篇章</span>
                 </h1>
-                <p class="text-lg text-brand-100 mb-8 max-w-xl">
+                <p class="text-lg text-jp-muted mb-10 max-w-xl leading-relaxed">
                     集結業界專家親授的精選課程，搭配數據分析與 AI 智慧推薦。現在就加入 EduFlow，投資最值得的自己。
                 </p>
 
-                <form action="{% url 'home' %}#courses" method="get" class="bg-white rounded-2xl p-2 flex flex-col sm:flex-row gap-2 shadow-2xl shadow-brand-900/30 max-w-xl">
-                    <div class="relative flex-1">
-                        <i class="fas fa-search absolute left-4 top-3.5 text-slate-400"></i>
-                        <input type="text" name="q" value="{{ q }}" placeholder="想學什麼？例如：Python、UI 設計…"
-                               class="w-full py-3 pl-11 pr-4 text-slate-800 rounded-xl outline-none placeholder:text-slate-400">
-                    </div>
-                    <button class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-8 py-3 rounded-xl transition whitespace-nowrap">搜尋</button>
-                </form>
+                <div class="flex flex-wrap gap-3 mb-10">
+                    <a href="{% url 'home' %}#courses" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-medium tracking-wide px-8 py-3.5 rounded-xl transition">瀏覽課程</a>
+                    <a href="{% url 'register' %}" class="bg-jp-surface hover:bg-jp-bg border border-jp-border text-jp-text font-medium tracking-wide px-8 py-3.5 rounded-xl transition">免費註冊</a>
+                </div>
 
-                <div class="flex flex-wrap items-center gap-2 mt-4 text-sm text-brand-100">
-                    <span class="opacity-80">熱門分類：</span>
+                <div class="flex flex-wrap items-center gap-2 mb-10 text-sm text-jp-muted">
+                    <span>熱門分類：</span>
                     {% for category in categories|slice:":4" %}
-                    <a href="{% url 'home' %}?cat={{ category.name }}#courses" class="bg-white/10 hover:bg-white/20 px-3 py-1 rounded-full transition">{{ category.name }}</a>
+                    <a href="{% url 'home' %}?cat={{ category.name }}#courses" class="bg-jp-surface border border-jp-border hover:border-jp-primary hover:text-jp-primary px-3 py-1 rounded-full transition">{{ category.name }}</a>
                     {% endfor %}
                 </div>
 
-                <div class="flex flex-wrap gap-8 mt-10">
-                    <div><div class="text-3xl font-black">{{ total_courses }}+</div><div class="text-sm text-brand-200">精選課程</div></div>
-                    <div><div class="text-3xl font-black">{{ total_students }}+</div><div class="text-sm text-brand-200">累積學員</div></div>
-                    <div><div class="text-3xl font-black">{{ avg_all }}<span class="text-lg">/5</span></div><div class="text-sm text-brand-200">平均評價</div></div>
+                <div class="flex flex-wrap gap-10">
+                    <div><div class="text-3xl font-bold text-jp-text">{{ total_courses }}+</div><div class="text-sm text-jp-muted">精選課程</div></div>
+                    <div><div class="text-3xl font-bold text-jp-text">{{ total_students }}+</div><div class="text-sm text-jp-muted">累積學員</div></div>
+                    <div><div class="text-3xl font-bold text-jp-text">{{ avg_all }}<span class="text-lg">/5</span></div><div class="text-sm text-jp-muted">平均評價</div></div>
                 </div>
             </div>
 
             <div class="hidden lg:block relative h-[460px]">
-                <div class="absolute top-0 right-8 w-64 bg-white rounded-2xl shadow-2xl p-4 animate-float">
-                    <div class="aspect-video rounded-xl bg-gradient-to-br from-brand-400 to-violet-400 mb-3 flex items-center justify-center text-white text-3xl"><i class="fas fa-play"></i></div>
-                    <div class="h-3 w-3/4 bg-slate-200 rounded mb-2"></div>
-                    <div class="h-3 w-1/2 bg-slate-100 rounded"></div>
+                <div class="absolute top-0 right-8 w-64 bg-jp-surface border border-jp-border rounded-2xl shadow-xl p-4 animate-float">
+                    <div class="aspect-video rounded-xl bg-gradient-to-br from-brand-700 to-brand-500 mb-3 flex items-center justify-center text-white text-3xl"><i class="fas fa-play"></i></div>
+                    <div class="h-3 w-3/4 bg-jp-bg rounded mb-2"></div>
+                    <div class="h-3 w-1/2 bg-jp-bg rounded"></div>
                 </div>
-                <div class="absolute top-40 left-0 w-52 bg-white rounded-2xl shadow-2xl p-4 animate-float" style="animation-delay:-2s">
+                <div class="absolute top-40 left-0 w-52 bg-jp-surface border border-jp-border rounded-2xl shadow-xl p-4 animate-float" style="animation-delay:-2s">
                     <div class="flex items-center gap-3 mb-2">
-                        <div class="h-10 w-10 rounded-full bg-accent-400 flex items-center justify-center text-white"><i class="fas fa-trophy"></i></div>
-                        <div><div class="font-bold text-slate-800 text-sm">結業證書</div><div class="text-xs text-slate-400">完課即可領取</div></div>
+                        <div class="h-10 w-10 rounded-full bg-jp-accent flex items-center justify-center text-white"><i class="fas fa-trophy"></i></div>
+                        <div><div class="font-medium text-jp-text text-sm">結業證書</div><div class="text-xs text-jp-muted">完課即可領取</div></div>
                     </div>
-                    <div class="h-2 w-full bg-slate-100 rounded-full overflow-hidden"><div class="h-full w-4/5 bg-accent-400 rounded-full"></div></div>
+                    <div class="h-2 w-full bg-jp-bg rounded-full overflow-hidden"><div class="h-full w-4/5 bg-jp-accent rounded-full"></div></div>
                 </div>
-                <div class="absolute bottom-4 right-16 w-56 bg-white rounded-2xl shadow-2xl p-4 animate-float" style="animation-delay:-4s">
-                    <div class="text-xs text-slate-400 mb-1">累積學員</div>
-                    <div class="text-2xl font-black text-brand-700">{{ total_students }}+ <span class="text-green-500 text-sm"><i class="fas fa-arrow-trend-up"></i></span></div>
+                <div class="absolute bottom-4 right-16 w-56 bg-jp-surface border border-jp-border rounded-2xl shadow-xl p-4 animate-float" style="animation-delay:-4s">
+                    <div class="text-xs text-jp-muted mb-1">累積學員</div>
+                    <div class="text-2xl font-bold text-jp-primary">{{ total_students }}+ <span class="text-green-600 text-sm"><i class="fas fa-arrow-trend-up"></i></span></div>
                 </div>
             </div>
         </div>
     </div>
-    <svg class="block w-full text-slate-50" viewBox="0 0 1440 60" fill="currentColor" preserveAspectRatio="none"><path d="M0,32L1440,0L1440,60L0,60Z"></path></svg>
 </header>
 
 <!-- ============ 熱門分類 ============ -->

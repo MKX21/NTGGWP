@@ -3,35 +3,35 @@
 
 {% block content %}
 <main class="max-w-md mx-auto px-4 py-14">
-  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8">
-    <h1 class="text-2xl font-black text-slate-900 mb-1">註冊帳號</h1>
-    <p class="text-slate-500 mb-6">填寫帳號資訊即可註冊，所有新帳號皆為學生身分。</p>
+  <div class="bg-jp-surface rounded-xl ring-1 ring-jp-border shadow-sm p-8">
+    <h1 class="text-2xl font-bold tracking-wide text-jp-text mb-1">註冊帳號</h1>
+    <p class="text-jp-muted mb-6">填寫帳號資訊即可註冊，所有新帳號皆為學生身分。</p>
     <div class="ef-form">
       <form method="post">
         {% csrf_token %}
         {{ form.as_p }}
-        <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-lg transition mt-2">註冊</button>
+        <button type="submit" class="w-full bg-jp-primary hover:bg-jp-primaryHover text-white font-medium tracking-wide py-3 rounded-lg transition mt-2">註冊</button>
       </form>
     </div>
 
     <div class="flex items-center gap-3 my-5">
-      <div class="flex-1 h-px bg-slate-200"></div>
-      <span class="text-xs text-slate-400">或使用快速註冊 / 登入</span>
-      <div class="flex-1 h-px bg-slate-200"></div>
+      <div class="flex-1 h-px bg-jp-border"></div>
+      <span class="text-xs text-jp-muted">或使用快速註冊 / 登入</span>
+      <div class="flex-1 h-px bg-jp-border"></div>
     </div>
     <div class="space-y-3">
       <a href="{% url 'google_login' %}"
-         class="flex items-center justify-center gap-2 w-full border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold py-2.5 rounded-lg transition">
+         class="flex items-center justify-center gap-2 w-full border border-jp-border hover:bg-jp-bg text-jp-text font-medium py-2.5 rounded-lg transition">
         <span>使用 Google 繼續</span>
       </a>
       <a href="{% url 'line_login' %}"
-         class="flex items-center justify-center gap-2 w-full bg-[#06C755] hover:bg-[#05b34c] text-white font-semibold py-2.5 rounded-lg transition">
+         class="flex items-center justify-center gap-2 w-full bg-[#06C755] hover:bg-[#05b34c] text-white font-medium py-2.5 rounded-lg transition">
         <span>使用 LINE 繼續</span>
       </a>
     </div>
-    <p class="text-xs text-slate-400 mt-2 text-center">透過快速登入建立的帳號同樣預設為學生身分。</p>
+    <p class="text-xs text-jp-muted mt-2 text-center">透過快速登入建立的帳號同樣預設為學生身分。</p>
 
-    <p class="text-sm text-slate-500 mt-4 text-center">已經有帳號了？<a href="{% url 'login' %}" class="text-brand-600 hover:underline">前往登入</a></p>
+    <p class="text-sm text-jp-muted mt-4 text-center">已經有帳號了？<a href="{% url 'login' %}" class="text-jp-primary hover:underline">前往登入</a></p>
   </div>
 </main>
 {% endblock %}
