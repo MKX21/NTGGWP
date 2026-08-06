@@ -165,3 +165,8 @@ else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL') or EMAIL_HOST_USER or 'noreply@example.com'
+
+# 沒有這行時 makemigrations 會依環境的 Django 版本猜預設值，導致每個模型的
+# id 欄位在不同機器上跑出不同的遷移。既有的遷移檔全部是 BigAutoField，
+# 明確設定與資料庫現況一致，避免產生不相干的 alter id 遷移。
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

@@ -8,18 +8,23 @@
     結帳 checkout.py  →  付款 payments.py  →  開通 transitions.fulfill_order
     （算錢、成立待付款訂單）  （金流閘道）        （開課、標券、通知）
 
-對外五個入口，全部具冪等性，重複呼叫不會重複開課、重複退款或重複發通知：
+對外七個入口，全部具冪等性，重複呼叫不會重複開課、重複退款、重複分潤或重複發通知：
 
-    fulfill_order(order)                    付款成功 → 開通課程
-    approve_refund(refund)                  核准退款 → 撤銷存取
+    fulfill_order(order)                    付款成功 → 開通課程、建立分潤紀錄
+    approve_refund(refund)                  核准退款 → 撤銷存取、沖銷分潤
     reject_refund(refund)                   拒絕退款
     approve_course(course, reviewer, ...)   審核通過 → 上架
     reject_course(course, reviewer, ...)    審核退回 → 不上架
+    complete_withdrawal(withdrawal)         提領完成
+    reject_withdrawal(withdrawal)           提領拒絕
 
 **退款保留什麼**：撤銷的是「存取權」（Enrollment），不是歷史。學習紀錄
 （LearningRecord / LessonProgress）與評價（Review）一律保留 —— 看過就是看過，
-講師的評分也不該因為退款而被追溯竄改。
+講師的評分也不該因為退款而被追溯竄改。分潤紀錄（RevenueRecord）同理保留，
+只標記為已沖銷（reversed），不刪除。
 """
+from django.conf import settings
+from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
 
@@ -28,6 +33,7 @@ from .models import (
     CouponUsage,
     Enrollment,
     Notification,
+    RevenueRecord,
     UserCoupon,
 )
 
@@ -50,6 +56,7 @@ def fulfill_order(order):
 
     for item in order.items.select_related('course').all():
         Enrollment.objects.get_or_create(student=order.user, course=item.course)
+        RevenueRecord.create_for_order_item(item)
 
     if order.coupon:
         CouponUsage.objects.get_or_create(
@@ -105,6 +112,11 @@ def approve_refund(refund):
     # 產生的 pending 付款紀錄，只回沖 paid 會把它們留成孤兒。
     # failed 不動：那筆錢從來沒進來過。
     order.payments.filter(status__in=['paid', 'pending']).update(status='refunded')
+
+    # 分潤紀錄同理沖銷：講師報表與可提領餘額都不該再算進已退款的訂單。
+    order.revenue_records.filter(status='confirmed').update(
+        status='reversed', reversed_at=timezone.now()
+    )
 
     order.status = 'refunded'
     order.save(update_fields=['status'])
@@ -211,3 +223,71 @@ def reject_course(course, reviewer, comment=''):
         content=f'你的課程「{course.title}」未通過審核。原因：{comment or "未提供"}'
     )
     return audit
+
+
+# =========================
+# 提領：講師申請提領後的處理
+# =========================
+
+def _notify_withdrawal(withdrawal, title, content):
+    """站內通知一律發；有留 email 才額外寄信。
+
+    寄信失敗（SMTP 設定錯誤、逾時等）不該讓審核動作跟著失敗 —— 站內通知
+    已經送達，管理員的核准/拒絕本身要算數，所以 fail_silently=True。
+    """
+    Notification.objects.create(user=withdrawal.teacher, title=title, content=content)
+
+    if withdrawal.teacher.email:
+        send_mail(
+            subject=f'[EduFlow] {title}',
+            message=content,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[withdrawal.teacher.email],
+            fail_silently=True,
+        )
+
+
+@transaction.atomic
+def complete_withdrawal(withdrawal, note=''):
+    """標記提領已完成（撥款完成），並發站內通知＋Email 通知講師。
+
+    冪等：已是 completed 就直接返回，不會重複發通知或重複寄信。
+    """
+    if withdrawal.status == 'completed':
+        return withdrawal
+
+    withdrawal.status = 'completed'
+    withdrawal.processed_at = timezone.now()
+    if note:
+        withdrawal.note = note
+    withdrawal.save(update_fields=['status', 'processed_at', 'note'])
+
+    _notify_withdrawal(
+        withdrawal,
+        title='提領申請已完成',
+        content=f'你申請提領的 NT$ {withdrawal.amount} 已撥款完成。'
+    )
+    return withdrawal
+
+
+@transaction.atomic
+def reject_withdrawal(withdrawal, note=''):
+    """拒絕提領申請，並發站內通知＋Email 通知講師。
+
+    冪等：非 pending 的申請直接返回。
+    """
+    if withdrawal.status != 'pending':
+        return withdrawal
+
+    withdrawal.status = 'rejected'
+    withdrawal.processed_at = timezone.now()
+    if note:
+        withdrawal.note = note
+    withdrawal.save(update_fields=['status', 'processed_at', 'note'])
+
+    _notify_withdrawal(
+        withdrawal,
+        title='提領申請未通過',
+        content=f'你申請提領的 NT$ {withdrawal.amount} 未通過。原因：{note or "未提供"}'
+    )
+    return withdrawal

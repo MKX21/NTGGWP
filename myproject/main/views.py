@@ -5,6 +5,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.db.models import (
     Avg,
     Count,
@@ -25,6 +26,7 @@ from django.utils import timezone
 from .models import (
     Course,
     CourseLesson,
+    CourseSplitSetting,
     Profile,
     Enrollment,
     LearningRecord,
@@ -35,6 +37,7 @@ from .models import (
     CouponUsage,
     Payment,
     Notification,
+    RevenueRecord,
     Review,
     Cart,
     CartItem,
@@ -46,6 +49,7 @@ from .models import (
     CourseAnswer,
     CourseAudit,
     CourseCategory,
+    WithdrawalRequest,
 )
 
 from .forms import (
@@ -65,9 +69,11 @@ from .checkout import place_order, quote_basket, with_display_price
 from .transitions import (
     approve_course,
     approve_refund,
+    complete_withdrawal,
     fulfill_order,
     reject_course,
     reject_refund,
+    reject_withdrawal,
 )
 
 
@@ -1144,7 +1150,16 @@ def platform_analytics(request):
 
 
 def create_csv_response(filename):
-    response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
+    """\u5efa\u7acb\u5e36 UTF-8 BOM \u7684 CSV response\uff0cExcel/LibreOffice \u958b\u555f\u6642\u6703\u81ea\u52d5\u5224\u65b7\u7de8\u78bc\u3001
+    \u4e0d\u8df3\u51fa\u532f\u5165\u7cbe\u9748\uff0c\u4e2d\u6587\u4e5f\u4e0d\u6703\u4e82\u78bc\u3002
+
+    \u9019\u88e1\u523b\u610f\u628a charset \u8a2d\u70ba utf-8\uff08\u4e0d\u662f utf-8-sig\uff09\u518d\u624b\u52d5\u5beb\u4e00\u6b21 BOM \u2014\u2014 HttpResponse
+    \u662f\u9010\u6b21 write() \u500b\u5225\u7de8\u78bc\uff08\u4e0d\u662f\u7528\u540c\u4e00\u689d\u4e32\u6d41\u7d2f\u52a0\uff09\uff0c\u82e5 charset \u8a2d\u6210 utf-8-sig\uff0c
+    \u4e4b\u5f8c csv.writer \u6bcf\u547c\u53eb\u4e00\u6b21 writerow() \u90fd\u6703\u5404\u81ea\u88ab\u52a0\u4e0a\u4e00\u500b BOM\uff0c
+    \u6574\u4efd CSV \u6bcf\u4e00\u884c\u524d\u9762\u90fd\u6703\u591a\u51fa\u4e00\u500b\u770b\u4e0d\u898b\u7684 BOM \u5b57\u5143\uff0cExcel \u958b\u51fa\u4f86\u6bcf\u4e00\u5217\u90fd\u6703\u932f\u4f4d\u3002
+    BOM \u53ea\u9700\u8981\u51fa\u73fe\u5728\u6a94\u6848\u6700\u958b\u982d\u4e00\u6b21\uff0c\u6240\u4ee5\u6539\u6210\u624b\u52d5\u53ea\u5beb\u4e00\u6b21\u3002
+    """
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     response.write('\ufeff')
     return response
@@ -2149,6 +2164,225 @@ def process_audit(request, audit_id):
             reject_course(audit.course, request.user, comment)
 
     return redirect('manage_audits')
+
+
+# =========================
+# A9 分潤收支與提領（講師 / 管理員）
+#
+# 分潤計算本身（RevenueRecord.recompute / create_for_order_item）是純計算，
+# 已隨 fulfill_order／approve_refund 自動觸發，見 CONTEXT.md「分潤、收支與提領」。
+# 這裡是講師查詢與提領申請的對外入口。
+# =========================
+
+def _require_teacher_profile(request):
+    """回傳講師的 Profile；非講師或未設定角色一律回傳 None。"""
+    try:
+        profile = request.user.profile
+    except Profile.DoesNotExist:
+        return None
+    return profile if profile.role == 'teacher' else None
+
+
+@login_required
+def my_revenue(request):
+    """講師查詢收支分潤紀錄：每一筆的計算依據（比例、成本）與目前分潤規則。"""
+    if not _require_teacher_profile(request):
+        return redirect('home')
+
+    records = RevenueRecord.objects.filter(
+        teacher=request.user
+    ).select_related('course', 'order').order_by('-created_at')
+
+    paginator = Paginator(records, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    totals = records.filter(status='confirmed').aggregate(
+        gross_amount=Sum('gross_amount'),
+        marketing_cost=Sum('marketing_cost'),
+        teacher_amount=Sum('teacher_amount'),
+    )
+
+    # 每門課目前適用的分潤規則（含未自訂過、套用預設值的課程）。
+    course_rules = [
+        CourseSplitSetting.for_course(course)
+        for course in Course.objects.filter(teacher=request.user).order_by('title')
+    ]
+
+    return render(request, 'main/my_revenue.html', {
+        'page_obj': page_obj,
+        'totals': totals,
+        'course_rules': course_rules,
+        'available_balance': WithdrawalRequest.available_balance(request.user),
+        'default_teacher_split': CourseSplitSetting.DEFAULT_TEACHER_SPLIT_PERCENT,
+        'default_company_split': CourseSplitSetting.DEFAULT_COMPANY_SPLIT_PERCENT,
+        'default_teacher_marketing_share': CourseSplitSetting.DEFAULT_TEACHER_MARKETING_SHARE_PERCENT,
+        'default_company_marketing_share': CourseSplitSetting.DEFAULT_COMPANY_MARKETING_SHARE_PERCENT,
+    })
+
+
+@login_required
+def my_withdrawals(request):
+    """講師申請提領、查看自己的提領紀錄與目前可提領餘額。"""
+    if not _require_teacher_profile(request):
+        return redirect('home')
+
+    error = None
+
+    if request.method == 'POST':
+        amount_raw = request.POST.get('amount', '').strip()
+        try:
+            amount = int(amount_raw)
+            if amount <= 0:
+                raise ValueError
+        except ValueError:
+            error = '請輸入正確的提領金額（正整數）。'
+        else:
+            withdrawal = WithdrawalRequest(teacher=request.user, amount=amount)
+            try:
+                withdrawal.save()
+            except ValidationError as e:
+                error = ' '.join(e.messages)
+            else:
+                Notification.objects.create(
+                    user=request.user,
+                    title='提領申請已送出',
+                    content=f'你申請提領的 NT$ {amount} 已送出，等待處理。'
+                )
+                return redirect('my_withdrawals')
+
+    withdrawals = WithdrawalRequest.objects.filter(
+        teacher=request.user
+    ).order_by('-requested_at')
+
+    return render(request, 'main/my_withdrawals.html', {
+        'withdrawals': withdrawals,
+        'available_balance': WithdrawalRequest.available_balance(request.user),
+        'error': error,
+    })
+
+
+@login_required
+def manage_withdrawals(request):
+    """後台查看：所有講師的提領申請，僅管理員可核准／拒絕。"""
+    if not request.user.is_superuser:
+        return redirect('home')
+
+    withdrawals = WithdrawalRequest.objects.select_related(
+        'teacher'
+    ).order_by('-requested_at')
+
+    return render(request, 'main/manage_withdrawals.html', {
+        'withdrawals': withdrawals,
+    })
+
+
+@login_required
+def process_withdrawal(request, withdrawal_id):
+    if not request.user.is_superuser:
+        return redirect('home')
+
+    withdrawal = get_object_or_404(WithdrawalRequest, id=withdrawal_id)
+
+    if request.method == 'POST':
+        # 提領完成/拒絕一律走 transitions —— 與退款、審核同一套規則。
+        action = request.POST.get('action')
+        note = request.POST.get('note', '').strip()
+
+        if action == 'complete':
+            complete_withdrawal(withdrawal, note=note)
+        elif action == 'reject':
+            reject_withdrawal(withdrawal, note=note)
+
+    return redirect('manage_withdrawals')
+
+
+@login_required
+def export_my_revenue_csv(request):
+    """講師匯出自己的收支分潤紀錄。"""
+    if not _require_teacher_profile(request):
+        return redirect('home')
+
+    response = create_csv_response('my_revenue.csv')
+    writer = csv.writer(response)
+
+    writer.writerow([
+        'record_id',
+        'course_id',
+        'course_title',
+        'order_id',
+        'gross_amount',
+        'marketing_cost',
+        'teacher_split_percent',
+        'company_split_percent',
+        'teacher_marketing_share_percent',
+        'company_marketing_share_percent',
+        'teacher_amount',
+        'company_amount',
+        'status',
+        'created_at',
+        'reversed_at',
+    ])
+
+    records = RevenueRecord.objects.filter(
+        teacher=request.user
+    ).select_related('course', 'order').order_by('-created_at')
+
+    for r in records:
+        writer.writerow([
+            r.id,
+            r.course_id,
+            r.course.title,
+            r.order_id,
+            r.gross_amount,
+            r.marketing_cost,
+            r.teacher_split_percent,
+            r.company_split_percent,
+            r.teacher_marketing_share_percent,
+            r.company_marketing_share_percent,
+            r.teacher_amount,
+            r.company_amount,
+            r.get_status_display(),
+            r.created_at,
+            r.reversed_at or '',
+        ])
+
+    return response
+
+
+@login_required
+def export_my_withdrawals_csv(request):
+    """講師匯出自己的提領申請紀錄。"""
+    if not _require_teacher_profile(request):
+        return redirect('home')
+
+    response = create_csv_response('my_withdrawals.csv')
+    writer = csv.writer(response)
+
+    writer.writerow([
+        'withdrawal_id',
+        'amount',
+        'status',
+        'note',
+        'requested_at',
+        'processed_at',
+    ])
+
+    withdrawals = WithdrawalRequest.objects.filter(
+        teacher=request.user
+    ).order_by('-requested_at')
+
+    for w in withdrawals:
+        writer.writerow([
+            w.id,
+            w.amount,
+            w.get_status_display(),
+            w.note or '',
+            w.requested_at,
+            w.processed_at or '',
+        ])
+
+    return response
+
 
 # =========================
 # Task 2 課程完成證書（PDF）

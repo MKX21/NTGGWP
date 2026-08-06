@@ -52,14 +52,16 @@
 答案。前台 view 與後台 admin 都呼叫同一份，因此不存在兩套行為：
 
 ```
-fulfill_order      付款成功 → 開通
-approve_refund     核准退款 → 撤銷存取、回沖付款
-reject_refund      拒絕退款
-approve_course     審核通過 → 上架（上架的唯一路徑，必留審核紀錄）
-reject_course      審核退回 → 下架
+fulfill_order        付款成功 → 開通、建立分潤紀錄
+approve_refund       核准退款 → 撤銷存取、回沖付款、沖銷分潤紀錄
+reject_refund        拒絕退款
+approve_course       審核通過 → 上架（上架的唯一路徑，必留審核紀錄）
+reject_course        審核退回 → 下架
+complete_withdrawal  提領完成
+reject_withdrawal    提領拒絕
 ```
 
-五個入口皆具冪等性。**新增任何會改變訂單或課程狀態的動作時，加進這裡，
+七個入口皆具冪等性。**新增任何會改變訂單或課程狀態的動作時，加進這裡，
 不要在 view 或 admin 裡就地寫一套。**
 
 ### `OrderItem` 的三個金額
@@ -71,6 +73,51 @@ reject_course      審核退回 → 下架
 | `paid_amount` | 這一項的**實付**。同一張訂單所有明細的 `paid_amount` 加總，精確等於 `Order.final_price`。 |
 
 優惠券折扣按各項「促銷後金額」比例分攤，採**最大餘額法**取整，確保加總精確相等。
+
+## 分潤、收支與提領
+
+| 詞 | 定義 | 在程式裡 |
+|---|---|---|
+| **課程分潤設定** | 每堂課的講師／公司分潤比例，以及行銷成本（如 Facebook 廣告費）由誰負擔多少。兩組比例各自須加總 100，互相獨立。未自訂過的課程套用預設值（分潤 7:3、成本各半）。 | `CourseSplitSetting`、`CourseSplitSetting.for_course(course)` |
+| **收支分潤紀錄** | 一筆 `OrderItem` 付款成功後，依當下的課程分潤設定拆算出的講師應付金額與公司實收金額。比例是**建立當下拍照存檔**，之後設定異動不會追溯改到已建立的紀錄。 | `RevenueRecord` |
+| **提領** | 講師申請把累積的分潤兌現。可提領餘額 = 所有 `confirmed` 分潤紀錄的講師應付金額加總，扣掉已佔用（`pending`/`completed`）的提領金額；超額申請在 model 層直接擋下。 | `WithdrawalRequest`、`WithdrawalRequest.available_balance(teacher)` |
+
+### 分潤金額怎麼算
+
+```
+講師應收(毛額) = 實付金額 × 講師分潤比例（四捨五入）
+公司應收(毛額) = 實付金額 − 講師應收(毛額)        ← 用相減取整，兩者加總精確等於實付金額
+講師負擔成本   = 行銷成本 × 講師成本負擔比例（四捨五入）
+公司負擔成本   = 行銷成本 − 講師負擔成本
+講師應付金額   = 講師應收(毛額) − 講師負擔成本
+公司實收金額   = 公司應收(毛額) − 公司負擔成本
+```
+
+兩組比例分開套用（分潤比例作用於毛額，成本負擔比例作用於行銷成本），
+因此改行銷成本負擔比例不會影響分潤比例，反之亦然。
+
+### 跟著訂單狀態轉換走
+
+分潤紀錄的建立與沖銷是 `transitions.py` 既有五個入口的延伸，不是另一套流程：
+
+```
+fulfill_order      付款成功 → 開通課程的同時，逐 OrderItem 建立分潤紀錄（confirmed）
+approve_refund     核准退款 → 把該訂單的分潤紀錄標記為 reversed（保留歷史，不刪除）
+```
+
+行銷成本目前沒有自動來源（無串接 Facebook 廣告 API），建立時預設 0，
+由後台人工事後在 `RevenueRecord.marketing_cost` 填入實際花費；
+儲存時會自動重算講師應付金額與公司實收金額。
+
+### 提領審核會通知講師
+
+`complete_withdrawal` / `reject_withdrawal` 一律透過 `transitions._notify_withdrawal`
+發站內通知，並在講師的 `User.email` 有填寫時額外寄一封 Email（走 Django
+的 `EMAIL_BACKEND`，沒設 SMTP 時退回終端機印出，見 `settings.py` 的
+Email 區塊）。**寄信失敗不會讓審核動作跟著失敗**（`fail_silently=True`）——
+站內通知已經送達，管理員的核准/拒絕本身要算數，不該被寄信基礎設施擋住。
+Django admin 的批次動作與 `manage_withdrawals` 頁面的核准/拒絕按鈕呼叫的是
+同一份 `transitions` 函式，因此兩個入口的通知行為完全一致。
 
 ## 角色
 

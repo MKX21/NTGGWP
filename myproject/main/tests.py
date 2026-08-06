@@ -13,6 +13,8 @@
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth.models import User
 from django.contrib.messages.storage.fallback import FallbackStorage
+from django.core import mail
+from django.core.exceptions import ValidationError
 from django.test import RequestFactory, SimpleTestCase, TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -27,6 +29,7 @@ from .models import (
     CourseCategory,
     CourseChapter,
     CourseLesson,
+    CourseSplitSetting,
     Enrollment,
     Favorite,
     LearningRecord,
@@ -37,9 +40,16 @@ from .models import (
     Profile,
     Promotion,
     Refund,
+    RevenueRecord,
     Review,
+    WithdrawalRequest,
 )
-from .transitions import approve_refund, fulfill_order
+from .transitions import (
+    approve_refund,
+    complete_withdrawal,
+    fulfill_order,
+    reject_withdrawal,
+)
 
 
 def make_course(price, discount_price=None, early_bird_price=None,
@@ -577,3 +587,420 @@ class PasswordResetFlowTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, reverse('password_reset_done'))
+
+
+class RevenueSplitCalculationTests(SimpleTestCase):
+    """RevenueRecord.recompute() 是純計算，未存檔的實例就能跑，不需要資料庫。"""
+
+    def test_default_split_with_no_marketing_cost(self):
+        record = RevenueRecord(
+            gross_amount=1000, marketing_cost=0,
+            teacher_split_percent=70, company_split_percent=30,
+            teacher_marketing_share_percent=50, company_marketing_share_percent=50,
+        )
+        record.recompute()
+
+        self.assertEqual(record.teacher_amount, 700)
+        self.assertEqual(record.company_amount, 300)
+
+    def test_marketing_cost_is_shared_by_its_own_ratio_not_the_split_ratio(self):
+        """行銷成本負擔比例是獨立的一組比例，不該被誤用分潤比例去分攤成本。"""
+        record = RevenueRecord(
+            gross_amount=1000, marketing_cost=200,
+            teacher_split_percent=70, company_split_percent=30,
+            teacher_marketing_share_percent=50, company_marketing_share_percent=50,
+        )
+        record.recompute()
+
+        # 毛額分潤：講師700 / 公司300；成本各半：講師100 / 公司100
+        self.assertEqual(record.teacher_amount, 600)
+        self.assertEqual(record.company_amount, 200)
+
+    def test_amounts_always_sum_to_gross_minus_marketing_cost(self):
+        """不管比例怎麼取整，兩邊加總都必須精確等於淨額，不能有錢憑空消失。"""
+        for gross, cost, t_split, t_share in [
+            (999, 137, 70, 50), (1, 0, 33, 10), (12345, 6789, 1, 99), (0, 0, 70, 50),
+        ]:
+            record = RevenueRecord(
+                gross_amount=gross, marketing_cost=cost,
+                teacher_split_percent=t_split, company_split_percent=100 - t_split,
+                teacher_marketing_share_percent=t_share,
+                company_marketing_share_percent=100 - t_share,
+            )
+            record.recompute()
+            self.assertEqual(
+                record.teacher_amount + record.company_amount, gross - cost,
+                f'gross={gross} cost={cost} 兩邊加總對不上淨額',
+            )
+
+    def test_marketing_cost_larger_than_share_can_go_negative(self):
+        """行銷成本異常偏高時如實呈現負值（該方倒貼），而不是報錯或被夾成 0。"""
+        record = RevenueRecord(
+            gross_amount=100, marketing_cost=1000,
+            teacher_split_percent=70, company_split_percent=30,
+            teacher_marketing_share_percent=50, company_marketing_share_percent=50,
+        )
+        record.recompute()
+
+        self.assertEqual(record.teacher_amount, 70 - 500)
+        self.assertEqual(record.company_amount, 30 - 500)
+
+
+class CourseSplitSettingTests(TestCase):
+    def test_for_course_falls_back_to_default_without_writing_a_row(self):
+        teacher = User.objects.create_user(username='teacher', password='pw')
+        course = Course.objects.create(title='課程', teacher=teacher, price=1000, description='')
+
+        setting = CourseSplitSetting.for_course(course)
+
+        self.assertEqual(setting.teacher_split_percent, 70)
+        self.assertEqual(setting.company_split_percent, 30)
+        self.assertEqual(setting.teacher_marketing_share_percent, 50)
+        self.assertEqual(setting.company_marketing_share_percent, 50)
+        self.assertIsNone(setting.pk)
+        self.assertFalse(CourseSplitSetting.objects.filter(course=course).exists())
+
+    def test_split_percents_must_sum_to_100(self):
+        teacher = User.objects.create_user(username='teacher', password='pw')
+        course = Course.objects.create(title='課程', teacher=teacher, price=1000, description='')
+        setting = CourseSplitSetting(
+            course=course, teacher_split_percent=80, company_split_percent=30,
+        )
+
+        with self.assertRaises(ValidationError):
+            setting.clean()
+
+
+class RevenueRecordFulfillmentTests(BaseFixture):
+    """收支分潤紀錄要跟著 fulfill_order / approve_refund 這唯一的狀態轉換入口走。"""
+
+    def test_fulfill_order_creates_revenue_record_with_default_split(self):
+        order = self.buy(self.student, self.course)
+
+        item = order.items.get()
+        record = RevenueRecord.objects.get(order_item=item)
+        self.assertEqual(record.course, self.course)
+        self.assertEqual(record.teacher, self.teacher)
+        self.assertEqual(record.gross_amount, item.paid_amount)
+        self.assertEqual(record.teacher_split_percent, 70)
+        self.assertEqual(record.status, 'confirmed')
+        self.assertEqual(record.teacher_amount, round(item.paid_amount * 0.7))
+
+    def test_custom_course_split_setting_is_snapshotted_at_creation(self):
+        CourseSplitSetting.objects.create(
+            course=self.course, teacher_split_percent=60, company_split_percent=40,
+        )
+
+        order = self.buy(self.student, self.course)
+
+        record = RevenueRecord.objects.get(order_item=order.items.get())
+        self.assertEqual(record.teacher_split_percent, 60)
+        self.assertEqual(record.teacher_amount, round(order.final_price * 0.6))
+
+    def test_fulfill_order_does_not_duplicate_revenue_record(self):
+        order = self.buy(self.student, self.course)
+
+        fulfill_order(order)  # 冪等：訂單已是 paid，重複呼叫不該重複建立
+
+        self.assertEqual(
+            RevenueRecord.objects.filter(order_item=order.items.get()).count(), 1)
+
+    def test_approve_refund_reverses_revenue_record(self):
+        order = self.buy(self.student, self.course)
+        refund = Refund.objects.create(
+            order=order, user=self.student, amount=order.final_price,
+            reason='測試', status='pending',
+        )
+
+        approve_refund(refund)
+
+        record = RevenueRecord.objects.get(order_item=order.items.get())
+        self.assertEqual(record.status, 'reversed')
+        self.assertIsNotNone(record.reversed_at)
+
+
+class WithdrawalRequestTests(BaseFixture):
+    def setUp(self):
+        super().setUp()
+        self.order = self.buy(self.student, self.course)
+        self.record = RevenueRecord.objects.get(order_item=self.order.items.get())
+
+    def test_available_balance_matches_confirmed_teacher_amount(self):
+        self.assertEqual(
+            WithdrawalRequest.available_balance(self.teacher), self.record.teacher_amount)
+
+    def test_cannot_request_more_than_available_balance(self):
+        with self.assertRaises(ValidationError):
+            WithdrawalRequest.objects.create(
+                teacher=self.teacher, amount=self.record.teacher_amount + 1)
+
+    def test_pending_request_reserves_balance_against_a_second_request(self):
+        WithdrawalRequest.objects.create(
+            teacher=self.teacher, amount=self.record.teacher_amount)
+
+        with self.assertRaises(ValidationError):
+            WithdrawalRequest.objects.create(teacher=self.teacher, amount=1)
+
+    def test_reversed_revenue_is_excluded_from_balance(self):
+        """漏洞防範：課程被退款後，講師不該還能提領那筆已經沖銷的分潤。"""
+        refund = Refund.objects.create(
+            order=self.order, user=self.student, amount=self.order.final_price,
+            reason='測試', status='pending',
+        )
+        approve_refund(refund)
+
+        self.assertEqual(WithdrawalRequest.available_balance(self.teacher), 0)
+
+    def test_complete_withdrawal_sets_processed_at_and_is_idempotent(self):
+        withdrawal = WithdrawalRequest.objects.create(
+            teacher=self.teacher, amount=self.record.teacher_amount)
+
+        complete_withdrawal(withdrawal)
+        n = Notification.objects.filter(user=self.teacher).count()
+        complete_withdrawal(withdrawal)  # 冪等：已完成的不該重複發通知
+
+        withdrawal.refresh_from_db()
+        self.assertEqual(withdrawal.status, 'completed')
+        self.assertIsNotNone(withdrawal.processed_at)
+        self.assertEqual(Notification.objects.filter(user=self.teacher).count(), n)
+
+    def test_reject_withdrawal_frees_up_reserved_balance(self):
+        withdrawal = WithdrawalRequest.objects.create(
+            teacher=self.teacher, amount=self.record.teacher_amount)
+
+        reject_withdrawal(withdrawal)
+
+        withdrawal.refresh_from_db()
+        self.assertEqual(withdrawal.status, 'rejected')
+        self.assertEqual(
+            WithdrawalRequest.available_balance(self.teacher), self.record.teacher_amount)
+
+
+class RevenueAndWithdrawalViewTests(BaseFixture):
+    """對外 view：講師查收支／申請提領，管理員後台審核。"""
+
+    def setUp(self):
+        super().setUp()
+        self.order = self.buy(self.student, self.course)
+        self.record = RevenueRecord.objects.get(order_item=self.order.items.get())
+
+    def test_non_teacher_cannot_see_my_revenue(self):
+        self.client.login(username='student', password='pw')
+
+        response = self.client.get(reverse('my_revenue'))
+
+        self.assertRedirects(response, reverse('home'))
+
+    def test_teacher_sees_own_revenue_record(self):
+        self.client.login(username='teacher', password='pw')
+
+        response = self.client.get(reverse('my_revenue'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.course.title)
+        self.assertContains(response, f'NT$ {self.record.teacher_amount}')
+
+    def test_teacher_can_submit_withdrawal_request(self):
+        self.client.login(username='teacher', password='pw')
+
+        response = self.client.post(
+            reverse('my_withdrawals'), {'amount': self.record.teacher_amount})
+
+        self.assertRedirects(response, reverse('my_withdrawals'))
+        self.assertEqual(
+            WithdrawalRequest.objects.filter(teacher=self.teacher).count(), 1)
+
+    def test_withdrawal_request_over_balance_shows_error_and_is_not_created(self):
+        self.client.login(username='teacher', password='pw')
+
+        response = self.client.post(
+            reverse('my_withdrawals'), {'amount': self.record.teacher_amount + 1})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(WithdrawalRequest.objects.count(), 0)
+        self.assertContains(response, '超過可提領餘額')
+
+    def test_non_superuser_cannot_reach_manage_withdrawals(self):
+        self.client.login(username='teacher', password='pw')
+
+        response = self.client.get(reverse('manage_withdrawals'))
+
+        self.assertRedirects(response, reverse('home'))
+
+    def test_superuser_can_complete_withdrawal_via_view(self):
+        withdrawal = WithdrawalRequest.objects.create(
+            teacher=self.teacher, amount=self.record.teacher_amount)
+        self.client.login(username='admin', password='pw')
+
+        self.client.post(
+            reverse('process_withdrawal', args=[withdrawal.id]), {'action': 'complete'})
+
+        withdrawal.refresh_from_db()
+        self.assertEqual(withdrawal.status, 'completed')
+
+    def test_process_withdrawal_ignores_get(self):
+        """一致於其餘會改資料庫的 endpoint：GET 不受 CSRF 保護，不該被拿來核准提領。"""
+        withdrawal = WithdrawalRequest.objects.create(
+            teacher=self.teacher, amount=self.record.teacher_amount)
+        self.client.login(username='admin', password='pw')
+
+        self.client.get(reverse('process_withdrawal', args=[withdrawal.id]), {'action': 'complete'})
+
+        withdrawal.refresh_from_db()
+        self.assertEqual(withdrawal.status, 'pending')
+
+
+class WithdrawalNotificationEmailTests(BaseFixture):
+    """管理員核准/拒絕提領時，講師要收到站內通知，有留 email 的話還要收到信。"""
+
+    def setUp(self):
+        super().setUp()
+        self.order = self.buy(self.student, self.course)
+        self.record = RevenueRecord.objects.get(order_item=self.order.items.get())
+        self.teacher.email = 'teacher@example.com'
+        self.teacher.save()
+        self.withdrawal = WithdrawalRequest.objects.create(
+            teacher=self.teacher, amount=self.record.teacher_amount)
+
+    def test_complete_withdrawal_creates_notification_and_sends_email(self):
+        complete_withdrawal(self.withdrawal)
+
+        self.assertTrue(
+            Notification.objects.filter(user=self.teacher, title='提領申請已完成').exists())
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn(self.teacher.email, mail.outbox[0].to)
+        self.assertIn('提領申請已完成', mail.outbox[0].subject)
+        self.assertIn(str(self.withdrawal.amount), mail.outbox[0].body)
+
+    def test_reject_withdrawal_email_includes_reason(self):
+        reject_withdrawal(self.withdrawal, note='銀行帳號資料不符')
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('銀行帳號資料不符', mail.outbox[0].body)
+
+    def test_no_email_sent_when_teacher_has_no_email_but_notification_still_created(self):
+        self.teacher.email = ''
+        self.teacher.save()
+
+        complete_withdrawal(self.withdrawal)
+
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertTrue(
+            Notification.objects.filter(user=self.teacher, title='提領申請已完成').exists())
+
+    def test_idempotent_complete_does_not_resend_email(self):
+        complete_withdrawal(self.withdrawal)
+        complete_withdrawal(self.withdrawal)  # 已是 completed，第二次應該直接返回
+
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_admin_action_and_custom_view_share_the_same_email_behavior(self):
+        """後台 django admin 的批次動作跟自訂 manage_withdrawals 頁面，
+        都只是呼叫 transitions.complete_withdrawal，寄信行為不該有兩套。"""
+        from .admin import WithdrawalRequestAdmin
+        from .models import WithdrawalRequest as WR
+
+        site = AdminSite()
+        admin_instance = WithdrawalRequestAdmin(WR, site)
+        request = RequestFactory().post('/admin/main/withdrawalrequest/')
+        request.user = self.admin
+        request.session = 'session'
+        request._messages = FallbackStorage(request)
+
+        admin_instance.mark_completed(request, WR.objects.filter(id=self.withdrawal.id))
+
+        self.withdrawal.refresh_from_db()
+        self.assertEqual(self.withdrawal.status, 'completed')
+        self.assertEqual(len(mail.outbox), 1)
+
+
+class RevenueAndWithdrawalCsvExportTests(BaseFixture):
+    """收支紀錄／提領紀錄頁面的 CSV 匯出：權限、內容正確性、不能看到別人的資料。"""
+
+    def setUp(self):
+        super().setUp()
+        self.order = self.buy(self.student, self.course)
+        self.record = RevenueRecord.objects.get(order_item=self.order.items.get())
+        self.withdrawal = WithdrawalRequest.objects.create(
+            teacher=self.teacher, amount=self.record.teacher_amount)
+
+        # 另一位講師的資料：確保匯出不會外洩非本人的收支/提領紀錄。
+        self.other_teacher = User.objects.create_user(username='other_teacher', password='pw')
+        Profile.objects.create(user=self.other_teacher, role='teacher')
+        other_course = Course.objects.create(
+            title='別人的課程', teacher=self.other_teacher, price=500, description='',
+        )
+        other_order = self.buy(self.other, other_course)
+        self.other_record = RevenueRecord.objects.get(order_item=other_order.items.get())
+        self.other_withdrawal = WithdrawalRequest.objects.create(
+            teacher=self.other_teacher, amount=self.other_record.teacher_amount)
+
+    def test_non_teacher_cannot_export_revenue_csv(self):
+        self.client.login(username='student', password='pw')
+
+        response = self.client.get(reverse('export_my_revenue_csv'))
+
+        self.assertRedirects(response, reverse('home'))
+
+    def test_non_teacher_cannot_export_withdrawals_csv(self):
+        self.client.login(username='student', password='pw')
+
+        response = self.client.get(reverse('export_my_withdrawals_csv'))
+
+        self.assertRedirects(response, reverse('home'))
+
+    def test_revenue_csv_contains_own_record_with_correct_content_type(self):
+        self.client.login(username='teacher', password='pw')
+
+        response = self.client.get(reverse('export_my_revenue_csv'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('text/csv', response['Content-Type'])
+        self.assertIn('attachment', response['Content-Disposition'])
+        body = response.content.decode('utf-8-sig')
+        self.assertIn(str(self.record.id), body)
+        self.assertIn(self.course.title, body)
+        self.assertIn(str(self.record.teacher_amount), body)
+
+    def test_revenue_csv_excludes_other_teachers_records(self):
+        self.client.login(username='teacher', password='pw')
+
+        response = self.client.get(reverse('export_my_revenue_csv'))
+
+        body = response.content.decode('utf-8-sig')
+        self.assertNotIn('別人的課程', body)
+        self.assertNotIn(str(self.other_record.id) + ',', body)
+
+    def test_withdrawals_csv_contains_own_request(self):
+        self.client.login(username='teacher', password='pw')
+
+        response = self.client.get(reverse('export_my_withdrawals_csv'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('text/csv', response['Content-Type'])
+        body = response.content.decode('utf-8-sig')
+        self.assertIn(str(self.withdrawal.id), body)
+        self.assertIn(str(self.withdrawal.amount), body)
+        self.assertIn('待處理', body)
+
+    def test_withdrawals_csv_excludes_other_teachers_requests(self):
+        self.client.login(username='teacher', password='pw')
+
+        response = self.client.get(reverse('export_my_withdrawals_csv'))
+
+        body = response.content.decode('utf-8-sig')
+        self.assertNotIn('other_teacher', body)
+
+    def test_csv_has_exactly_one_bom_not_one_per_row(self):
+        """漏洞：charset=utf-8-sig 時 HttpResponse 逐次 write() 各自編碼，
+        csv.writer 每 writerow() 一次就多一個 BOM，Excel 開出來每一列都錯位。
+        BOM 只能出現在檔案最開頭一次。"""
+        self.client.login(username='teacher', password='pw')
+
+        response = self.client.get(reverse('export_my_revenue_csv'))
+
+        bom = '﻿'.encode('utf-8')
+        self.assertEqual(response.content.count(bom), 1)
+        self.assertTrue(response.content.startswith(bom))
+        # 表頭緊接在 BOM 後面，中間不該夾著任何多餘的 BOM。
+        self.assertTrue(response.content[len(bom):].startswith(b'record_id,'))

@@ -95,6 +95,14 @@ urlpatterns = [
     path('audits/manage/', views.manage_audits, name='manage_audits'),
     path('audits/<int:audit_id>/process/', views.process_audit, name='process_audit'),
 
+    # A9 分潤收支與提領
+    path('revenue/', views.my_revenue, name='my_revenue'),
+    path('revenue/export.csv', views.export_my_revenue_csv, name='export_my_revenue_csv'),
+    path('withdrawals/', views.my_withdrawals, name='my_withdrawals'),
+    path('withdrawals/export.csv', views.export_my_withdrawals_csv, name='export_my_withdrawals_csv'),
+    path('withdrawals/manage/', views.manage_withdrawals, name='manage_withdrawals'),
+    path('withdrawals/<int:withdrawal_id>/process/', views.process_withdrawal, name='process_withdrawal'),
+
     path('password-reset/', auth_views.PasswordResetView.as_view(
         template_name='main/password_reset.html'
     ), name='password_reset'),
