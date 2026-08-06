@@ -40,6 +40,9 @@ from .models import (
     CourseCategory,
     TeacherBankAccount,
     WithdrawalRequest,
+    CourseBundle,
+    CourseAnnouncement,
+    CourseComment,
 )
 
 from .forms import (
@@ -53,6 +56,8 @@ from .forms import (
     ProfileEditForm,
     TeacherBankAccountForm,
     WithdrawalRequestForm,
+    AnnouncementForm,
+    CommentForm,
 )
 
 MIN_WITHDRAWAL_AMOUNT = 500
@@ -66,7 +71,73 @@ from .payments import gateway
 from . import oauth
 
 
+def _attach_reviews(courses):
+    """一次查完所有課程的評分統計，避免每堂課各發一次查詢（遠端 DB 的 N+1 效能殺手）。
+    courses 若為 QuerySet，呼叫後其 _result_cache 會被填入已標記 avg_rating/review_count
+    的物件，後續重新迭代該 QuerySet（例如樣板的 {% for %}）會直接用到快取，不需接收回傳值。"""
+    courses = list(courses)
+    ids = [c.id for c in courses]
+    stats_map = {
+        row['course']: row
+        for row in Review.objects.filter(course_id__in=ids)
+        .values('course')
+        .annotate(avg=Avg('rating'), n=Count('id'))
+    }
+    for c in courses:
+        s = stats_map.get(c.id)
+        c.avg_rating = round(s['avg'], 1) if s and s['avg'] else None
+        c.review_count = s['n'] if s else 0
+    return courses
+
+
 def home(request):
+    """編輯策展式首頁：精選/熱門/最新/主題故事區塊 + 品牌信任數字，完整篩選/排序/分頁另見 course_catalog。"""
+    categories = CourseCategory.objects.order_by('name')
+    total_students = Enrollment.objects.values('student').distinct().count()
+    total_courses = Course.objects.filter(is_published=True).count()
+    total_enrollments = Enrollment.objects.count()
+    total_teachers = User.objects.filter(profile__is_teacher=True).count()
+    avg_all = Review.objects.aggregate(a=Avg('rating'))['a']
+    avg_all = round(avg_all, 1) if avg_all else 4.8
+
+    base_pub = Course.objects.filter(is_published=True).select_related('teacher', 'category')
+    popular_courses = _attach_reviews(
+        base_pub.annotate(sc=Count('enrollment', distinct=True)).order_by('-sc', '-created_at')[:10]
+    )
+    latest_courses = _attach_reviews(base_pub.order_by('-created_at')[:10])
+
+    now = timezone.now()
+    funding_courses = list(
+        base_pub.filter(
+            is_crowdfunding=True,
+            funding_start_date__lte=now,
+            funding_end_date__gte=now,
+        ).order_by('funding_end_date')[:10]
+    )
+
+    # 主題故事區塊：依課程分類分組，取代原本電商式的排序/篩選型錄頁
+    theme_sections = []
+    for category in categories:
+        cat_courses = _attach_reviews(base_pub.filter(category=category).order_by('-created_at')[:8])
+        if cat_courses:
+            theme_sections.append({'category': category, 'courses': cat_courses})
+
+    return render(request, 'main/home.html', {
+        'categories': categories,
+        'total_students': total_students,
+        'total_courses': total_courses,
+        'total_enrollments': total_enrollments,
+        'total_teachers': total_teachers,
+        'avg_all': avg_all,
+        'popular_courses': popular_courses,
+        'latest_courses': latest_courses,
+        'funding_courses': funding_courses,
+        'theme_sections': theme_sections,
+    })
+
+
+def course_catalog(request):
+    """完整課程總覽：搜尋、分類篩選、排序、分頁——從首頁搬過來，邏輯與變數名稱不變。"""
     sort = request.GET.get('sort', 'newest')
     q = request.GET.get('q', '').strip()
     cat = request.GET.get('cat', '').strip()
@@ -95,61 +166,16 @@ def home(request):
 
     paginator = Paginator(qs, 8)
     page_obj = paginator.get_page(request.GET.get('page'))
-
-    # 評分：一次查完本頁所有課程，避免每堂課各發一次查詢（遠端 DB 的 N+1 效能殺手）
-    def _attach_reviews(courses):
-        courses = list(courses)
-        ids = [c.id for c in courses]
-        stats_map = {
-            row['course']: row
-            for row in Review.objects.filter(course_id__in=ids)
-            .values('course')
-            .annotate(avg=Avg('rating'), n=Count('id'))
-        }
-        for c in courses:
-            s = stats_map.get(c.id)
-            c.avg_rating = round(s['avg'], 1) if s and s['avg'] else None
-            c.review_count = s['n'] if s else 0
-        return courses
-
     _attach_reviews(page_obj.object_list)
 
     categories = CourseCategory.objects.order_by('name')
-    total_students = Enrollment.objects.values('student').distinct().count()
-    total_courses = Course.objects.filter(is_published=True).count()
-    avg_all = Review.objects.aggregate(a=Avg('rating'))['a']
-    avg_all = round(avg_all, 1) if avg_all else 4.8
 
-    def _decorate(qs):
-        return _attach_reviews(qs)
-
-    base_pub = Course.objects.filter(is_published=True).select_related('teacher', 'category')
-    popular_courses = _decorate(
-        base_pub.annotate(sc=Count('enrollment', distinct=True)).order_by('-sc', '-created_at')[:10]
-    )
-    latest_courses = _decorate(base_pub.order_by('-created_at')[:10])
-
-    now = timezone.now()
-    funding_courses = list(
-        base_pub.filter(
-            is_crowdfunding=True,
-            funding_start_date__lte=now,
-            funding_end_date__gte=now,
-        ).order_by('funding_end_date')[:10]
-    )
-
-    return render(request, 'main/home.html', {
+    return render(request, 'main/course_catalog.html', {
         'page_obj': page_obj,
         'sort': sort,
         'q': q,
         'cat': cat,
         'categories': categories,
-        'total_students': total_students,
-        'total_courses': total_courses,
-        'avg_all': avg_all,
-        'popular_courses': popular_courses,
-        'latest_courses': latest_courses,
-        'funding_courses': funding_courses,
         'sort_options': [
             ('newest', '最新'),
             ('popular', '熱門'),
@@ -231,12 +257,40 @@ def course_detail(request, course_id):
 
     is_course_teacher = request.user.is_authenticated and course.teacher_id == request.user.id
 
+    try:
+        teacher_bio = course.teacher.profile.bio
+    except Profile.DoesNotExist:
+        teacher_bio = None
+
     # 課程統計（銷售頁用）
     total_lessons = CourseLesson.objects.filter(chapter__course=course).count()
     total_minutes = CourseLesson.objects.filter(chapter__course=course).aggregate(
         total=Sum('duration_minutes')
     )['total'] or 0
     student_count = Enrollment.objects.filter(course=course).count()
+
+    # 合購優惠：本課程參與的啟用中組合
+    bundles = course.bundles.filter(is_active=True).prefetch_related('courses')
+    if request.user.is_authenticated:
+        for bundle in bundles:
+            bundle.user_owns_any = Enrollment.objects.filter(
+                student=request.user, course__in=bundle.courses.all()
+            ).exists()
+    else:
+        for bundle in bundles:
+            bundle.user_owns_any = False
+
+    # 課程公告：僅已購買學員／該課程教師／Admin 可見
+    can_see_announcements = already_purchased or is_course_teacher or request.user.is_superuser
+    announcements = course.announcements.select_related('author').all() if can_see_announcements else []
+
+    # 課程留言：任何登入使用者皆可留言，與需購買才能發問的問答區區隔
+    comments = course.comments.select_related('user').all()
+
+    # 試看影片：彙整本課程所有標記免費試看的單元
+    preview_lessons = CourseLesson.objects.filter(
+        chapter__course=course, is_free_preview=True
+    ).select_related('chapter').order_by('chapter__sort_order', 'sort_order')
 
     return render(request, 'main/course_detail.html', {
         'course': course,
@@ -253,9 +307,16 @@ def course_detail(request, course_id):
         'question_form': QuestionForm(),
         'answer_form': AnswerForm(),
         'is_course_teacher': is_course_teacher,
+        'teacher_bio': teacher_bio,
         'total_lessons': total_lessons,
         'total_minutes': total_minutes,
         'student_count': student_count,
+        'bundles': bundles,
+        'can_see_announcements': can_see_announcements,
+        'announcements': announcements,
+        'comments': comments,
+        'comment_form': CommentForm(),
+        'preview_lessons': preview_lessons,
     })
 
 
@@ -477,9 +538,11 @@ def _teacher_finance_summary(user):
     total_net = 0
 
     for course in courses:
-        gross = Order.objects.filter(
-            course=course, status='paid'
-        ).aggregate(total=Sum('final_price'))['total'] or 0
+        # 用 OrderItem 聚合（而非 Order.course），才能涵蓋購物車/合購優惠等多課程訂單
+        # （這類訂單 Order.course 為 None，比照 platform_analytics 的熱銷課程統計做法）
+        gross = OrderItem.objects.filter(
+            course=course, order__status='paid'
+        ).aggregate(total=Sum('price'))['total'] or 0
         net = gross * course.teacher_revenue_share // 100
         course_net[course.id] = {'gross_revenue': gross, 'net_revenue': net}
         total_gross += gross
@@ -687,7 +750,10 @@ def checkout(request, course_id):
                 final_price=final_price,
                 status='pending'
             )
-            OrderItem.objects.create(order=order, course=course, price=original_price)
+            OrderItem.objects.create(
+                order=order, course=course, price=original_price,
+                discount_amount=discount_amount, paid_amount=final_price,
+            )
             Payment.objects.create(
                 order=order, amount=final_price, status='pending', method='mock'
             )
@@ -1563,10 +1629,59 @@ def add_to_cart(request, course_id):
 
 
 @login_required
+def add_bundle_to_cart(request, bundle_id):
+    bundle = get_object_or_404(CourseBundle, id=bundle_id, is_active=True)
+    courses = list(bundle.courses.all())
+
+    already_owns = Enrollment.objects.filter(
+        student=request.user, course__in=courses
+    ).exists()
+    if already_owns:
+        return redirect('course_detail', course_id=courses[0].id if courses else 0)
+
+    cart, _ = Cart.objects.get_or_create(user=request.user)
+    for course in courses:
+        CartItem.objects.update_or_create(
+            cart=cart, course=course, defaults={'bundle': bundle}
+        )
+
+    return redirect('view_cart')
+
+
+def _group_cart_items_by_bundle(items):
+    """把購物車項目依合購組合分組，回傳 (display_bundles, loose_items)。
+    display_bundles 每筆含 bundle/items/is_intact/individual_total。"""
+    bundle_groups = {}
+    loose_items = []
+    for item in items:
+        if item.bundle_id:
+            bundle_groups.setdefault(item.bundle_id, []).append(item)
+        else:
+            loose_items.append(item)
+
+    display_bundles = []
+    for group_items in bundle_groups.values():
+        bundle = group_items[0].bundle
+        bundle_course_ids = set(bundle.courses.values_list('id', flat=True))
+        group_course_ids = {gi.course_id for gi in group_items}
+        is_intact = bundle_course_ids == group_course_ids and bundle.is_active
+        display_bundles.append({
+            'bundle': bundle,
+            'items': group_items,
+            'is_intact': is_intact,
+            'individual_total': sum(gi.course.get_effective_price() for gi in group_items),
+        })
+
+    return display_bundles, loose_items
+
+
+@login_required
 def view_cart(request):
     cart, _ = Cart.objects.get_or_create(user=request.user)
-    items = cart.items.select_related('course', 'course__teacher').all()
+    items = list(cart.items.select_related('course', 'course__teacher', 'bundle').all())
     total = sum(item.course.get_effective_price() for item in items)
+
+    display_bundles, loose_items = _group_cart_items_by_bundle(items)
 
     # 優惠券整合進購物車：可領取 + 我的優惠券
     now = timezone.now()
@@ -1582,6 +1697,8 @@ def view_cart(request):
 
     return render(request, 'main/cart.html', {
         'items': items,
+        'display_bundles': display_bundles,
+        'loose_items': loose_items,
         'total': total,
         'available_coupons': available_coupons,
         'claimed_ids': claimed_ids,
@@ -1599,7 +1716,7 @@ def remove_from_cart(request, item_id):
 @login_required
 def cart_checkout(request):
     cart, _ = Cart.objects.get_or_create(user=request.user)
-    items = list(cart.items.select_related('course').all())
+    items = list(cart.items.select_related('course', 'bundle').all())
     now = timezone.now()
 
     # A5：有效促銷 → course_id 對應 Promotion
@@ -1629,9 +1746,46 @@ def cart_checkout(request):
     cart_total = sum(i.course.get_effective_price() for i in items)
     coupon_discount = coupon.calculate_discount(cart_total) if coupon else 0
 
+    # 合購優惠：組合完整才套用合購價（依各課程原價比例分攤，餘數分給組內最後一筆對齊總額），
+    # 組合被拆散（使用者移除其中一堂或已購買其中一堂）就退回個別計價並清空 bundle 標記
+    bundle_groups = {}
+    loose_items = []
+    for item in items:
+        if item.bundle_id:
+            bundle_groups.setdefault(item.bundle_id, []).append(item)
+        else:
+            loose_items.append(item)
+
+    item_price = {}
     total_original = 0
     total_discount = 0
-    for item in items:
+
+    for group_items in bundle_groups.values():
+        bundle = group_items[0].bundle
+        bundle_course_ids = set(bundle.courses.values_list('id', flat=True))
+        group_course_ids = {gi.course_id for gi in group_items}
+
+        if not bundle.is_active or bundle_course_ids != group_course_ids:
+            for gi in group_items:
+                gi.bundle = None
+                gi.save(update_fields=['bundle'])
+            loose_items.extend(group_items)
+            continue
+
+        individual_prices = {gi.id: gi.course.get_effective_price() for gi in group_items}
+        group_total_individual = sum(individual_prices.values())
+        allocated = 0
+        for idx, gi in enumerate(group_items):
+            if idx == len(group_items) - 1:
+                price = bundle.bundle_price - allocated
+            else:
+                price = individual_prices[gi.id] * bundle.bundle_price // group_total_individual
+                allocated += price
+            item_price[gi.id] = price
+        total_original += group_total_individual
+        total_discount += (group_total_individual - bundle.bundle_price)
+
+    for item in loose_items:
         original = item.course.get_effective_price()
         promo = promo_map.get(item.course.id)
         promo_disc = 0
@@ -1640,10 +1794,26 @@ def cart_checkout(request):
                 promo_disc = min(promo.discount_value, original)
             else:
                 promo_disc = int(original * promo.discount_value / 100)
+        item_price[item.id] = original - promo_disc
         total_original += original
         total_discount += promo_disc
+
     total_discount += coupon_discount
     final_price = max(total_original - total_discount, 0)
+
+    # 優惠券折扣依各項目「合購/促銷折扣後」的價格比例分攤，得出每個項目的實付金額
+    item_discount = {}
+    item_paid = {}
+    price_sum = sum(item_price.values()) or 1
+    allocated_coupon = 0
+    for idx, item in enumerate(items):
+        if idx == len(items) - 1:
+            coupon_share = coupon_discount - allocated_coupon
+        else:
+            coupon_share = item_price[item.id] * coupon_discount // price_sum
+            allocated_coupon += coupon_share
+        item_discount[item.id] = coupon_share
+        item_paid[item.id] = item_price[item.id] - coupon_share
 
     # 建立單一「待付款」訂單（多課程訂單，course=None），付款完成後才開通
     order = Order.objects.create(
@@ -1656,7 +1826,10 @@ def cart_checkout(request):
         status='pending'
     )
     for item in items:
-        OrderItem.objects.create(order=order, course=item.course, price=item.course.get_effective_price())
+        OrderItem.objects.create(
+            order=order, course=item.course, price=item_price[item.id],
+            discount_amount=item_discount[item.id], paid_amount=item_paid[item.id],
+        )
     Payment.objects.create(
         order=order, amount=final_price, status='pending', method='mock'
     )
@@ -1910,7 +2083,39 @@ def manage_content(request, course_id):
         'chapters': chapters,
         'chapter_form': ChapterForm(),
         'lesson_form': LessonForm(),
+        'announcements': course.announcements.all(),
+        'announcement_form': AnnouncementForm(),
     })
+
+
+@login_required
+def add_announcement(request, course_id):
+    course, redirect_resp = _require_course_teacher(request, course_id)
+    if redirect_resp:
+        return redirect_resp
+
+    if request.method == 'POST':
+        form = AnnouncementForm(request.POST)
+        if form.is_valid():
+            announcement = form.save(commit=False)
+            announcement.course = course
+            announcement.author = request.user
+            announcement.save()
+
+    return redirect('manage_content', course_id=course.id)
+
+
+@login_required
+def delete_announcement(request, announcement_id):
+    announcement = get_object_or_404(CourseAnnouncement, id=announcement_id)
+    course, redirect_resp = _require_course_teacher(request, announcement.course_id)
+    if redirect_resp:
+        return redirect_resp
+
+    if request.method == 'POST':
+        announcement.delete()
+
+    return redirect('manage_content', course_id=course.id)
 
 
 @login_required
@@ -2176,6 +2381,25 @@ def add_answer(request, question_id):
 
     if request.POST.get('source') == 'teacher_qna':
         return redirect('teacher_qna')
+    return redirect('course_detail', course_id=course.id)
+
+
+# =========================
+# 課程留言區（開放任何登入使用者，與需購買才能發問的問答區區隔）
+# =========================
+
+@login_required
+def add_comment(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
+
+    if request.method == 'POST':
+        form = CommentForm(request.POST)
+        if form.is_valid():
+            comment = form.save(commit=False)
+            comment.user = request.user
+            comment.course = course
+            comment.save()
+
     return redirect('course_detail', course_id=course.id)
 
 

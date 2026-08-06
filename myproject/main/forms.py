@@ -7,6 +7,8 @@ from .models import (
     CourseLesson,
     CourseQuestion,
     CourseAnswer,
+    CourseAnnouncement,
+    CourseComment,
     Profile,
     TeacherBankAccount,
 )
@@ -60,6 +62,26 @@ class AnswerForm(forms.ModelForm):
         labels = {'content': '回答內容'}
         widgets = {
             'content': forms.Textarea(attrs={'rows': 2, 'placeholder': '輸入你的回答'}),
+        }
+
+
+class AnnouncementForm(forms.ModelForm):
+    class Meta:
+        model = CourseAnnouncement
+        fields = ['title', 'content']
+        labels = {'title': '公告標題', 'content': '公告內容'}
+        widgets = {
+            'content': forms.Textarea(attrs={'rows': 3, 'placeholder': '輸入要通知學員的公告內容'}),
+        }
+
+
+class CommentForm(forms.ModelForm):
+    class Meta:
+        model = CourseComment
+        fields = ['content']
+        labels = {'content': '留言內容'}
+        widgets = {
+            'content': forms.Textarea(attrs={'rows': 2, 'placeholder': '留下你的想法或心得'}),
         }
 
 
@@ -131,9 +153,12 @@ class ProfileEditForm(forms.ModelForm):
 
     class Meta:
         model = Profile
-        fields = ['avatar']
-        labels = {'avatar': '大頭貼'}
-        widgets = {'avatar': forms.ClearableFileInput(attrs={'accept': 'image/*'})}
+        fields = ['avatar', 'bio']
+        labels = {'avatar': '大頭貼', 'bio': '講師簡介（若為教師身分，會顯示在你的課程頁面）'}
+        widgets = {
+            'avatar': forms.ClearableFileInput(attrs={'accept': 'image/*'}),
+            'bio': forms.Textarea(attrs={'rows': 4, 'placeholder': '介紹你的教學背景與專長'}),
+        }
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user')

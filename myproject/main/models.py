@@ -28,6 +28,8 @@ class Profile(models.Model):
     # 與既有 role（學生/老師二選一）並存，兩者的整合會在後續 Phase 處理。
     is_teacher = models.BooleanField(default=False, verbose_name="具備教師權限")
 
+    bio = models.TextField(blank=True, null=True, verbose_name="講師簡介")
+
     def __str__(self):
         return f"{self.user.username} - {self.get_role_display()}"
 
@@ -114,6 +116,18 @@ class Course(models.Model):
         choices=PROMO_VIDEO_TYPE_CHOICES,
         default='NONE',
         verbose_name="宣傳影片模式"
+    )
+
+    # 課程資訊卡：開課時間 / 觀看期限（僅顯示用，不做到期強制下架）
+    start_date = models.DateTimeField(blank=True, null=True, verbose_name="開課時間")
+    access_duration_days = models.PositiveIntegerField(
+        blank=True, null=True, verbose_name="觀看期限（天數，留空代表無限）"
+    )
+
+    # 課程介紹影片（頁面主視覺用，與 promo_video_type 不同：這是實際公開的影片素材）
+    intro_video_url = models.URLField(blank=True, null=True, verbose_name="課程介紹影片連結")
+    intro_video_file = models.FileField(
+        upload_to='course_intro_videos/', blank=True, null=True, verbose_name="課程介紹影片檔"
     )
 
     def platform_revenue_share(self):
@@ -211,6 +225,29 @@ class CourseLesson(models.Model):
         verbose_name = "課程單元"
         verbose_name_plural = "課程單元"
         ordering = ['chapter', 'sort_order']
+
+
+class CourseBundle(models.Model):
+    """合購優惠組合：Admin 指定數門課程以合購價一起販售。"""
+    name = models.CharField(max_length=200, verbose_name="合購名稱")
+    description = models.TextField(blank=True, null=True, verbose_name="合購說明")
+    courses = models.ManyToManyField(Course, related_name="bundles", verbose_name="包含課程")
+    bundle_price = models.PositiveIntegerField(verbose_name="合購優惠價")
+    is_active = models.BooleanField(default=True, verbose_name="是否啟用")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="建立時間")
+
+    def total_individual_price(self):
+        return sum(c.get_effective_price() for c in self.courses.all())
+
+    def savings(self):
+        return max(0, self.total_individual_price() - self.bundle_price)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = "合購優惠組合"
+        verbose_name_plural = "合購優惠組合"
 
 
 class Enrollment(models.Model):
@@ -431,6 +468,10 @@ class CartItem(models.Model):
     )
     course = models.ForeignKey(Course, on_delete=models.CASCADE, verbose_name="課程")
     added_at = models.DateTimeField(auto_now_add=True, verbose_name="加入時間")
+    bundle = models.ForeignKey(
+        CourseBundle, on_delete=models.SET_NULL, blank=True, null=True,
+        verbose_name="所屬合購組合"
+    )
 
     def __str__(self):
         return f"{self.cart.user.username} - {self.course.title}"
@@ -493,6 +534,8 @@ class OrderItem(models.Model):
     )
     course = models.ForeignKey(Course, on_delete=models.CASCADE, verbose_name="課程")
     price = models.PositiveIntegerField(verbose_name="購買當下價格")
+    discount_amount = models.PositiveIntegerField(default=0, verbose_name="此項折扣金額")
+    paid_amount = models.PositiveIntegerField(default=0, verbose_name="此項實付金額")
 
     def __str__(self):
         return f"{self.order.id} - {self.course.title}"
@@ -702,6 +745,43 @@ class CourseAnswer(models.Model):
     class Meta:
         verbose_name = "課程回答"
         verbose_name_plural = "課程回答"
+
+
+class CourseAnnouncement(models.Model):
+    """課程公告：教師（本人課程）或 Admin 可發布，僅已購買學員/該課程教師/Admin 看得到。"""
+    course = models.ForeignKey(
+        Course, on_delete=models.CASCADE, related_name="announcements", verbose_name="課程"
+    )
+    author = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="發布者")
+    title = models.CharField(max_length=200, verbose_name="公告標題")
+    content = models.TextField(verbose_name="公告內容")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="發布時間")
+
+    def __str__(self):
+        return f"{self.course.title} - {self.title}"
+
+    class Meta:
+        verbose_name = "課程公告"
+        verbose_name_plural = "課程公告"
+        ordering = ['-created_at']
+
+
+class CourseComment(models.Model):
+    """課程留言區：開放任何登入使用者留言，與需購買才能發問的課程問答區區隔。"""
+    course = models.ForeignKey(
+        Course, on_delete=models.CASCADE, related_name="comments", verbose_name="課程"
+    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="留言者")
+    content = models.TextField(verbose_name="留言內容")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="留言時間")
+
+    def __str__(self):
+        return f"{self.course.title} - {self.user.username}"
+
+    class Meta:
+        verbose_name = "課程留言"
+        verbose_name_plural = "課程留言"
+        ordering = ['-created_at']
 
 
 class CourseAudit(models.Model):

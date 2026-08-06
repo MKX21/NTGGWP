@@ -22,14 +22,14 @@
                 </p>
 
                 <div class="flex flex-wrap gap-3 mb-10">
-                    <a href="{% url 'home' %}#courses" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-medium tracking-wide px-8 py-3.5 rounded-xl transition">瀏覽課程</a>
+                    <a href="{% url 'course_catalog' %}" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-medium tracking-wide px-8 py-3.5 rounded-xl transition">瀏覽課程</a>
                     <a href="{% url 'register' %}" class="bg-jp-surface hover:bg-jp-bg border border-jp-border text-jp-text font-medium tracking-wide px-8 py-3.5 rounded-xl transition">免費註冊</a>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2 mb-10 text-sm text-jp-muted">
                     <span>熱門分類：</span>
                     {% for category in categories|slice:":4" %}
-                    <a href="{% url 'home' %}?cat={{ category.name }}#courses" class="bg-jp-surface border border-jp-border hover:border-jp-primary hover:text-jp-primary px-3 py-1 rounded-full transition">{{ category.name }}</a>
+                    <a href="{% url 'course_catalog' %}?cat={{ category.name }}" class="bg-jp-surface border border-jp-border hover:border-jp-primary hover:text-jp-primary px-3 py-1 rounded-full transition">{{ category.name }}</a>
                     {% endfor %}
                 </div>
 
@@ -67,7 +67,7 @@
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-2 mb-4">
     <div class="grid grid-cols-3 md:grid-cols-6 gap-3">
         {% for category in categories|slice:":6" %}
-        <a href="{% url 'home' %}?cat={{ category.name }}#courses" class="group flex flex-col items-center gap-2 bg-jp-surface border border-jp-border rounded-xl py-5 hover:shadow-md hover:-translate-y-1 transition-all">
+        <a href="{% url 'course_catalog' %}?cat={{ category.name }}" class="group flex flex-col items-center gap-2 bg-jp-surface border border-jp-border rounded-xl py-5 hover:shadow-md hover:-translate-y-1 transition-all">
             <span class="h-12 w-12 rounded-xl bg-brand-50 text-jp-primary flex items-center justify-center text-xl group-hover:bg-jp-primary group-hover:text-white transition"><i class="fas fa-folder-open"></i></span>
             <span class="text-sm font-medium text-jp-text text-center px-1">{{ category.name }}</span>
         </a>
@@ -75,6 +75,28 @@
     </div>
 </section>
 {% endif %}
+
+<!-- ============ 信任數字 ============ -->
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-jp-surface border border-jp-border rounded-xl p-6 text-center">
+            <div class="text-3xl font-bold text-jp-primary">{{ total_enrollments }}+</div>
+            <div class="text-sm text-jp-muted mt-1">累積購課人次</div>
+        </div>
+        <div class="bg-jp-surface border border-jp-border rounded-xl p-6 text-center">
+            <div class="text-3xl font-bold text-jp-primary">{{ total_students }}+</div>
+            <div class="text-sm text-jp-muted mt-1">累積學員</div>
+        </div>
+        <div class="bg-jp-surface border border-jp-border rounded-xl p-6 text-center">
+            <div class="text-3xl font-bold text-jp-primary">{{ total_teachers }}+</div>
+            <div class="text-sm text-jp-muted mt-1">合作講師</div>
+        </div>
+        <div class="bg-jp-surface border border-jp-border rounded-xl p-6 text-center">
+            <div class="text-3xl font-bold text-jp-primary">{{ avg_all }}<span class="text-lg">/5</span></div>
+            <div class="text-sm text-jp-muted mt-1">平均評價</div>
+        </div>
+    </div>
+</section>
 
 <!-- ============ 募資中課程 ============ -->
 {% if funding_courses %}
@@ -108,7 +130,7 @@
             <p class="text-jp-muted mt-1">最多人購買的精選課程</p>
         </div>
         <div class="flex items-center gap-3">
-            <a href="{% url 'home' %}?sort=popular#courses" class="text-jp-primary hover:underline font-medium text-sm">查看全部</a>
+            <a href="{% url 'course_catalog' %}?sort=popular" class="text-jp-primary hover:underline font-medium text-sm">查看全部</a>
             <div class="flex gap-2">
                 <button data-carousel-prev="popular" class="h-10 w-10 rounded-full border border-jp-border bg-jp-surface text-jp-muted hover:bg-jp-primary hover:text-white hover:border-jp-primary transition disabled:opacity-40 disabled:cursor-not-allowed" aria-label="上一個"><i class="fas fa-chevron-left"></i></button>
                 <button data-carousel-next="popular" class="h-10 w-10 rounded-full border border-jp-border bg-jp-surface text-jp-muted hover:bg-jp-primary hover:text-white hover:border-jp-primary transition disabled:opacity-40 disabled:cursor-not-allowed" aria-label="下一個"><i class="fas fa-chevron-right"></i></button>
@@ -134,7 +156,7 @@
                 <p class="text-jp-muted mt-1">跟上最新趨勢，第一時間開始學習</p>
             </div>
             <div class="flex items-center gap-3">
-                <a href="{% url 'home' %}?sort=newest#courses" class="text-jp-primary hover:underline font-medium text-sm">查看全部</a>
+                <a href="{% url 'course_catalog' %}?sort=newest" class="text-jp-primary hover:underline font-medium text-sm">查看全部</a>
                 <div class="flex gap-2">
                     <button data-carousel-prev="latest" class="h-10 w-10 rounded-full border border-jp-border bg-jp-surface text-jp-muted hover:bg-jp-primary hover:text-white hover:border-jp-primary transition disabled:opacity-40 disabled:cursor-not-allowed" aria-label="上一個"><i class="fas fa-chevron-left"></i></button>
                     <button data-carousel-next="latest" class="h-10 w-10 rounded-full border border-jp-border bg-jp-surface text-jp-muted hover:bg-jp-primary hover:text-white hover:border-jp-primary transition disabled:opacity-40 disabled:cursor-not-allowed" aria-label="下一個"><i class="fas fa-chevron-right"></i></button>
@@ -150,59 +172,30 @@
 </section>
 {% endif %}
 
-<!-- ============ 課程總覽（可搜尋/排序/分頁） ============ -->
-<section id="courses" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+<!-- ============ 主題故事區塊（依分類策展） ============ -->
+{% for section in theme_sections %}
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
     <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
-            <span class="inline-flex items-center gap-2 text-jp-primary font-medium text-sm mb-2"><i class="fas fa-compass"></i> 探索課程</span>
-            <h2 class="text-2xl md:text-3xl font-bold tracking-wide text-jp-text">課程總覽</h2>
-            {% if q %}<p class="text-jp-muted mt-1">「{{ q }}」的搜尋結果，共 {{ page_obj.paginator.count }} 門</p>
-            {% else %}<p class="text-jp-muted mt-1">依熱門、最新或價格排序，並可用分類篩選</p>{% endif %}
+            <span class="inline-flex items-center gap-2 text-jp-primary font-medium text-sm mb-2"><i class="fas fa-compass"></i> 主題精選</span>
+            <h2 class="text-2xl md:text-3xl font-bold tracking-wide text-jp-text">{{ section.category.name }}</h2>
+            {% if section.category.description %}<p class="text-jp-muted mt-1">{{ section.category.description }}</p>{% endif %}
         </div>
-        <!-- 排序 -->
-        <div class="flex flex-wrap gap-2">
-            {% for key, label in sort_options %}
-            <a href="?sort={{ key }}{% if q %}&q={{ q }}{% endif %}{% if cat %}&cat={{ cat }}{% endif %}#courses"
-               class="px-4 py-2 rounded-full text-sm font-medium transition {% if sort == key %}bg-jp-primary text-white{% else %}bg-jp-surface text-jp-muted border border-jp-border hover:border-jp-primary{% endif %}">{{ label }}</a>
-            {% endfor %}
-        </div>
+        <a href="{% url 'course_catalog' %}?cat={{ section.category.name }}" class="text-jp-primary hover:underline font-medium text-sm">查看全部</a>
     </div>
-
-    <!-- 分類 chips -->
-    <div class="flex flex-wrap gap-2 mb-8">
-        <a href="?sort={{ sort }}{% if q %}&q={{ q }}{% endif %}#courses" class="px-4 py-1.5 rounded-full text-sm font-medium {% if not cat %}bg-jp-primary text-white{% else %}bg-jp-surface text-jp-muted border border-jp-border hover:border-jp-primary{% endif %}">全部</a>
-        {% for category in categories %}
-        <a href="?sort={{ sort }}&cat={{ category.name }}{% if q %}&q={{ q }}{% endif %}#courses" class="px-4 py-1.5 rounded-full text-sm font-medium {% if cat == category.name %}bg-jp-primary text-white{% else %}bg-jp-surface text-jp-muted border border-jp-border hover:border-jp-primary{% endif %}">{{ category.name }}</a>
-        {% endfor %}
-    </div>
-
-    {% if page_obj %}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {% for course in page_obj %}
+        {% for course in section.courses %}
         {% include 'main/partials/course_card.html' with card_extra="" %}
         {% endfor %}
     </div>
+</section>
+{% endfor %}
 
-    <!-- 分頁 -->
-    {% if page_obj.paginator.num_pages > 1 %}
-    <div class="flex justify-center items-center gap-2 mt-10 flex-wrap">
-        {% if page_obj.has_previous %}
-        <a href="?sort={{ sort }}{% if q %}&q={{ q }}{% endif %}{% if cat %}&cat={{ cat }}{% endif %}&page={{ page_obj.previous_page_number }}#courses" class="px-4 py-2 rounded-lg bg-jp-surface border border-jp-border text-jp-muted hover:border-jp-primary font-medium">← 上一頁</a>
-        {% else %}<span class="px-4 py-2 rounded-lg bg-jp-bg text-jp-muted/50 font-medium">← 上一頁</span>{% endif %}
-        {% for num in page_obj.paginator.page_range %}
-        <a href="?sort={{ sort }}{% if q %}&q={{ q }}{% endif %}{% if cat %}&cat={{ cat }}{% endif %}&page={{ num }}#courses" class="px-4 py-2 rounded-lg font-bold {% if num == page_obj.number %}bg-jp-primary text-white{% else %}bg-jp-surface border border-jp-border text-jp-muted hover:border-jp-primary{% endif %}">{{ num }}</a>
-        {% endfor %}
-        {% if page_obj.has_next %}
-        <a href="?sort={{ sort }}{% if q %}&q={{ q }}{% endif %}{% if cat %}&cat={{ cat }}{% endif %}&page={{ page_obj.next_page_number }}#courses" class="px-4 py-2 rounded-lg bg-jp-surface border border-jp-border text-jp-muted hover:border-jp-primary font-medium">下一頁 →</a>
-        {% else %}<span class="px-4 py-2 rounded-lg bg-jp-bg text-jp-muted/50 font-medium">下一頁 →</span>{% endif %}
-    </div>
-    {% endif %}
-    {% else %}
-    <div class="text-center py-16 text-jp-muted border-2 border-dashed border-jp-border rounded-xl">
-        <p class="text-lg font-bold mb-1">找不到符合的課程</p>
-        <p>換個關鍵字或分類試試 🔍</p>
-    </div>
-    {% endif %}
+<!-- ============ 查看全部課程 CTA ============ -->
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-4">
+    <a href="{% url 'course_catalog' %}" class="block text-center bg-jp-surface border border-jp-border hover:border-jp-primary rounded-xl py-6 font-medium text-jp-text transition">
+        瀏覽完整課程總覽（可搜尋、排序、依分類篩選）<i class="fas fa-arrow-right ml-2"></i>
+    </a>
 </section>
 
 <!-- ============ 為什麼選擇 EduFlow ============ -->
@@ -246,7 +239,7 @@
             </div>
             <div class="flex gap-3 shrink-0">
                 <a href="{% url 'register' %}" class="bg-white text-jp-primary font-medium px-6 py-3 rounded-xl hover:bg-brand-50 transition">立即開課</a>
-                <a href="{% url 'home' %}#courses" class="bg-white/10 backdrop-blur border border-white/30 text-white font-medium px-6 py-3 rounded-xl hover:bg-white/20 transition">了解更多</a>
+                <a href="{% url 'course_catalog' %}" class="bg-white/10 backdrop-blur border border-white/30 text-white font-medium px-6 py-3 rounded-xl hover:bg-white/20 transition">了解更多</a>
             </div>
         </div>
     </div>

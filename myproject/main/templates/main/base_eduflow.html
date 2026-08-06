@@ -104,22 +104,17 @@
             });
         });
 
-        // Mega Menu 下拉
-        document.querySelectorAll('[data-dropdown]').forEach((wrap) => {
-            const toggle = wrap.querySelector('[data-dropdown-toggle]');
-            const menu = wrap.querySelector('[data-dropdown-menu]');
-            const arrow = wrap.querySelector('[data-dropdown-arrow]');
-            if (!toggle || !menu) return;
-            const close = () => { menu.classList.add('hidden'); if (arrow) arrow.classList.remove('rotate-180'); };
-            toggle.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const willOpen = menu.classList.contains('hidden');
-                menu.classList.toggle('hidden', !willOpen);
-                if (arrow) arrow.classList.toggle('rotate-180', willOpen);
+        // 導覽列搜尋：點圖示展開/收合搜尋列
+        document.querySelectorAll('[data-search-toggle]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-search-panel]').forEach((panel) => {
+                    panel.classList.toggle('hidden');
+                    if (!panel.classList.contains('hidden')) {
+                        const input = panel.querySelector('input[name="q"]');
+                        if (input) input.focus();
+                    }
+                });
             });
-            menu.addEventListener('click', (e) => e.stopPropagation());
-            document.addEventListener('click', close);
-            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
         });
 
         // 手機側邊選單

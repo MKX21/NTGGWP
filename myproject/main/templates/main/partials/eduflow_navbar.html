@@ -16,7 +16,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16 items-center gap-4">
 
-            <!-- Logo + 探索課程 -->
+            <!-- Logo + 課程 -->
             <div class="flex items-center gap-8">
                 <a href="{% url 'home' %}" class="flex items-center gap-2 text-2xl font-bold tracking-wide text-jp-text shrink-0">
                     <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-700 to-brand-500 text-white text-lg">
@@ -24,38 +24,14 @@
                     </span>
                     EduFlow
                 </a>
-
-                <div class="hidden lg:block relative" data-dropdown>
-                    <button data-dropdown-toggle class="flex items-center gap-1.5 text-jp-muted hover:text-jp-primary font-medium py-2 transition">
-                        <i class="fas fa-th-large text-sm"></i> 探索課程
-                        <i class="fas fa-chevron-down text-xs transition-transform" data-dropdown-arrow></i>
-                    </button>
-                    <div data-dropdown-menu class="hidden absolute left-0 mt-2 w-[420px] bg-jp-surface rounded-xl shadow-xl ring-1 ring-jp-border p-4 grid grid-cols-2 gap-1">
-                        <a href="{% url 'home' %}#courses" class="flex items-start gap-3 p-3 rounded-xl hover:bg-brand-50 transition">
-                            <span class="mt-0.5 text-jp-primary"><i class="fas fa-layer-group w-5 text-center"></i></span>
-                            <span><span class="block font-medium text-jp-text">全部課程</span><span class="text-xs text-jp-muted">瀏覽所有上架課程</span></span>
-                        </a>
-                        {% for category in nav_categories %}
-                        <a href="{% url 'home' %}?cat={{ category.name }}#courses" class="flex items-start gap-3 p-3 rounded-xl hover:bg-brand-50 transition">
-                            <span class="mt-0.5 text-jp-primary"><i class="fas fa-folder w-5 text-center"></i></span>
-                            <span><span class="block font-medium text-jp-text">{{ category.name }}</span><span class="text-xs text-jp-muted line-clamp-2">{{ category.description|default:"精選課程" }}</span></span>
-                        </a>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- 搜尋列（桌機） -->
-            <div class="hidden md:flex flex-1 max-w-lg">
-                <form action="{% url 'home' %}#courses" method="get" class="relative w-full" role="search">
-                    <input type="text" name="q" value="{{ request.GET.q }}" placeholder="搜尋課程、老師、關鍵字…"
-                           class="w-full bg-jp-bg border border-jp-border focus:bg-jp-surface focus:border-brand-300 focus:ring-2 focus:ring-brand-200 rounded-full py-2.5 pl-11 pr-4 text-sm outline-none transition">
-                    <button type="submit" class="absolute left-4 top-3 text-jp-muted" aria-label="搜尋"><i class="fas fa-search"></i></button>
-                </form>
+                <a href="{% url 'course_catalog' %}" class="hidden lg:inline text-jp-muted hover:text-jp-primary font-medium">課程</a>
             </div>
 
             <!-- 右側動作區 -->
             <div class="flex items-center gap-1 sm:gap-3">
+                <button type="button" data-search-toggle class="p-2 text-jp-muted hover:text-jp-primary transition" aria-label="搜尋">
+                    <i class="fas fa-search text-lg"></i>
+                </button>
                 {% if user.is_authenticated %}
                     {% if user.is_superuser %}
                     <a href="/admin/" class="hidden lg:inline text-jp-muted hover:text-jp-primary font-medium px-2">管理後台</a>
@@ -98,6 +74,15 @@
                 <button data-mobile-toggle class="lg:hidden p-2 text-jp-text" aria-label="開啟選單"><i class="fas fa-bars text-xl"></i></button>
             </div>
         </div>
+
+        <!-- 展開式搜尋列（點搜尋圖示切換顯示） -->
+        <div data-search-panel class="hidden border-t border-jp-border py-3">
+            <form action="{% url 'course_catalog' %}" method="get" class="relative max-w-lg mx-auto" role="search">
+                <input type="text" name="q" value="{{ request.GET.q }}" placeholder="搜尋課程、老師、關鍵字…" autofocus
+                       class="w-full bg-jp-bg border border-jp-border focus:bg-jp-surface focus:border-brand-300 focus:ring-2 focus:ring-brand-200 rounded-full py-2.5 pl-11 pr-4 text-sm outline-none transition">
+                <button type="submit" class="absolute left-4 top-3 text-jp-muted" aria-label="搜尋"><i class="fas fa-search"></i></button>
+            </form>
+        </div>
     </div>
 </nav>
 
@@ -109,11 +94,11 @@
             <span class="text-xl font-bold tracking-wide text-jp-text">EduFlow</span>
             <button data-mobile-close class="p-2 text-jp-muted" aria-label="關閉選單"><i class="fas fa-xmark text-xl"></i></button>
         </div>
-        <form action="{% url 'home' %}#courses" method="get" class="relative mb-3">
+        <form action="{% url 'course_catalog' %}" method="get" class="relative mb-3">
             <input type="text" name="q" value="{{ request.GET.q }}" placeholder="搜尋課程…" class="w-full bg-jp-bg border border-jp-border rounded-full py-2.5 pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-brand-200">
             <button type="submit" class="absolute left-3.5 top-3 text-jp-muted"><i class="fas fa-search"></i></button>
         </form>
-        <a href="{% url 'home' %}#courses" class="px-3 py-3 rounded-lg hover:bg-jp-bg font-medium">探索課程</a>
+        <a href="{% url 'course_catalog' %}" class="px-3 py-3 rounded-lg hover:bg-jp-bg font-medium">探索課程</a>
         {% if user.is_authenticated %}
             <a href="{% url 'view_cart' %}" class="px-3 py-3 rounded-lg hover:bg-jp-bg font-medium">購物車{% if nav_cart_count %}（{{ nav_cart_count }}）{% endif %}</a>
             <a href="{% url 'notifications' %}" class="px-3 py-3 rounded-lg hover:bg-jp-bg font-medium">通知{% if nav_unread_count %}（{{ nav_unread_count }}）{% endif %}</a>

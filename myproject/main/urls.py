@@ -4,6 +4,7 @@ from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     path('', views.home, name='home'),
+    path('courses/', views.course_catalog, name='course_catalog'),
 
     path('course/<int:course_id>/', views.course_detail, name='course_detail'),
     path('course/<int:course_id>/buy/', views.buy_course, name='buy_course'),
@@ -57,6 +58,7 @@ urlpatterns = [
     # 購物車
     path('cart/', views.view_cart, name='view_cart'),
     path('cart/add/<int:course_id>/', views.add_to_cart, name='add_to_cart'),
+    path('cart/add-bundle/<int:bundle_id>/', views.add_bundle_to_cart, name='add_bundle_to_cart'),
     path('cart/remove/<int:item_id>/', views.remove_from_cart, name='remove_from_cart'),
     path('cart/checkout/', views.cart_checkout, name='cart_checkout'),
 
@@ -93,6 +95,13 @@ urlpatterns = [
     # A7 課程問答
     path('course/<int:course_id>/question/add/', views.add_question, name='add_question'),
     path('question/<int:question_id>/answer/', views.add_answer, name='add_answer'),
+
+    # 課程留言區
+    path('course/<int:course_id>/comment/add/', views.add_comment, name='add_comment'),
+
+    # 課程公告
+    path('course/<int:course_id>/announcement/add/', views.add_announcement, name='add_announcement'),
+    path('announcement/<int:announcement_id>/delete/', views.delete_announcement, name='delete_announcement'),
 
     # A8 課程審核
     path('audits/manage/', views.manage_audits, name='manage_audits'),

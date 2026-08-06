@@ -10,11 +10,20 @@
             <nav class="flex mb-4 text-sm text-jp-muted">
                 <a href="{% url 'home' %}" class="hover:text-jp-primary">首頁</a>
                 <span class="mx-2">/</span>
-                {% if course.category %}<a href="{% url 'home' %}?cat={{ course.category.name }}#courses" class="hover:text-jp-primary">{{ course.category.name }}</a>
+                {% if course.category %}<a href="{% url 'course_catalog' %}?cat={{ course.category.name }}" class="hover:text-jp-primary">{{ course.category.name }}</a>
                 {% else %}<span>課程</span>{% endif %}
             </nav>
 
-            <h1 class="text-3xl font-bold tracking-wide text-jp-text mb-4">{{ course.title }}</h1>
+            <h1 class="text-3xl font-bold tracking-wide text-jp-text mb-2">{{ course.title }}</h1>
+            <div class="flex items-center gap-2 mb-4">
+                {% if average_rating %}
+                <span class="text-3xl font-bold text-amber-500">{{ average_rating }}</span>
+                <span class="text-amber-500"><i class="fas fa-star"></i></span>
+                <span class="text-jp-muted text-sm">（{{ review_count }} 則評價）</span>
+                {% else %}
+                <span class="text-jp-muted text-sm">尚無評分</span>
+                {% endif %}
+            </div>
             <p class="text-lg text-jp-muted mb-6">{{ course.description|truncatechars:80 }}</p>
 
             <div class="flex flex-wrap items-center gap-6 mb-8 text-sm">
@@ -27,13 +36,6 @@
                 </a>
                 <div class="border-l border-jp-border h-8"></div>
                 <div>
-                    <p class="text-jp-muted">課程評價</p>
-                    <p class="text-amber-500 font-bold">
-                        {% if average_rating %}<i class="fas fa-star"></i> {{ average_rating }} <span class="text-jp-muted font-normal">({{ review_count }} 則)</span>
-                        {% else %}<span class="text-jp-muted font-normal">尚無評分</span>{% endif %}
-                    </p>
-                </div>
-                <div>
                     <p class="text-jp-muted">學生人數</p>
                     <p class="text-jp-text font-bold">{{ student_count }} 人</p>
                 </div>
@@ -41,15 +43,50 @@
                     <p class="text-jp-muted">課程內容</p>
                     <p class="text-jp-text font-bold">{{ total_lessons }} 單元・{{ total_minutes }} 分鐘</p>
                 </div>
+                <div>
+                    <p class="text-jp-muted">開課時間</p>
+                    <p class="text-jp-text font-bold">{{ course.start_date|date:"Y-m-d"|default:"依購買後立即開通" }}</p>
+                </div>
+                <div>
+                    <p class="text-jp-muted">觀看期限</p>
+                    <p class="text-jp-text font-bold">{% if course.access_duration_days %}{{ course.access_duration_days }} 天{% else %}無限{% endif %}</p>
+                </div>
             </div>
+
+            {% if preview_lessons %}
+            <!-- 試看影片展示區 -->
+            <div class="mb-8">
+                <h2 class="text-xl font-bold tracking-wide text-jp-text mb-4">課程試看</h2>
+                <div class="flex gap-4 overflow-x-auto no-scrollbar pb-2">
+                    {% for lesson in preview_lessons %}
+                    <div class="shrink-0 w-64">
+                        <div class="aspect-video bg-black rounded-lg overflow-hidden mb-2">
+                            <video class="w-full h-full object-cover" controls preload="metadata">
+                                {% if lesson.video_file %}<source src="{{ lesson.video_file.url }}">
+                                {% elif lesson.video_url %}<source src="{{ lesson.video_url }}">{% endif %}
+                            </video>
+                        </div>
+                        <p class="text-sm font-medium text-jp-text line-clamp-1">{{ lesson.title }}</p>
+                        <p class="text-xs text-jp-muted">{{ lesson.chapter.title }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
 
             <!-- Tabs -->
             <div class="border-b border-jp-border mb-6">
-                <div class="flex space-x-8" data-tabs>
-                    <button data-tab="intro" class="border-b-2 border-jp-primary py-4 text-jp-primary font-medium">課程介紹</button>
-                    <button data-tab="curriculum" class="border-b-2 border-transparent py-4 text-jp-muted hover:text-jp-text">章節規劃</button>
-                    <button data-tab="reviews" class="border-b-2 border-transparent py-4 text-jp-muted hover:text-jp-text">學生評價</button>
-                    <button data-tab="qa" class="border-b-2 border-transparent py-4 text-jp-muted hover:text-jp-text">課程問答</button>
+                <div class="flex space-x-8 overflow-x-auto no-scrollbar" data-tabs>
+                    <button data-tab="intro" class="border-b-2 border-jp-primary py-4 text-jp-primary font-medium whitespace-nowrap">課程介紹</button>
+                    <button data-tab="curriculum" class="border-b-2 border-transparent py-4 text-jp-muted hover:text-jp-text whitespace-nowrap">章節規劃</button>
+                    <button data-tab="reviews" class="border-b-2 border-transparent py-4 text-jp-muted hover:text-jp-text whitespace-nowrap">學生評價</button>
+                    <button data-tab="qa" class="border-b-2 border-transparent py-4 text-jp-muted hover:text-jp-text whitespace-nowrap">課程問答</button>
+                    <button data-tab="comments" class="border-b-2 border-transparent py-4 text-jp-muted hover:text-jp-text whitespace-nowrap">留言區</button>
+                    {% if can_see_announcements %}
+                    <button data-tab="announcements" class="border-b-2 border-transparent py-4 text-jp-muted hover:text-jp-text whitespace-nowrap">
+                        公告{% if announcements %}<span class="ml-1 bg-accent-500 text-white text-xs font-bold rounded-full px-1.5">{{ announcements|length }}</span>{% endif %}
+                    </button>
+                    {% endif %}
                 </div>
             </div>
 
@@ -65,6 +102,20 @@
                     {% endfor %}{% endfor %}
                 </ul>
                 {% endif %}
+
+                <h2 class="text-xl font-bold tracking-wide text-jp-text mb-4">關於講師</h2>
+                <div class="bg-jp-bg rounded-xl p-5 flex gap-4">
+                    <span class="w-14 h-14 rounded-full bg-gradient-to-br from-brand-700 to-brand-500 text-white flex items-center justify-center font-bold text-xl shrink-0">{{ course.teacher.username|slice:":1"|upper }}</span>
+                    <div>
+                        <p class="font-medium text-jp-text mb-1">{{ course.teacher.username }}</p>
+                        {% if teacher_bio %}
+                        <p class="text-jp-muted whitespace-pre-line">{{ teacher_bio }}</p>
+                        {% else %}
+                        <p class="text-jp-muted">這位講師還沒有填寫簡介。</p>
+                        {% endif %}
+                        <a href="{% url 'teacher_profile' course.teacher.id %}" class="inline-block mt-2 text-jp-primary hover:underline text-sm font-medium">查看講師完整頁面 →</a>
+                    </div>
+                </div>
             </div>
 
             <!-- Tab: 章節規劃（手風琴摺疊） -->
@@ -157,15 +208,63 @@
                 </div>
                 {% empty %}<p class="text-jp-muted">目前還沒有任何提問。</p>{% endfor %}
             </div>
+
+            <!-- Tab: 留言區（任何登入使用者皆可留言，與需購買才能發問的問答區不同） -->
+            <div data-panel="comments" class="hidden">
+                <h2 class="text-xl font-bold tracking-wide text-jp-text mb-4">留言區</h2>
+                {% if user.is_authenticated %}
+                <form method="post" action="{% url 'add_comment' course.id %}" class="flex items-start gap-2 mb-6">
+                    {% csrf_token %}
+                    {{ comment_form.content }}
+                    <button type="submit" class="bg-jp-primary text-white px-5 py-2.5 rounded-lg font-medium hover:bg-jp-primaryHover transition shrink-0">送出</button>
+                </form>
+                {% else %}<p class="text-jp-muted mb-6">登入後即可留言。</p>{% endif %}
+
+                {% for c in comments %}
+                <div class="border-b border-jp-border py-3">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="font-medium text-jp-text">{{ c.user.username }}</span>
+                        <span class="text-xs text-jp-muted">{{ c.created_at|date:"Y-m-d H:i" }}</span>
+                    </div>
+                    <p class="text-jp-muted">{{ c.content }}</p>
+                </div>
+                {% empty %}<p class="text-jp-muted">目前還沒有任何留言。</p>{% endfor %}
+            </div>
+
+            {% if can_see_announcements %}
+            <!-- Tab: 課程公告 -->
+            <div data-panel="announcements" class="hidden">
+                <h2 class="text-xl font-bold tracking-wide text-jp-text mb-4">課程公告</h2>
+                {% for a in announcements %}
+                <div class="border-b border-jp-border py-4">
+                    <p class="font-medium text-jp-text">{{ a.title }}</p>
+                    <p class="text-xs text-jp-muted mb-1">{{ a.author.username }} ・ {{ a.created_at|date:"Y-m-d H:i" }}</p>
+                    <p class="text-jp-muted whitespace-pre-line">{{ a.content }}</p>
+                </div>
+                {% empty %}<p class="text-jp-muted">目前尚無公告。</p>{% endfor %}
+            </div>
+            {% endif %}
         </div>
 
         <!-- 右：購買側欄 -->
         <div class="lg:col-span-1">
             <div class="bg-jp-surface rounded-xl shadow-lg p-6 sticky top-24 border border-jp-border">
+                {% if course.intro_video_file or course.intro_video_url %}
+                <div class="relative aspect-video bg-black rounded-lg mb-4 overflow-hidden" data-hero-video-wrap>
+                    <video class="w-full h-full object-cover" data-hero-video preload="metadata" {% if course.image %}poster="{{ course.image.url }}"{% endif %}>
+                        {% if course.intro_video_file %}<source src="{{ course.intro_video_file.url }}">
+                        {% elif course.intro_video_url %}<source src="{{ course.intro_video_url }}">{% endif %}
+                    </video>
+                    <button type="button" data-hero-video-toggle class="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition" aria-label="播放課程介紹影片">
+                        <span class="h-16 w-16 rounded-full bg-white/90 flex items-center justify-center text-2xl text-jp-primary"><i class="fas fa-play"></i></span>
+                    </button>
+                </div>
+                {% else %}
                 <div class="aspect-video bg-jp-bg rounded-lg mb-4 overflow-hidden">
                     {% if course.image %}<img src="{{ course.image.url }}" alt="{{ course.title }}" class="w-full h-full object-cover">
                     {% else %}<div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-brand-700 to-brand-500 text-white text-4xl font-bold">{{ course.title|slice:":1"|upper }}</div>{% endif %}
                 </div>
+                {% endif %}
                 <div class="mb-4">
                     {% if course.has_discount %}
                     <div class="flex items-baseline gap-2 flex-wrap">
@@ -190,6 +289,35 @@
                         <div class="h-full bg-jp-accent rounded-full" style="width:{{ course.funding_progress_percent }}%"></div>
                     </div>
                     <div class="text-sm text-jp-muted"><i class="fas fa-user-group mr-1"></i>{{ course.funding_backers_count }} / {{ course.funding_goal }} 人已贊助</div>
+                </div>
+                {% endif %}
+
+                {% if bundles %}
+                <div class="space-y-3 mb-5">
+                    {% for bundle in bundles %}
+                    <div class="border border-accent-300 bg-accent-50 rounded-xl p-4">
+                        <p class="font-bold text-jp-text mb-1">🎁 {{ bundle.name }}</p>
+                        {% if bundle.description %}<p class="text-xs text-jp-muted mb-2">{{ bundle.description }}</p>{% endif %}
+                        <ul class="text-sm text-jp-muted mb-2 list-disc list-inside">
+                            {% for c in bundle.courses.all %}<li>{{ c.title }}</li>{% endfor %}
+                        </ul>
+                        <div class="flex items-baseline gap-2 mb-3">
+                            <span class="text-sm text-jp-muted line-through decoration-2">NT$ {{ bundle.total_individual_price }}</span>
+                            <span class="text-xl font-bold text-jp-accent">NT$ {{ bundle.bundle_price }}</span>
+                            <span class="text-xs text-green-600 font-bold">省 NT$ {{ bundle.savings }}</span>
+                        </div>
+                        {% if not user.is_authenticated %}
+                        <a href="{% url 'login' %}" class="block text-center w-full bg-jp-accent text-white py-2.5 rounded-lg font-medium text-sm hover:opacity-90 transition">登入後加入合購</a>
+                        {% elif bundle.user_owns_any %}
+                        <span class="block text-center w-full bg-jp-bg text-jp-muted py-2.5 rounded-lg font-medium text-sm">已擁有組合內課程</span>
+                        {% else %}
+                        <form method="post" action="{% url 'add_bundle_to_cart' bundle.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="w-full bg-jp-accent text-white py-2.5 rounded-lg font-medium text-sm hover:opacity-90 transition">加入合購</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
                 </div>
                 {% endif %}
 
@@ -244,6 +372,17 @@ document.querySelectorAll('[data-tabs] [data-tab]').forEach((btn) => {
             p.classList.toggle('hidden', p.dataset.panel !== name);
         });
     });
+});
+
+// 課程介紹影片：點擊播放鍵播放，暫停時重新顯示播放鍵
+document.querySelectorAll('[data-hero-video-wrap]').forEach((wrap) => {
+    const video = wrap.querySelector('[data-hero-video]');
+    const toggle = wrap.querySelector('[data-hero-video-toggle]');
+    toggle.addEventListener('click', () => {
+        video.play();
+        toggle.classList.add('hidden');
+    });
+    video.addEventListener('pause', () => toggle.classList.remove('hidden'));
 });
 
 // 章節手風琴：預設展開第一章，其餘收合，點擊標題個別切換

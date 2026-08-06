@@ -32,6 +32,9 @@ from .models import (
     CourseAudit,
     TeacherBankAccount,
     WithdrawalRequest,
+    CourseBundle,
+    CourseAnnouncement,
+    CourseComment,
 )
 
 # ===== 後台品牌 =====
@@ -309,6 +312,52 @@ class CourseAuditAdmin(admin.ModelAdmin):
         return status_badge(obj.status, obj.get_status_display())
 
 
+class CourseBundleAdminForm(forms.ModelForm):
+    class Meta:
+        model = CourseBundle
+        fields = '__all__'
+
+    def clean(self):
+        cleaned = super().clean()
+        bundle_price = cleaned.get('bundle_price')
+        courses = cleaned.get('courses')
+        if bundle_price and courses:
+            total = sum(c.get_effective_price() for c in courses)
+            if bundle_price >= total:
+                self.add_error('bundle_price', f'合購價必須低於課程原價總和（NT$ {total}），否則不是優惠。')
+        return cleaned
+
+
+@admin.register(CourseBundle)
+class CourseBundleAdmin(admin.ModelAdmin):
+    form = CourseBundleAdminForm
+    list_display = ('name', 'course_count', 'total_individual_price_display', 'bundle_price', 'savings_display', 'active_badge', 'created_at')
+    filter_horizontal = ('courses',)
+    search_fields = ('name',)
+    list_filter = ('is_active',)
+
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        if db_field.name == 'courses':
+            kwargs['queryset'] = Course.objects.filter(is_published=True).order_by('title')
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
+
+    @admin.display(description='課程數')
+    def course_count(self, obj):
+        return obj.courses.count()
+
+    @admin.display(description='原價總和')
+    def total_individual_price_display(self, obj):
+        return f'NT$ {obj.total_individual_price()}'
+
+    @admin.display(description='折抵金額')
+    def savings_display(self, obj):
+        return f'NT$ {obj.savings()}'
+
+    @admin.display(description='狀態')
+    def active_badge(self, obj):
+        return status_badge('paid' if obj.is_active else 'cancelled', '啟用中' if obj.is_active else '已停用')
+
+
 # ===== 交易 =====
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
@@ -328,7 +377,7 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
-    list_display = ('order', 'course', 'price')
+    list_display = ('order', 'course', 'price', 'discount_amount', 'paid_amount')
     search_fields = ('order__user__username', 'course__title')
     autocomplete_fields = ('order', 'course')
 
@@ -547,14 +596,34 @@ class CourseAnswerAdmin(admin.ModelAdmin):
     autocomplete_fields = ('question', 'user')
 
 
+@admin.register(CourseAnnouncement)
+class CourseAnnouncementAdmin(admin.ModelAdmin):
+    list_display = ('course', 'author', 'title', 'created_at')
+    search_fields = ('title', 'content', 'course__title')
+    list_filter = ('created_at',)
+    autocomplete_fields = ('course', 'author')
+
+
+@admin.register(CourseComment)
+class CourseCommentAdmin(admin.ModelAdmin):
+    list_display = ('course', 'user', 'short_content', 'created_at')
+    search_fields = ('content', 'course__title', 'user__username')
+    list_filter = ('created_at',)
+    autocomplete_fields = ('course', 'user')
+
+    @admin.display(description='留言')
+    def short_content(self, obj):
+        return (obj.content[:20] + '…') if len(obj.content) > 20 else obj.content
+
+
 # ===== 後台側邊選單自訂分組（課程 / 交易 / 行銷 / 會員） =====
 from django.urls import reverse as _reverse
 
 _CUSTOM_GROUPS = [
-    ('📚 課程管理', ['Course', 'CourseCategory', 'CourseChapter', 'CourseLesson', 'CourseAudit']),
+    ('📚 課程管理', ['Course', 'CourseCategory', 'CourseChapter', 'CourseLesson', 'CourseAudit', 'CourseBundle', 'CourseAnnouncement']),
     ('🧾 交易管理', ['Order', 'OrderItem', 'Payment', 'Refund', 'Enrollment']),
     ('🎯 行銷管理', ['Coupon', 'UserCoupon', 'CouponUsage', 'Promotion', 'Cart']),
-    ('👥 會員與互動', ['Profile', 'LearningRecord', 'LessonProgress', 'Favorite', 'Review', 'Notification', 'CourseQuestion', 'CourseAnswer']),
+    ('👥 會員與互動', ['Profile', 'LearningRecord', 'LessonProgress', 'Favorite', 'Review', 'Notification', 'CourseQuestion', 'CourseAnswer', 'CourseComment']),
     ('💸 教師分潤與提領', ['TeacherBankAccount', 'WithdrawalRequest']),
 ]
 
