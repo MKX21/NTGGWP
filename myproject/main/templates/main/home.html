@@ -67,9 +67,9 @@
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-2 mb-4">
     <div class="grid grid-cols-3 md:grid-cols-6 gap-3">
         {% for category in categories|slice:":6" %}
-        <a href="{% url 'home' %}?cat={{ category.name }}#courses" class="group flex flex-col items-center gap-2 bg-white rounded-2xl py-5 shadow-sm hover:shadow-md hover:-translate-y-1 transition">
-            <span class="h-12 w-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center text-xl group-hover:bg-brand-600 group-hover:text-white transition"><i class="fas fa-folder-open"></i></span>
-            <span class="text-sm font-medium text-center px-1">{{ category.name }}</span>
+        <a href="{% url 'home' %}?cat={{ category.name }}#courses" class="group flex flex-col items-center gap-2 bg-jp-surface border border-jp-border rounded-xl py-5 hover:shadow-md hover:-translate-y-1 transition-all">
+            <span class="h-12 w-12 rounded-xl bg-brand-50 text-jp-primary flex items-center justify-center text-xl group-hover:bg-jp-primary group-hover:text-white transition"><i class="fas fa-folder-open"></i></span>
+            <span class="text-sm font-medium text-jp-text text-center px-1">{{ category.name }}</span>
         </a>
         {% endfor %}
     </div>
@@ -81,13 +81,13 @@
 <section id="funding" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
     <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
-            <span class="inline-flex items-center gap-2 text-accent-600 font-bold text-sm mb-2"><i class="fas fa-fire"></i> 集資倒數中</span>
-            <h2 class="text-2xl md:text-3xl font-black text-slate-900">募資中課程</h2>
-            <p class="text-slate-500 mt-1">搶先支持新課，享最優惠早鳥價</p>
+            <span class="inline-flex items-center gap-2 text-jp-accent font-medium text-sm mb-2"><i class="fas fa-fire"></i> 集資倒數中</span>
+            <h2 class="text-2xl md:text-3xl font-bold tracking-wide text-jp-text">募資中課程</h2>
+            <p class="text-jp-muted mt-1">搶先支持新課，享最優惠早鳥價</p>
         </div>
         <div class="flex gap-2">
-            <button data-carousel-prev="funding" class="h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-brand-600 hover:text-white hover:border-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed" aria-label="上一個"><i class="fas fa-chevron-left"></i></button>
-            <button data-carousel-next="funding" class="h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-brand-600 hover:text-white hover:border-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed" aria-label="下一個"><i class="fas fa-chevron-right"></i></button>
+            <button data-carousel-prev="funding" class="h-10 w-10 rounded-full border border-jp-border bg-jp-surface text-jp-muted hover:bg-jp-primary hover:text-white hover:border-jp-primary transition disabled:opacity-40 disabled:cursor-not-allowed" aria-label="上一個"><i class="fas fa-chevron-left"></i></button>
+            <button data-carousel-next="funding" class="h-10 w-10 rounded-full border border-jp-border bg-jp-surface text-jp-muted hover:bg-jp-primary hover:text-white hover:border-jp-primary transition disabled:opacity-40 disabled:cursor-not-allowed" aria-label="下一個"><i class="fas fa-chevron-right"></i></button>
         </div>
     </div>
     <div data-carousel="funding" class="flex gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-4 -mx-1 px-1 no-scrollbar">
@@ -103,15 +103,15 @@
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
     <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
-            <span class="inline-flex items-center gap-2 text-accent-600 font-bold text-sm mb-2"><i class="fas fa-fire"></i> 學員熱選</span>
-            <h2 class="text-2xl md:text-3xl font-black text-slate-900">熱門課程</h2>
-            <p class="text-slate-500 mt-1">最多人購買的精選課程</p>
+            <span class="inline-flex items-center gap-2 text-jp-accent font-medium text-sm mb-2"><i class="fas fa-fire"></i> 學員熱選</span>
+            <h2 class="text-2xl md:text-3xl font-bold tracking-wide text-jp-text">熱門課程</h2>
+            <p class="text-jp-muted mt-1">最多人購買的精選課程</p>
         </div>
         <div class="flex items-center gap-3">
-            <a href="{% url 'home' %}?sort=popular#courses" class="text-brand-600 hover:underline font-medium text-sm">查看全部</a>
+            <a href="{% url 'home' %}?sort=popular#courses" class="text-jp-primary hover:underline font-medium text-sm">查看全部</a>
             <div class="flex gap-2">
-                <button data-carousel-prev="popular" class="h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-brand-600 hover:text-white hover:border-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed" aria-label="上一個"><i class="fas fa-chevron-left"></i></button>
-                <button data-carousel-next="popular" class="h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-brand-600 hover:text-white hover:border-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed" aria-label="下一個"><i class="fas fa-chevron-right"></i></button>
+                <button data-carousel-prev="popular" class="h-10 w-10 rounded-full border border-jp-border bg-jp-surface text-jp-muted hover:bg-jp-primary hover:text-white hover:border-jp-primary transition disabled:opacity-40 disabled:cursor-not-allowed" aria-label="上一個"><i class="fas fa-chevron-left"></i></button>
+                <button data-carousel-next="popular" class="h-10 w-10 rounded-full border border-jp-border bg-jp-surface text-jp-muted hover:bg-jp-primary hover:text-white hover:border-jp-primary transition disabled:opacity-40 disabled:cursor-not-allowed" aria-label="下一個"><i class="fas fa-chevron-right"></i></button>
             </div>
         </div>
     </div>
@@ -125,19 +125,19 @@
 
 <!-- ============ 最新課程 ============ -->
 {% if latest_courses %}
-<section id="latest" class="bg-white border-y border-slate-100">
+<section id="latest" class="bg-jp-surface border-y border-jp-border">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
             <div>
-                <span class="inline-flex items-center gap-2 text-brand-600 font-bold text-sm mb-2"><i class="fas fa-sparkles"></i> 新鮮上架</span>
-                <h2 class="text-2xl md:text-3xl font-black text-slate-900">最新課程</h2>
-                <p class="text-slate-500 mt-1">跟上最新趨勢，第一時間開始學習</p>
+                <span class="inline-flex items-center gap-2 text-jp-primary font-medium text-sm mb-2"><i class="fas fa-sparkles"></i> 新鮮上架</span>
+                <h2 class="text-2xl md:text-3xl font-bold tracking-wide text-jp-text">最新課程</h2>
+                <p class="text-jp-muted mt-1">跟上最新趨勢，第一時間開始學習</p>
             </div>
             <div class="flex items-center gap-3">
-                <a href="{% url 'home' %}?sort=newest#courses" class="text-brand-600 hover:underline font-medium text-sm">查看全部</a>
+                <a href="{% url 'home' %}?sort=newest#courses" class="text-jp-primary hover:underline font-medium text-sm">查看全部</a>
                 <div class="flex gap-2">
-                    <button data-carousel-prev="latest" class="h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-brand-600 hover:text-white hover:border-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed" aria-label="上一個"><i class="fas fa-chevron-left"></i></button>
-                    <button data-carousel-next="latest" class="h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-brand-600 hover:text-white hover:border-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed" aria-label="下一個"><i class="fas fa-chevron-right"></i></button>
+                    <button data-carousel-prev="latest" class="h-10 w-10 rounded-full border border-jp-border bg-jp-surface text-jp-muted hover:bg-jp-primary hover:text-white hover:border-jp-primary transition disabled:opacity-40 disabled:cursor-not-allowed" aria-label="上一個"><i class="fas fa-chevron-left"></i></button>
+                    <button data-carousel-next="latest" class="h-10 w-10 rounded-full border border-jp-border bg-jp-surface text-jp-muted hover:bg-jp-primary hover:text-white hover:border-jp-primary transition disabled:opacity-40 disabled:cursor-not-allowed" aria-label="下一個"><i class="fas fa-chevron-right"></i></button>
                 </div>
             </div>
         </div>
@@ -154,25 +154,25 @@
 <section id="courses" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
     <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
-            <span class="inline-flex items-center gap-2 text-brand-600 font-bold text-sm mb-2"><i class="fas fa-compass"></i> 探索課程</span>
-            <h2 class="text-2xl md:text-3xl font-black text-slate-900">課程總覽</h2>
-            {% if q %}<p class="text-slate-500 mt-1">「{{ q }}」的搜尋結果，共 {{ page_obj.paginator.count }} 門</p>
-            {% else %}<p class="text-slate-500 mt-1">依熱門、最新或價格排序，並可用分類篩選</p>{% endif %}
+            <span class="inline-flex items-center gap-2 text-jp-primary font-medium text-sm mb-2"><i class="fas fa-compass"></i> 探索課程</span>
+            <h2 class="text-2xl md:text-3xl font-bold tracking-wide text-jp-text">課程總覽</h2>
+            {% if q %}<p class="text-jp-muted mt-1">「{{ q }}」的搜尋結果，共 {{ page_obj.paginator.count }} 門</p>
+            {% else %}<p class="text-jp-muted mt-1">依熱門、最新或價格排序，並可用分類篩選</p>{% endif %}
         </div>
         <!-- 排序 -->
         <div class="flex flex-wrap gap-2">
             {% for key, label in sort_options %}
             <a href="?sort={{ key }}{% if q %}&q={{ q }}{% endif %}{% if cat %}&cat={{ cat }}{% endif %}#courses"
-               class="px-4 py-2 rounded-full text-sm font-medium transition {% if sort == key %}bg-brand-600 text-white{% else %}bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-brand-300{% endif %}">{{ label }}</a>
+               class="px-4 py-2 rounded-full text-sm font-medium transition {% if sort == key %}bg-jp-primary text-white{% else %}bg-jp-surface text-jp-muted border border-jp-border hover:border-jp-primary{% endif %}">{{ label }}</a>
             {% endfor %}
         </div>
     </div>
 
     <!-- 分類 chips -->
     <div class="flex flex-wrap gap-2 mb-8">
-        <a href="?sort={{ sort }}{% if q %}&q={{ q }}{% endif %}#courses" class="px-4 py-1.5 rounded-full text-sm font-medium {% if not cat %}bg-brand-600 text-white{% else %}bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-brand-300{% endif %}">全部</a>
+        <a href="?sort={{ sort }}{% if q %}&q={{ q }}{% endif %}#courses" class="px-4 py-1.5 rounded-full text-sm font-medium {% if not cat %}bg-jp-primary text-white{% else %}bg-jp-surface text-jp-muted border border-jp-border hover:border-jp-primary{% endif %}">全部</a>
         {% for category in categories %}
-        <a href="?sort={{ sort }}&cat={{ category.name }}{% if q %}&q={{ q }}{% endif %}#courses" class="px-4 py-1.5 rounded-full text-sm font-medium {% if cat == category.name %}bg-brand-600 text-white{% else %}bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-brand-300{% endif %}">{{ category.name }}</a>
+        <a href="?sort={{ sort }}&cat={{ category.name }}{% if q %}&q={{ q }}{% endif %}#courses" class="px-4 py-1.5 rounded-full text-sm font-medium {% if cat == category.name %}bg-jp-primary text-white{% else %}bg-jp-surface text-jp-muted border border-jp-border hover:border-jp-primary{% endif %}">{{ category.name }}</a>
         {% endfor %}
     </div>
 
@@ -187,18 +187,18 @@
     {% if page_obj.paginator.num_pages > 1 %}
     <div class="flex justify-center items-center gap-2 mt-10 flex-wrap">
         {% if page_obj.has_previous %}
-        <a href="?sort={{ sort }}{% if q %}&q={{ q }}{% endif %}{% if cat %}&cat={{ cat }}{% endif %}&page={{ page_obj.previous_page_number }}#courses" class="px-4 py-2 rounded-lg bg-white ring-1 ring-slate-200 text-slate-600 hover:ring-brand-300 font-medium">← 上一頁</a>
-        {% else %}<span class="px-4 py-2 rounded-lg bg-slate-100 text-slate-400 font-medium">← 上一頁</span>{% endif %}
+        <a href="?sort={{ sort }}{% if q %}&q={{ q }}{% endif %}{% if cat %}&cat={{ cat }}{% endif %}&page={{ page_obj.previous_page_number }}#courses" class="px-4 py-2 rounded-lg bg-jp-surface border border-jp-border text-jp-muted hover:border-jp-primary font-medium">← 上一頁</a>
+        {% else %}<span class="px-4 py-2 rounded-lg bg-jp-bg text-jp-muted/50 font-medium">← 上一頁</span>{% endif %}
         {% for num in page_obj.paginator.page_range %}
-        <a href="?sort={{ sort }}{% if q %}&q={{ q }}{% endif %}{% if cat %}&cat={{ cat }}{% endif %}&page={{ num }}#courses" class="px-4 py-2 rounded-lg font-bold {% if num == page_obj.number %}bg-brand-600 text-white{% else %}bg-white ring-1 ring-slate-200 text-slate-600 hover:ring-brand-300{% endif %}">{{ num }}</a>
+        <a href="?sort={{ sort }}{% if q %}&q={{ q }}{% endif %}{% if cat %}&cat={{ cat }}{% endif %}&page={{ num }}#courses" class="px-4 py-2 rounded-lg font-bold {% if num == page_obj.number %}bg-jp-primary text-white{% else %}bg-jp-surface border border-jp-border text-jp-muted hover:border-jp-primary{% endif %}">{{ num }}</a>
         {% endfor %}
         {% if page_obj.has_next %}
-        <a href="?sort={{ sort }}{% if q %}&q={{ q }}{% endif %}{% if cat %}&cat={{ cat }}{% endif %}&page={{ page_obj.next_page_number }}#courses" class="px-4 py-2 rounded-lg bg-white ring-1 ring-slate-200 text-slate-600 hover:ring-brand-300 font-medium">下一頁 →</a>
-        {% else %}<span class="px-4 py-2 rounded-lg bg-slate-100 text-slate-400 font-medium">下一頁 →</span>{% endif %}
+        <a href="?sort={{ sort }}{% if q %}&q={{ q }}{% endif %}{% if cat %}&cat={{ cat }}{% endif %}&page={{ page_obj.next_page_number }}#courses" class="px-4 py-2 rounded-lg bg-jp-surface border border-jp-border text-jp-muted hover:border-jp-primary font-medium">下一頁 →</a>
+        {% else %}<span class="px-4 py-2 rounded-lg bg-jp-bg text-jp-muted/50 font-medium">下一頁 →</span>{% endif %}
     </div>
     {% endif %}
     {% else %}
-    <div class="text-center py-16 text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl">
+    <div class="text-center py-16 text-jp-muted border-2 border-dashed border-jp-border rounded-xl">
         <p class="text-lg font-bold mb-1">找不到符合的課程</p>
         <p>換個關鍵字或分類試試 🔍</p>
     </div>
@@ -208,45 +208,45 @@
 <!-- ============ 為什麼選擇 EduFlow ============ -->
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
     <div class="text-center max-w-2xl mx-auto mb-12">
-        <h2 class="text-2xl md:text-3xl font-black text-slate-900 mb-3">為什麼選擇 EduFlow？</h2>
-        <p class="text-slate-500">我們用更好的體驗與制度，陪你把學習變成真正的成長。</p>
+        <h2 class="text-2xl md:text-3xl font-bold tracking-wide text-jp-text mb-3">為什麼選擇 EduFlow？</h2>
+        <p class="text-jp-muted">我們用更好的體驗與制度，陪你把學習變成真正的成長。</p>
     </div>
     <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition">
-            <div class="h-12 w-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center text-xl mb-4"><i class="fas fa-user-check"></i></div>
-            <h3 class="font-bold text-slate-900 mb-2">業界專家親授</h3>
-            <p class="text-sm text-slate-500">每位講師皆通過審核，內容緊貼實務現場。</p>
+        <div class="bg-jp-surface border border-jp-border rounded-xl p-6 hover:shadow-md transition">
+            <div class="h-12 w-12 rounded-xl bg-brand-50 text-jp-primary flex items-center justify-center text-xl mb-4"><i class="fas fa-user-check"></i></div>
+            <h3 class="font-medium text-jp-text mb-2">業界專家親授</h3>
+            <p class="text-sm text-jp-muted">每位講師皆通過審核，內容緊貼實務現場。</p>
         </div>
-        <div class="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition">
-            <div class="h-12 w-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center text-xl mb-4"><i class="fas fa-infinity"></i></div>
-            <h3 class="font-bold text-slate-900 mb-2">永久觀看權限</h3>
-            <p class="text-sm text-slate-500">一次購買終身回看，隨時複習不受限制。</p>
+        <div class="bg-jp-surface border border-jp-border rounded-xl p-6 hover:shadow-md transition">
+            <div class="h-12 w-12 rounded-xl bg-brand-50 text-jp-primary flex items-center justify-center text-xl mb-4"><i class="fas fa-infinity"></i></div>
+            <h3 class="font-medium text-jp-text mb-2">永久觀看權限</h3>
+            <p class="text-sm text-jp-muted">一次購買終身回看，隨時複習不受限制。</p>
         </div>
-        <div class="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition">
-            <div class="h-12 w-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center text-xl mb-4"><i class="fas fa-comments"></i></div>
-            <h3 class="font-bold text-slate-900 mb-2">互動問答社群</h3>
-            <p class="text-sm text-slate-500">課程討論區與同學交流，遇到問題不卡關。</p>
+        <div class="bg-jp-surface border border-jp-border rounded-xl p-6 hover:shadow-md transition">
+            <div class="h-12 w-12 rounded-xl bg-brand-50 text-jp-primary flex items-center justify-center text-xl mb-4"><i class="fas fa-comments"></i></div>
+            <h3 class="font-medium text-jp-text mb-2">互動問答社群</h3>
+            <p class="text-sm text-jp-muted">課程討論區與同學交流，遇到問題不卡關。</p>
         </div>
-        <div class="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition">
-            <div class="h-12 w-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center text-xl mb-4"><i class="fas fa-shield-halved"></i></div>
-            <h3 class="font-bold text-slate-900 mb-2">安心退款保障</h3>
-            <p class="text-sm text-slate-500">開課後 7 天內不滿意，可申請退費。</p>
+        <div class="bg-jp-surface border border-jp-border rounded-xl p-6 hover:shadow-md transition">
+            <div class="h-12 w-12 rounded-xl bg-brand-50 text-jp-primary flex items-center justify-center text-xl mb-4"><i class="fas fa-shield-halved"></i></div>
+            <h3 class="font-medium text-jp-text mb-2">安心退款保障</h3>
+            <p class="text-sm text-jp-muted">開課後 7 天內不滿意，可申請退費。</p>
         </div>
     </div>
 </section>
 
 <!-- ============ 成為講師 CTA ============ -->
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-700 to-violet-600 text-white px-8 py-12 md:p-14">
+    <div class="relative overflow-hidden rounded-2xl bg-jp-primary text-white px-8 py-12 md:p-14">
         <div class="pointer-events-none absolute -top-16 -right-10 h-64 w-64 rounded-full bg-white/10 blur-2xl"></div>
         <div class="relative flex flex-col md:flex-row items-center justify-between gap-8">
             <div class="max-w-xl">
-                <h2 class="text-2xl md:text-3xl font-black mb-3">把你的專業，變成影響力</h2>
-                <p class="text-brand-100">加入 EduFlow 講師行列，打造屬於你的線上課程，觸及成千上萬名學員。</p>
+                <h2 class="text-2xl md:text-3xl font-bold tracking-wide mb-3">把你的專業，變成影響力</h2>
+                <p class="text-white/80">加入 EduFlow 講師行列，打造屬於你的線上課程，觸及成千上萬名學員。</p>
             </div>
             <div class="flex gap-3 shrink-0">
-                <a href="{% url 'register' %}" class="bg-white text-brand-700 font-bold px-6 py-3 rounded-xl hover:bg-brand-50 transition">立即開課</a>
-                <a href="{% url 'home' %}#courses" class="bg-white/10 backdrop-blur border border-white/30 text-white font-bold px-6 py-3 rounded-xl hover:bg-white/20 transition">了解更多</a>
+                <a href="{% url 'register' %}" class="bg-white text-jp-primary font-medium px-6 py-3 rounded-xl hover:bg-brand-50 transition">立即開課</a>
+                <a href="{% url 'home' %}#courses" class="bg-white/10 backdrop-blur border border-white/30 text-white font-medium px-6 py-3 rounded-xl hover:bg-white/20 transition">了解更多</a>
             </div>
         </div>
     </div>

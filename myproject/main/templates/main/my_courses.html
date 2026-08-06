@@ -3,15 +3,15 @@
 
 {% block content %}
 <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-7 mb-6">
-    <h1 class="text-2xl font-black text-slate-900 mb-1">我的課程</h1>
-    <p class="text-slate-500 mb-5">歡迎，{{ request.user.username }}。這裡顯示你已購買的課程與學習進度。</p>
+  <div class="bg-jp-surface rounded-xl border border-jp-border shadow-sm p-7 mb-6">
+    <h1 class="text-2xl font-bold tracking-wide text-jp-text mb-1">我的課程</h1>
+    <p class="text-jp-muted mb-5">歡迎，{{ request.user.username }}。這裡顯示你已購買的課程與學習進度。</p>
     <div class="flex gap-4 flex-wrap">
       <div class="flex-1 min-w-[150px] bg-brand-50 rounded-xl p-4 text-center">
-        <div class="text-2xl font-black text-brand-700">{{ enrollments|length }}</div><div class="text-sm text-slate-500">已購課程</div>
+        <div class="text-2xl font-bold text-jp-primary">{{ enrollments|length }}</div><div class="text-sm text-jp-muted">已購課程</div>
       </div>
       <div class="flex-1 min-w-[150px] bg-brand-50 rounded-xl p-4 text-center">
-        <div class="text-2xl font-black text-brand-700">{{ total_minutes }}</div><div class="text-sm text-slate-500">累積學習分鐘</div>
+        <div class="text-2xl font-bold text-jp-primary">{{ total_minutes }}</div><div class="text-sm text-jp-muted">累積學習分鐘</div>
       </div>
     </div>
   </div>
@@ -19,28 +19,28 @@
   {% if enrollments %}
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
     {% for enrollment in enrollments %}
-    <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm overflow-hidden flex flex-col">
-      <div class="aspect-video bg-slate-200">
+    <div class="bg-jp-surface rounded-xl border border-jp-border shadow-sm overflow-hidden flex flex-col">
+      <div class="aspect-video bg-jp-bg">
         {% if enrollment.course.image %}<img src="{{ enrollment.course.image.url }}" alt="{{ enrollment.course.title }}" class="w-full h-full object-cover">
-        {% else %}<div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-brand-400 to-violet-400 text-white text-4xl font-black">{{ enrollment.course.title|slice:":1"|upper }}</div>{% endif %}
+        {% else %}<div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-brand-600 to-brand-400 text-white text-4xl font-bold">{{ enrollment.course.title|slice:":1"|upper }}</div>{% endif %}
       </div>
       <div class="p-5 flex flex-col flex-1">
-        <h3 class="font-bold text-slate-900 mb-0.5 line-clamp-2">{{ enrollment.course.title }}</h3>
-        <p class="text-sm text-slate-500 mb-3">講師：{{ enrollment.course.teacher.username }}</p>
+        <h3 class="font-medium text-jp-text mb-0.5 line-clamp-2">{{ enrollment.course.title }}</h3>
+        <p class="text-sm text-jp-muted mb-3">講師：{{ enrollment.course.teacher.username }}</p>
 
-        <div class="flex justify-between text-xs text-slate-500 mb-1.5">
+        <div class="flex justify-between text-xs text-jp-muted mb-1.5">
           <span>學習進度</span>
           <span>{{ enrollment.progress }}%（{{ enrollment.watch_minutes }}/{{ enrollment.course_total_minutes }} 分）</span>
         </div>
-        <div class="h-2 bg-slate-100 rounded-full overflow-hidden mb-4"><div class="h-full bg-gradient-to-r from-brand-600 to-violet-500 rounded-full" style="width: {{ enrollment.progress }}%;"></div></div>
+        <div class="h-2 bg-jp-bg rounded-full overflow-hidden mb-4"><div class="h-full bg-jp-primary rounded-full" style="width: {{ enrollment.progress }}%;"></div></div>
 
         <div class="flex gap-2 mt-auto">
-          <a href="{% url 'course_detail' enrollment.course.id %}" class="flex-1 text-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-lg text-sm transition">課程頁</a>
-          <a href="{% url 'watch_course' enrollment.course.id %}" class="flex-1 text-center bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-lg text-sm transition">▶ 上課</a>
+          <a href="{% url 'course_detail' enrollment.course.id %}" class="flex-1 text-center bg-jp-bg hover:bg-jp-border text-jp-text font-medium py-2.5 rounded-lg text-sm transition">課程頁</a>
+          <a href="{% url 'watch_course' enrollment.course.id %}" class="flex-1 text-center bg-jp-primary hover:bg-jp-primaryHover text-white font-medium py-2.5 rounded-lg text-sm transition">▶ 上課</a>
         </div>
 
         {% if enrollment.progress == 100 %}
-        <a href="{% url 'certificate' enrollment.course.id %}" class="mt-2 text-center bg-accent-500 hover:bg-accent-600 text-white font-bold py-2.5 rounded-lg text-sm transition">🎓 下載結業證書</a>
+        <a href="{% url 'certificate' enrollment.course.id %}" class="mt-2 text-center bg-accent-500 hover:bg-accent-600 text-white font-medium py-2.5 rounded-lg text-sm transition">🎓 下載結業證書</a>
         {% endif %}
 
         {% if enrollment.refund %}
@@ -49,15 +49,15 @@
           {% elif enrollment.refund.status == 'rejected' %}bg-red-50 text-red-600
           {% else %}bg-green-50 text-green-700{% endif %}">退款：{{ enrollment.refund.get_status_display }}</div>
         {% elif enrollment.order %}
-        <a href="{% url 'request_refund' enrollment.order.id %}" class="mt-2 text-center bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2.5 rounded-lg text-sm transition">申請退款</a>
+        <a href="{% url 'request_refund' enrollment.order.id %}" class="mt-2 text-center bg-red-50 hover:bg-red-100 text-red-600 font-medium py-2.5 rounded-lg text-sm transition">申請退款</a>
         {% endif %}
       </div>
     </div>
     {% endfor %}
   </div>
   {% else %}
-  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-12 text-center text-slate-500">
-    你目前還沒有購買任何課程。<br>可以先到<a href="{% url 'home' %}#courses" class="text-brand-600 hover:underline">首頁</a>瀏覽課程並完成購買。
+  <div class="bg-jp-surface rounded-xl border border-jp-border shadow-sm p-12 text-center text-jp-muted">
+    你目前還沒有購買任何課程。<br>可以先到<a href="{% url 'home' %}#courses" class="text-jp-primary hover:underline">首頁</a>瀏覽課程並完成購買。
   </div>
   {% endif %}
 </main>

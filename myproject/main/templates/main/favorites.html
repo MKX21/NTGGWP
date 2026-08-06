@@ -3,24 +3,24 @@
 
 {% block content %}
 <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-  <h1 class="text-2xl font-black text-slate-900 mb-6">我的收藏</h1>
+  <h1 class="text-2xl font-bold tracking-wide text-jp-text mb-6">我的收藏</h1>
   {% if favorites %}
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
     {% for fav in favorites %}
-    <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm overflow-hidden flex flex-col">
-      <a href="{% url 'course_detail' fav.course.id %}" class="aspect-video bg-slate-200 block">
+    <div class="bg-jp-surface rounded-xl border border-jp-border shadow-sm overflow-hidden flex flex-col">
+      <a href="{% url 'course_detail' fav.course.id %}" class="aspect-video bg-jp-bg block">
         {% if fav.course.image %}<img src="{{ fav.course.image.url }}" alt="{{ fav.course.title }}" class="w-full h-full object-cover">
-        {% else %}<div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-brand-400 to-violet-400 text-white text-4xl font-black">{{ fav.course.title|slice:":1"|upper }}</div>{% endif %}
+        {% else %}<div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-brand-600 to-brand-400 text-white text-4xl font-bold">{{ fav.course.title|slice:":1"|upper }}</div>{% endif %}
       </a>
       <div class="p-5 flex flex-col flex-1">
-        <h3 class="font-bold text-slate-900 line-clamp-2 mb-1">{{ fav.course.title }}</h3>
-        <p class="text-sm text-slate-500 mb-1">講師：{{ fav.course.teacher.username }}</p>
-        <p class="text-lg font-black text-slate-900 mb-3">NT$ {{ fav.course.price }}</p>
+        <h3 class="font-medium text-jp-text line-clamp-2 mb-1">{{ fav.course.title }}</h3>
+        <p class="text-sm text-jp-muted mb-1">講師：{{ fav.course.teacher.username }}</p>
+        <p class="text-lg font-bold text-jp-accent mb-3">NT$ {{ fav.course.price }}</p>
         <div class="flex gap-2 mt-auto">
-          <a href="{% url 'course_detail' fav.course.id %}" class="flex-1 text-center bg-brand-600 hover:bg-brand-700 text-white font-bold py-2.5 rounded-lg text-sm transition">看課程</a>
+          <a href="{% url 'course_detail' fav.course.id %}" class="flex-1 text-center bg-jp-primary hover:bg-jp-primaryHover text-white font-medium py-2.5 rounded-lg text-sm transition">看課程</a>
           <form method="post" action="{% url 'toggle_favorite' fav.course.id %}" class="flex-1">
             {% csrf_token %}<input type="hidden" name="next" value="{% url 'my_favorites' %}">
-            <button type="submit" class="w-full bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2.5 rounded-lg text-sm transition">取消收藏</button>
+            <button type="submit" class="w-full bg-red-50 hover:bg-red-100 text-red-600 font-medium py-2.5 rounded-lg text-sm transition">取消收藏</button>
           </form>
         </div>
       </div>
@@ -28,7 +28,7 @@
     {% endfor %}
   </div>
   {% else %}
-  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-12 text-center text-slate-500">你還沒有收藏任何課程。</div>
+  <div class="bg-jp-surface rounded-xl border border-jp-border shadow-sm p-12 text-center text-jp-muted">你還沒有收藏任何課程。</div>
   {% endif %}
 </main>
 {% endblock %}
