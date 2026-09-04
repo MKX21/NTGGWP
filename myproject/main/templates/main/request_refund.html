@@ -8,7 +8,7 @@
     <p class="text-slate-500 mb-5">課程：{{ order.course.title|default:"多課程訂單" }}<br>訂單 #{{ order.id }} ・ 實付 NT$ {{ order.final_price }}</p>
     {% if existing %}
     <div class="bg-amber-50 text-amber-700 font-medium px-4 py-3 rounded-lg">此訂單已有一筆退款申請（狀態：{{ existing.get_status_display }}），無法重複申請。</div>
-    <a href="{% url 'my_courses' %}" class="inline-block mt-4 text-brand-600 hover:underline font-medium">← 返回我的課程</a>
+    <a href="{% url 'my_courses' %}" class="inline-block mt-4 text-jp-primary hover:underline font-medium">← 返回我的課程</a>
     {% else %}
     <form method="post">
       {% csrf_token %}

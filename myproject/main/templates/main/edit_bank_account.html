@@ -11,7 +11,7 @@
       {% csrf_token %}
       {{ form.as_p }}
       <div class="flex gap-3 mt-4">
-        <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-6 py-2.5 rounded-lg transition">儲存帳戶</button>
+        <button type="submit" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-6 py-2.5 rounded-lg transition">儲存帳戶</button>
         <a href="{% url 'teacher_dashboard' %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-6 py-2.5 rounded-lg transition">返回教師專區</a>
       </div>
     </form>

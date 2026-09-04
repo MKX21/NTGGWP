@@ -12,7 +12,7 @@
       {% endif %}
       <div>
         <h1 class="text-2xl font-black text-slate-900">{{ request.user.first_name|default:request.user.username }}{% if request.user.last_name %} {{ request.user.last_name }}{% endif %}</h1>
-        <span class="inline-block mt-1 bg-brand-50 text-brand-700 text-xs font-bold px-3 py-1 rounded-full">{{ profile.get_role_display }}</span>
+        <span class="inline-block mt-1 bg-brand-50 text-jp-primaryHover text-xs font-bold px-3 py-1 rounded-full">{{ profile.get_role_display }}</span>
       </div>
     </div>
 
@@ -24,7 +24,7 @@
     </div>
 
     <div class="flex gap-3 flex-wrap">
-      <a href="{% url 'edit_profile' %}" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-5 py-2.5 rounded-lg transition">編輯個人資料</a>
+      <a href="{% url 'edit_profile' %}" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-5 py-2.5 rounded-lg transition">編輯個人資料</a>
       <a href="{% url 'my_courses' %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-2.5 rounded-lg transition">我的課程</a>
       {% if profile.role == 'teacher' %}
       <a href="{% url 'teacher_dashboard' %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-2.5 rounded-lg transition">教師專區</a>

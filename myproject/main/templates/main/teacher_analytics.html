@@ -8,15 +8,15 @@
     <div class="flex items-center justify-between gap-3 flex-wrap mb-1">
       <h1 class="text-2xl font-black text-slate-900">老師課程分析</h1>
       <div id="filterStatus" class="hidden items-center gap-2">
-        <span class="bg-brand-50 text-brand-700 font-bold px-3 py-1.5 rounded-full text-sm">篩選中：<span id="filterCourseName"></span></span>
+        <span class="bg-brand-50 text-jp-primaryHover font-bold px-3 py-1.5 rounded-full text-sm">篩選中：<span id="filterCourseName"></span></span>
         <button id="clearFilterBtn" type="button" class="text-slate-400 hover:text-slate-600 text-sm font-medium">清除篩選 ✕</button>
       </div>
     </div>
     <p class="text-slate-500 mb-5">依課程訂單、觀看紀錄與評價即時產生分析圖表。點擊任一圖表的長條，可篩選並連動其他圖表與數據。</p>
     <div class="grid sm:grid-cols-3 gap-4">
-      <div class="bg-slate-50 rounded-xl p-5"><h3 class="text-sm text-slate-500 mb-1">總營收</h3><div id="totalRevenueValue" class="text-3xl font-black text-brand-700">NT$ {{ total_revenue }}</div></div>
-      <div class="bg-slate-50 rounded-xl p-5"><h3 class="text-sm text-slate-500 mb-1">總購買數</h3><div id="totalPurchaseValue" class="text-3xl font-black text-brand-700">{{ total_purchase_count }}</div></div>
-      <div class="bg-slate-50 rounded-xl p-5"><h3 class="text-sm text-slate-500 mb-1">總觀看分鐘</h3><div id="totalWatchValue" class="text-3xl font-black text-brand-700">{{ total_watch_minutes }}</div></div>
+      <div class="bg-slate-50 rounded-xl p-5"><h3 class="text-sm text-slate-500 mb-1">總營收</h3><div id="totalRevenueValue" class="text-3xl font-black text-jp-primaryHover">NT$ {{ total_revenue }}</div></div>
+      <div class="bg-slate-50 rounded-xl p-5"><h3 class="text-sm text-slate-500 mb-1">總購買數</h3><div id="totalPurchaseValue" class="text-3xl font-black text-jp-primaryHover">{{ total_purchase_count }}</div></div>
+      <div class="bg-slate-50 rounded-xl p-5"><h3 class="text-sm text-slate-500 mb-1">總觀看分鐘</h3><div id="totalWatchValue" class="text-3xl font-black text-jp-primaryHover">{{ total_watch_minutes }}</div></div>
     </div>
   </div>
 
@@ -27,7 +27,7 @@
     <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6"><h2 class="font-black text-slate-900 mb-4">各課程平均評分</h2><div class="relative h-72"><canvas id="ratingChart"></canvas></div></div>
   </div>
 
-  <a href="{% url 'teacher_dashboard' %}" class="inline-block text-brand-600 hover:underline font-medium">← 回教師專區</a>
+  <a href="{% url 'teacher_dashboard' %}" class="inline-block text-jp-primary hover:underline font-medium">← 回教師專區</a>
 </main>
 {% endblock %}
 

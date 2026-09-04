@@ -10,7 +10,7 @@
       {% csrf_token %}
       {{ form.as_p }}
       <div class="flex gap-3 mt-4">
-        <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-5 py-2.5 rounded-lg transition">儲存</button>
+        <button type="submit" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-5 py-2.5 rounded-lg transition">儲存</button>
         <a href="{% url 'manage_content' course.id %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-2.5 rounded-lg transition">取消</a>
       </div>
     </form>

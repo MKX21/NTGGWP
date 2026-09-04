@@ -56,7 +56,7 @@
             <div class="text-xs text-red-500 line-through decoration-2">NT$ {{ item.course.price }}</div>
             <div class="text-lg font-black text-red-600">NT$ {{ item.course.get_effective_price }}</div>
             {% else %}
-            <div class="text-lg font-black text-brand-700">NT$ {{ item.course.price }}</div>
+            <div class="text-lg font-black text-jp-primaryHover">NT$ {{ item.course.price }}</div>
             {% endif %}
           </div>
           <form method="post" action="{% url 'remove_from_cart' item.id %}">
@@ -73,12 +73,12 @@
         {% csrf_token %}
         <input type="text" name="coupon_code" placeholder="輸入優惠碼（可留空，符合條件的促銷會自動套用）"
                class="w-full border border-slate-200 rounded-lg py-2.5 px-3 mb-3 outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-200 transition">
-        <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-lg transition">前往付款</button>
+        <button type="submit" class="w-full bg-jp-primary hover:bg-jp-primaryHover text-white font-bold py-3 rounded-lg transition">前往付款</button>
       </form>
     {% else %}
       <p class="text-slate-500">購物車目前是空的。</p>
     {% endif %}
-    <a href="{% url 'course_catalog' %}" class="inline-block mt-5 text-brand-600 hover:underline font-medium">← 回首頁繼續逛課程</a>
+    <a href="{% url 'course_catalog' %}" class="inline-block mt-5 text-jp-primary hover:underline font-medium">← 回首頁繼續逛課程</a>
   </div>
 
   <!-- 領取優惠券 -->
@@ -89,7 +89,7 @@
       {% for c in available_coupons %}
       <div class="border border-slate-100 border-l-4 border-l-brand-500 rounded-xl p-4 flex flex-col gap-1.5">
         <div class="font-bold text-slate-800">{{ c.name }}</div>
-        <span class="self-start bg-brand-50 text-brand-700 font-bold tracking-wider text-xs px-2.5 py-0.5 rounded">{{ c.code }}</span>
+        <span class="self-start bg-brand-50 text-jp-primaryHover font-bold tracking-wider text-xs px-2.5 py-0.5 rounded">{{ c.code }}</span>
         <div class="text-sm text-slate-500 leading-relaxed">
           {% if c.discount_type == 'amount' %}折抵 NT$ {{ c.discount_value }}{% else %}打 {{ c.discount_value }}% 折扣{% endif %}
           ・ 最低消費 NT$ {{ c.min_spend }}<br>期限：{{ c.end_date|date:"Y-m-d" }}
@@ -99,7 +99,7 @@
         {% else %}
         <form method="post" action="{% url 'claim_coupon' c.id %}">
           {% csrf_token %}
-          <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-2 rounded-lg text-sm transition">立即領取</button>
+          <button type="submit" class="w-full bg-jp-primary hover:bg-jp-primaryHover text-white font-bold py-2 rounded-lg text-sm transition">立即領取</button>
         </form>
         {% endif %}
       </div>
@@ -118,7 +118,7 @@
       {% for uc in my_coupons %}
       <div class="flex items-center justify-between gap-3 py-3">
         <div>
-          <div class="font-bold text-slate-800">{{ uc.coupon.name }} <span class="bg-brand-50 text-brand-700 font-bold tracking-wider text-xs px-2 py-0.5 rounded">{{ uc.coupon.code }}</span></div>
+          <div class="font-bold text-slate-800">{{ uc.coupon.name }} <span class="bg-brand-50 text-jp-primaryHover font-bold tracking-wider text-xs px-2 py-0.5 rounded">{{ uc.coupon.code }}</span></div>
           <div class="text-sm text-slate-500">
             {% if uc.coupon.discount_type == 'amount' %}折抵 NT$ {{ uc.coupon.discount_value }}{% else %}打 {{ uc.coupon.discount_value }}% 折扣{% endif %}
             ・ 期限 {{ uc.coupon.end_date|date:"Y-m-d" }}

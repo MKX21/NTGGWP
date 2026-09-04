@@ -9,26 +9,26 @@
       <h1 class="text-2xl font-black text-slate-900 mb-1">營運數據分析</h1>
       <p class="text-slate-500">平台即時營運總覽，可搭配「資料匯出」匯入 Power BI 建立進階報表。</p>
     </div>
-    <a href="{% url 'export_data_page' %}" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-5 py-2.5 rounded-lg transition whitespace-nowrap">📊 匯出至 Power BI</a>
+    <a href="{% url 'export_data_page' %}" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-5 py-2.5 rounded-lg transition whitespace-nowrap">📊 匯出至 Power BI</a>
   </div>
 
   <!-- KPI 卡片 -->
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
     <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-5">
       <div class="text-sm text-slate-500 mb-1">總營收</div>
-      <div class="text-2xl font-black text-brand-700">NT$ {{ total_revenue }}</div>
+      <div class="text-2xl font-black text-jp-primaryHover">NT$ {{ total_revenue }}</div>
     </div>
     <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-5">
       <div class="text-sm text-slate-500 mb-1">學生人次</div>
-      <div class="text-2xl font-black text-brand-700">{{ total_students }}</div>
+      <div class="text-2xl font-black text-jp-primaryHover">{{ total_students }}</div>
     </div>
     <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-5">
       <div class="text-sm text-slate-500 mb-1">上架課程</div>
-      <div class="text-2xl font-black text-brand-700">{{ published_courses }} / {{ total_courses }}</div>
+      <div class="text-2xl font-black text-jp-primaryHover">{{ published_courses }} / {{ total_courses }}</div>
     </div>
     <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-5">
       <div class="text-sm text-slate-500 mb-1">平均評分</div>
-      <div class="text-2xl font-black text-brand-700">{% if avg_rating %}★ {{ avg_rating }}{% else %}—{% endif %}</div>
+      <div class="text-2xl font-black text-jp-primaryHover">{% if avg_rating %}★ {{ avg_rating }}{% else %}—{% endif %}</div>
     </div>
     <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-5">
       <div class="text-sm text-slate-500 mb-1">優惠券總折扣</div>

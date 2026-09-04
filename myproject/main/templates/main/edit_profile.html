@@ -15,7 +15,7 @@
       {% endif %}
       <div>
         <div class="font-bold text-slate-800">{{ request.user.username }}</div>
-        <span class="inline-block mt-1 bg-brand-50 text-brand-700 text-xs font-bold px-3 py-1 rounded-full">{{ profile.get_role_display }}</span>
+        <span class="inline-block mt-1 bg-brand-50 text-jp-primaryHover text-xs font-bold px-3 py-1 rounded-full">{{ profile.get_role_display }}</span>
       </div>
     </div>
 
@@ -23,7 +23,7 @@
       {% csrf_token %}
       {{ form.as_p }}
       <div class="flex gap-3 mt-4">
-        <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-6 py-2.5 rounded-lg transition">儲存變更</button>
+        <button type="submit" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-6 py-2.5 rounded-lg transition">儲存變更</button>
         <a href="{% url 'profile' %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-6 py-2.5 rounded-lg transition">取消</a>
       </div>
     </form>

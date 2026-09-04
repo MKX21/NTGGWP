@@ -32,9 +32,9 @@
           <div class="mt-5 flex items-center gap-3 flex-wrap">
             <div class="font-bold text-slate-700">
               <span id="doneTag" class="text-green-600" style="{% if not is_completed %}display:none;{% endif %}"><i class="fas fa-circle-check"></i> 已完成本單元</span>
-              <span id="progText" style="{% if is_completed %}display:none;{% endif %}">本單元觀看進度：<b id="watchPct" class="text-brand-600">{{ lesson_percent }}%</b><span class="text-slate-400 font-normal text-sm ml-1">（累積計算，看滿 60% 即完成，快轉不計）</span></span>
+              <span id="progText" style="{% if is_completed %}display:none;{% endif %}">本單元觀看進度：<b id="watchPct" class="text-jp-primary">{{ lesson_percent }}%</b><span class="text-slate-400 font-normal text-sm ml-1">（累積計算，看滿 60% 即完成，快轉不計）</span></span>
             </div>
-            <a href="{% url 'course_detail' course.id %}" class="ml-auto text-brand-600 hover:underline font-medium text-sm">回課程頁</a>
+            <a href="{% url 'course_detail' course.id %}" class="ml-auto text-jp-primary hover:underline font-medium text-sm">回課程頁</a>
           </div>
           <input type="hidden" id="csrftoken" value="{{ csrf_token }}" />
           {% endif %}
@@ -50,14 +50,14 @@
         <div class="h-2 bg-slate-100 rounded-full overflow-hidden mb-4"><div class="h-full bg-gradient-to-r from-brand-600 to-violet-500 rounded-full" style="width: {{ progress }}%;"></div></div>
 
         {% if progress == 100 %}
-        <a href="{% url 'certificate' course.id %}" class="block text-center bg-accent-500 hover:bg-accent-600 text-white font-bold py-2.5 rounded-lg mb-4 transition">🎓 下載結業證書</a>
+        <a href="{% url 'certificate' course.id %}" class="block text-center bg-jp-accent hover:bg-accent-600 text-white font-bold py-2.5 rounded-lg mb-4 transition">🎓 下載結業證書</a>
         {% endif %}
 
         {% for chapter in chapters %}
         <div class="text-xs font-black text-slate-400 mt-4 mb-1.5">第 {{ chapter.sort_order }} 章：{{ chapter.title }}</div>
         {% for l in chapter.lessons.all %}
           {% if can_record or l.is_free_preview %}
-          <a href="{% url 'watch_lesson' l.id %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm mb-1 transition {% if l.id == lesson.id %}bg-brand-50 text-brand-700 font-bold{% else %}text-slate-700 hover:bg-slate-50{% endif %}">
+          <a href="{% url 'watch_lesson' l.id %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm mb-1 transition {% if l.id == lesson.id %}bg-brand-50 text-jp-primaryHover font-bold{% else %}text-slate-700 hover:bg-slate-50{% endif %}">
             <span class="w-5 h-5 rounded-full flex items-center justify-center text-[11px] shrink-0 {% if l.id in completed_ids %}bg-green-500 text-white{% else %}border border-slate-300 text-transparent{% endif %}"><i class="fas fa-check"></i></span>
             <span class="flex-1">{{ chapter.sort_order }}-{{ l.sort_order }} {{ l.title }}</span>
             <span class="text-slate-400 text-xs">{{ l.duration_minutes }}分</span>

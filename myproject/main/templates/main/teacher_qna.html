@@ -26,7 +26,7 @@
 
         {% for a in q.answers.all %}
         <div class="bg-slate-50 rounded-xl p-3 mb-2 text-sm">
-          <span class="font-bold text-brand-700">{{ a.user.username }}：</span>{{ a.content }}
+          <span class="font-bold text-jp-primaryHover">{{ a.user.username }}：</span>{{ a.content }}
           <span class="text-slate-400 text-xs ml-2">{{ a.created_at|date:"Y-m-d H:i" }}</span>
         </div>
         {% endfor %}
@@ -36,7 +36,7 @@
           <input type="hidden" name="source" value="teacher_qna">
           <textarea name="content" rows="2" placeholder="輸入你的回答"
                     class="flex-1 border border-slate-200 rounded-lg py-2 px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-200"></textarea>
-          <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition">送出回覆</button>
+          <button type="submit" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-4 py-2 rounded-lg text-sm transition">送出回覆</button>
         </form>
       </div>
       {% endfor %}

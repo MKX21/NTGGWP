@@ -20,7 +20,7 @@
       <div class="flex justify-between py-3 text-slate-700"><span>課程原價</span><strong>NT$ {{ original_price }}</strong></div>
       {% endif %}
       <div class="flex justify-between py-3 text-slate-700"><span>優惠券折扣</span><strong>− NT$ {{ discount_amount }}</strong></div>
-      <div class="flex justify-between py-3 text-xl font-black text-brand-700"><span>實付金額</span><span>NT$ {{ final_price }}</span></div>
+      <div class="flex justify-between py-3 text-xl font-black text-jp-primaryHover"><span>實付金額</span><span>NT$ {{ final_price }}</span></div>
     </div>
 
     <div class="bg-slate-50 rounded-xl p-5 mt-5">
@@ -37,7 +37,7 @@
           {% endfor %}
         </select>
         {% else %}
-        <p class="text-slate-500">目前沒有可用的優惠券。<a href="{% url 'view_cart' %}" class="text-brand-600 hover:underline">前往購物車領取 →</a></p>
+        <p class="text-slate-500">目前沒有可用的優惠券。<a href="{% url 'view_cart' %}" class="text-jp-primary hover:underline">前往購物車領取 →</a></p>
         {% endif %}
 
         {% if success_message %}<div class="text-green-600 font-bold mt-3">{{ success_message }}</div>{% endif %}
@@ -46,9 +46,9 @@
         <div class="flex gap-3 flex-wrap mt-5">
           {% if my_coupons %}
           <button type="submit" name="action" value="apply" id="applyBtn"
-                  class="bg-accent-500 hover:bg-accent-600 text-white font-bold px-5 py-2.5 rounded-lg transition" style="display:none;">套用優惠券</button>
+                  class="bg-jp-accent hover:bg-accent-600 text-white font-bold px-5 py-2.5 rounded-lg transition" style="display:none;">套用優惠券</button>
           {% endif %}
-          <button type="submit" name="action" value="buy" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-6 py-2.5 rounded-lg transition">前往付款（NT$ {{ final_price }}）</button>
+          <button type="submit" name="action" value="buy" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-6 py-2.5 rounded-lg transition">前往付款（NT$ {{ final_price }}）</button>
           <a href="{% url 'course_detail' course.id %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-2.5 rounded-lg transition">返回課程</a>
         </div>
       </form>

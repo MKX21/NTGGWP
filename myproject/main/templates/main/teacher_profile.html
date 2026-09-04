@@ -8,11 +8,11 @@
     <span class="w-[92px] h-[92px] rounded-full bg-gradient-to-br from-brand-500 to-violet-500 text-white flex items-center justify-center text-4xl font-black shrink-0">{{ teacher.username|slice:":1"|upper }}</span>
     <div class="flex-1">
       <h1 class="text-2xl font-black text-slate-900">{{ teacher.username }}</h1>
-      {% if role_display %}<span class="inline-block mt-1 bg-brand-50 text-brand-700 text-xs font-bold px-3 py-1 rounded-full">{{ role_display }}</span>{% endif %}
+      {% if role_display %}<span class="inline-block mt-1 bg-brand-50 text-jp-primaryHover text-xs font-bold px-3 py-1 rounded-full">{{ role_display }}</span>{% endif %}
       <div class="flex gap-8 flex-wrap mt-4">
-        <div><div class="text-2xl font-black text-brand-700">{{ course_count }}</div><div class="text-sm text-slate-500">開設課程</div></div>
-        <div><div class="text-2xl font-black text-brand-700">{{ total_students }}</div><div class="text-sm text-slate-500">學生人次</div></div>
-        <div><div class="text-2xl font-black text-brand-700">{% if avg_rating %}★ {{ avg_rating }}{% else %}—{% endif %}</div><div class="text-sm text-slate-500">平均評分（{{ review_count }} 則）</div></div>
+        <div><div class="text-2xl font-black text-jp-primaryHover">{{ course_count }}</div><div class="text-sm text-slate-500">開設課程</div></div>
+        <div><div class="text-2xl font-black text-jp-primaryHover">{{ total_students }}</div><div class="text-sm text-slate-500">學生人次</div></div>
+        <div><div class="text-2xl font-black text-jp-primaryHover">{% if avg_rating %}★ {{ avg_rating }}{% else %}—{% endif %}</div><div class="text-sm text-slate-500">平均評分（{{ review_count }} 則）</div></div>
       </div>
     </div>
   </div>

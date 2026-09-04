@@ -66,12 +66,12 @@
                     <!-- 通知 -->
                     <a href="{% url 'notifications' %}" class="relative p-2 {% if is_home == 'home' %}text-satdark-muted hover:text-electric{% else %}text-jp-muted hover:text-jp-primary{% endif %} transition" aria-label="通知">
                         <i class="fas fa-bell text-lg"></i>
-                        {% if nav_unread_count %}<span class="absolute -top-0.5 -right-0.5 bg-accent-500 text-white text-[10px] font-bold rounded-full h-4 min-w-4 px-1 flex items-center justify-center">{{ nav_unread_count }}</span>{% endif %}
+                        {% if nav_unread_count %}<span class="absolute -top-0.5 -right-0.5 bg-jp-accent text-white text-[10px] font-bold rounded-full h-4 min-w-4 px-1 flex items-center justify-center">{{ nav_unread_count }}</span>{% endif %}
                     </a>
                     <!-- 購物車 -->
                     <a href="{% url 'view_cart' %}" class="relative p-2 {% if is_home == 'home' %}text-satdark-muted hover:text-electric{% else %}text-jp-muted hover:text-jp-primary{% endif %} transition" aria-label="購物車">
                         <i class="fas fa-shopping-cart text-lg"></i>
-                        {% if nav_cart_count %}<span class="absolute -top-0.5 -right-0.5 bg-accent-500 text-white text-[10px] font-bold rounded-full h-4 min-w-4 px-1 flex items-center justify-center">{{ nav_cart_count }}</span>{% endif %}
+                        {% if nav_cart_count %}<span class="absolute -top-0.5 -right-0.5 bg-jp-accent text-white text-[10px] font-bold rounded-full h-4 min-w-4 px-1 flex items-center justify-center">{{ nav_cart_count }}</span>{% endif %}
                     </a>
                     <a href="{% url 'profile' %}" class="hidden sm:flex items-center gap-2 pl-2">
                         {% if nav_avatar_url %}

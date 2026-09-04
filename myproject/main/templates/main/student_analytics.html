@@ -8,8 +8,8 @@
     <h1 class="text-2xl font-black text-slate-900 mb-1">學生學習分析</h1>
     <p class="text-slate-500 mb-5">依你的學習紀錄即時產生觀看時數與課程圖表。</p>
     <div class="grid sm:grid-cols-2 gap-4">
-      <div class="bg-slate-50 rounded-xl p-5"><h3 class="text-sm text-slate-500 mb-1">已購課程數</h3><div class="text-3xl font-black text-brand-700">{{ purchased_count }}</div></div>
-      <div class="bg-slate-50 rounded-xl p-5"><h3 class="text-sm text-slate-500 mb-1">累積觀看分鐘</h3><div class="text-3xl font-black text-brand-700">{{ total_minutes }}</div></div>
+      <div class="bg-slate-50 rounded-xl p-5"><h3 class="text-sm text-slate-500 mb-1">已購課程數</h3><div class="text-3xl font-black text-jp-primaryHover">{{ purchased_count }}</div></div>
+      <div class="bg-slate-50 rounded-xl p-5"><h3 class="text-sm text-slate-500 mb-1">累積觀看分鐘</h3><div class="text-3xl font-black text-jp-primaryHover">{{ total_minutes }}</div></div>
     </div>
   </div>
 
@@ -31,7 +31,7 @@
       {% endfor %}
     </div>
     {% else %}<p class="text-slate-500">目前尚無學習紀錄。</p>{% endif %}
-    <a href="{% url 'student_dashboard' %}" class="inline-block mt-5 text-brand-600 hover:underline font-medium">← 回學生專區</a>
+    <a href="{% url 'student_dashboard' %}" class="inline-block mt-5 text-jp-primary hover:underline font-medium">← 回學生專區</a>
   </div>
 </main>
 {% endblock %}

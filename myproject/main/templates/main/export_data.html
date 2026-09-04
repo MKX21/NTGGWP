@@ -5,11 +5,11 @@
 <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
   <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
     <div></div>
-    <a href="{% url 'platform_analytics' %}" class="text-brand-600 hover:underline font-medium text-sm">← 查看平台內建數據分析儀表板</a>
+    <a href="{% url 'platform_analytics' %}" class="text-jp-primary hover:underline font-medium text-sm">← 查看平台內建數據分析儀表板</a>
   </div>
 
   <div class="bg-brand-50 rounded-2xl p-5 mb-6 text-sm text-slate-700 leading-relaxed">
-    <strong class="text-brand-700">如何連接 Power BI Desktop：</strong>
+    <strong class="text-jp-primaryHover">如何連接 Power BI Desktop：</strong>
     下載所需 CSV 後，開啟 Power BI Desktop →「取得資料」→「文字/CSV」→ 選擇下載的檔案匯入 → 依需求建立關聯與報表。
     CSV 已使用 UTF-8 BOM 編碼，中文欄位可正常顯示。
   </div>
@@ -25,7 +25,7 @@
       <div class="bg-slate-50 rounded-xl p-4">
         <h3 class="font-bold text-slate-800 text-sm mb-1">{{ name }}</h3>
         <p class="text-slate-500 text-xs leading-relaxed mb-3">{{ desc }}</p>
-        <a href="{{ url }}" class="inline-block bg-brand-600 hover:bg-brand-700 text-white font-bold px-4 py-1.5 rounded-lg text-sm transition">下載</a>
+        <a href="{{ url }}" class="inline-block bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-4 py-1.5 rounded-lg text-sm transition">下載</a>
       </div>
       {% endfor %}
     </div>

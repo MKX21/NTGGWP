@@ -12,8 +12,8 @@
   <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8 mb-6">
     <div class="grid grid-cols-2 gap-4 mb-6">
       <div class="bg-brand-50 rounded-xl p-5">
-        <div class="text-xs text-brand-600 font-semibold mb-1">預估稅後淨收入</div>
-        <div class="text-3xl font-black text-brand-700">NT$ {{ finance.total_net_income|floatformat:0 }}</div>
+        <div class="text-xs text-jp-primary font-semibold mb-1">預估稅後淨收入</div>
+        <div class="text-3xl font-black text-jp-primaryHover">NT$ {{ finance.total_net_income|floatformat:0 }}</div>
       </div>
       <div class="bg-green-50 rounded-xl p-5">
         <div class="text-xs text-green-700 font-semibold mb-1">可提領餘額</div>
@@ -29,7 +29,7 @@
     {% else %}
     <div class="bg-slate-50 rounded-xl p-4 mb-5 text-sm text-slate-600 flex items-center justify-between gap-3 flex-wrap">
       <span>收款帳戶：{{ bank_account.bank_name }}{% if bank_account.branch_name %} {{ bank_account.branch_name }}{% endif %} - {{ bank_account.account_name }} {{ bank_account.account_number }}</span>
-      <a href="{% url 'edit_bank_account' %}" class="text-brand-600 hover:underline font-medium shrink-0">修改</a>
+      <a href="{% url 'edit_bank_account' %}" class="text-jp-primary hover:underline font-medium shrink-0">修改</a>
     </div>
 
     <form method="post" class="flex items-end gap-3 flex-wrap">
@@ -39,7 +39,7 @@
         {{ form.amount }}
         {% if form.amount.errors %}<p class="text-red-600 text-xs mt-1">{{ form.amount.errors.0 }}</p>{% endif %}
       </div>
-      <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-6 py-2.5 rounded-lg transition"
+      <button type="submit" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-6 py-2.5 rounded-lg transition"
         {% if finance.available_balance < min_withdrawal_amount %}disabled aria-disabled="true" style="opacity:.5;cursor:not-allowed;"{% endif %}>
         申請提領
       </button>
@@ -92,7 +92,7 @@
         <div class="text-sm text-slate-500">回覆學生對你課程的提問</div>
       </div>
       {% if unanswered_questions %}
-      <span class="bg-accent-500 text-white text-xs font-bold rounded-full h-6 min-w-6 px-2 flex items-center justify-center">{{ unanswered_questions }}</span>
+      <span class="bg-jp-accent text-white text-xs font-bold rounded-full h-6 min-w-6 px-2 flex items-center justify-center">{{ unanswered_questions }}</span>
       {% else %}
       <i class="fas fa-chevron-right text-slate-300"></i>
       {% endif %}

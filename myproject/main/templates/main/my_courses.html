@@ -40,7 +40,7 @@
         </div>
 
         {% if enrollment.progress == 100 %}
-        <a href="{% url 'certificate' enrollment.course.id %}" class="mt-2 text-center bg-accent-500 hover:bg-accent-600 text-white font-medium py-2.5 rounded-lg text-sm transition">🎓 下載結業證書</a>
+        <a href="{% url 'certificate' enrollment.course.id %}" class="mt-2 text-center bg-jp-accent hover:bg-accent-600 text-white font-medium py-2.5 rounded-lg text-sm transition">🎓 下載結業證書</a>
         {% endif %}
 
         {% if enrollment.refund %}

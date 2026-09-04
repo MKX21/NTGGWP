@@ -10,20 +10,20 @@
       <div class="bg-brand-50 rounded-xl p-5">
         <h3 class="font-bold text-slate-800 mb-1">我的課程</h3>
         <p class="text-sm text-slate-500 mb-3">查看已購課程與學習進度。</p>
-        <a href="{% url 'my_courses' %}" class="inline-block bg-brand-600 hover:bg-brand-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition">前往</a>
+        <a href="{% url 'my_courses' %}" class="inline-block bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-4 py-2 rounded-lg text-sm transition">前往</a>
       </div>
       <div class="bg-slate-50 rounded-xl p-5">
         <h3 class="font-bold text-slate-800 mb-2">已購課程數</h3>
-        <div class="text-3xl font-black text-brand-700">{{ purchased_count }}</div>
+        <div class="text-3xl font-black text-jp-primaryHover">{{ purchased_count }}</div>
       </div>
       <div class="bg-slate-50 rounded-xl p-5">
         <h3 class="font-bold text-slate-800 mb-2">累積學習分鐘</h3>
-        <div class="text-3xl font-black text-brand-700">{{ total_minutes }}</div>
+        <div class="text-3xl font-black text-jp-primaryHover">{{ total_minutes }}</div>
       </div>
       <div class="bg-brand-50 rounded-xl p-5">
         <h3 class="font-bold text-slate-800 mb-1">學習分析</h3>
         <p class="text-sm text-slate-500 mb-3">觀看時數、課程比例與紀錄。</p>
-        <a href="{% url 'student_analytics' %}" class="inline-block bg-brand-600 hover:bg-brand-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition">查看圖表</a>
+        <a href="{% url 'student_analytics' %}" class="inline-block bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-4 py-2 rounded-lg text-sm transition">查看圖表</a>
       </div>
     </div>
   </div>
