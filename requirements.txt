@@ -5,3 +5,4 @@ cryptography==49.0.0
 reportlab==5.0.0
 imageio-ffmpeg==0.6.0
 requests==2.32.3
+Pillow

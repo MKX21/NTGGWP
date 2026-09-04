@@ -9,24 +9,20 @@ class Migration(migrations.Migration):
         ('main', '0013_course_access_duration_days_course_intro_video_file_and_more'),
     ]
 
-    # 共用雲端資料庫的 main_orderitem 已經有 discount_amount / paid_amount 這兩欄
-    # （另一位組員在自己的分支做訂單金額功能時，直接對共用 DB 加的欄位，
-    # 該分支程式碼還沒合併進這個 repo）。這裡只同步 Django 的 migration 狀態，
-    # 不對資料庫下 ALTER TABLE，避免「欄位已存在」的錯誤。
+    # 這支 migration 在共用雲端資料庫上已經標記為套用過（當時 main_orderitem
+    # 是由另一位組員直接對共用 DB 加欄位，這裡只補 Django 的狀態，沒有真的
+    # ALTER TABLE），所以以下改動不會影響共用 DB —— migration 只認名稱，
+    # 已套用過的不會重跑。但全新資料庫（CI、測試、新同伴 clone）從頭跑
+    # migrate 時需要真的建出這兩欄，所以改回正常的 AddField。
     operations = [
-        migrations.SeparateDatabaseAndState(
-            state_operations=[
-                migrations.AddField(
-                    model_name='orderitem',
-                    name='discount_amount',
-                    field=models.PositiveIntegerField(default=0, verbose_name='此項折扣金額'),
-                ),
-                migrations.AddField(
-                    model_name='orderitem',
-                    name='paid_amount',
-                    field=models.PositiveIntegerField(default=0, verbose_name='此項實付金額'),
-                ),
-            ],
-            database_operations=[],
+        migrations.AddField(
+            model_name='orderitem',
+            name='discount_amount',
+            field=models.PositiveIntegerField(default=0, verbose_name='此項折扣金額'),
+        ),
+        migrations.AddField(
+            model_name='orderitem',
+            name='paid_amount',
+            field=models.PositiveIntegerField(default=0, verbose_name='此項實付金額'),
         ),
     ]

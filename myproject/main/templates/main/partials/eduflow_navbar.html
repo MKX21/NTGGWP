@@ -52,10 +52,13 @@
                     <i class="fas fa-search text-lg"></i>
                 </button>
                 {% if user.is_authenticated %}
-                    {% if user.is_superuser %}
+                    {% if nav_role == 'teacher' %}
+                    <a href="{% url 'teacher_dashboard' %}" class="hidden lg:inline {% if is_home == 'home' %}text-satdark-muted hover:text-electric{% else %}text-jp-muted hover:text-jp-primary{% endif %} font-medium px-2">教師專區</a>
+                    {% elif user.is_superuser %}
                     <a href="/admin/" class="hidden lg:inline {% if is_home == 'home' %}text-satdark-muted hover:text-electric{% else %}text-jp-muted hover:text-jp-primary{% endif %} font-medium px-2">管理後台</a>
                     <a href="{% url 'platform_analytics' %}" class="hidden lg:inline {% if is_home == 'home' %}text-satdark-muted hover:text-electric{% else %}text-jp-muted hover:text-jp-primary{% endif %} font-medium px-2">數據分析</a>
                     <a href="{% url 'export_data_page' %}" class="hidden lg:inline {% if is_home == 'home' %}text-satdark-muted hover:text-electric{% else %}text-jp-muted hover:text-jp-primary{% endif %} font-medium px-2">資料匯出</a>
+                    <a href="{% url 'manage_withdrawals' %}" class="hidden lg:inline {% if is_home == 'home' %}text-satdark-muted hover:text-electric{% else %}text-jp-muted hover:text-jp-primary{% endif %} font-medium px-2">提領審核</a>
                     {% else %}
                     <a href="{% url 'my_courses' %}" class="hidden lg:inline {% if is_home == 'home' %}text-satdark-muted hover:text-electric{% else %}text-jp-muted hover:text-jp-primary{% endif %} font-medium px-2">我的課程</a>
                     {% if nav_can_teach %}
@@ -139,10 +142,15 @@
         {% if user.is_authenticated %}
             <a href="{% url 'view_cart' %}" class="px-3 py-3 rounded-lg hover:bg-white/5 text-satdark-text font-medium">購物車{% if nav_cart_count %}（{{ nav_cart_count }}）{% endif %}</a>
             <a href="{% url 'notifications' %}" class="px-3 py-3 rounded-lg hover:bg-white/5 text-satdark-text font-medium">通知{% if nav_unread_count %}（{{ nav_unread_count }}）{% endif %}</a>
-            {% if user.is_superuser %}
+            {% if nav_role == 'teacher' %}
+            <a href="{% url 'teacher_dashboard' %}" class="px-3 py-3 rounded-lg hover:bg-white/5 text-satdark-text font-medium">教師專區</a>
+            <a href="{% url 'my_revenue' %}" class="px-3 py-3 rounded-lg hover:bg-white/5 text-satdark-text font-medium">我的收支</a>
+            <a href="{% url 'my_withdrawals' %}" class="px-3 py-3 rounded-lg hover:bg-white/5 text-satdark-text font-medium">提領申請</a>
+            {% elif user.is_superuser %}
             <a href="/admin/" class="px-3 py-3 rounded-lg hover:bg-white/5 text-satdark-text font-medium">管理後台</a>
             <a href="{% url 'platform_analytics' %}" class="px-3 py-3 rounded-lg hover:bg-white/5 text-satdark-text font-medium">數據分析</a>
             <a href="{% url 'export_data_page' %}" class="px-3 py-3 rounded-lg hover:bg-white/5 text-satdark-text font-medium">資料匯出</a>
+            <a href="{% url 'manage_withdrawals' %}" class="px-3 py-3 rounded-lg hover:bg-white/5 text-satdark-text font-medium">提領審核</a>
             {% else %}
             <a href="{% url 'my_courses' %}" class="px-3 py-3 rounded-lg hover:bg-white/5 text-satdark-text font-medium">我的課程</a>
             <a href="{% url 'student_dashboard' %}" class="px-3 py-3 rounded-lg hover:bg-white/5 text-satdark-text font-medium">學生專區</a>

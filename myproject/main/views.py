@@ -1,21 +1,33 @@
-﻿import csv
+import csv
 import json
-from django.conf import settings
-from django.http import HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum, Avg, Count, Q
+from django.core.exceptions import ValidationError
+from django.db.models import (
+    Avg,
+    Count,
+    FloatField,
+    IntegerField,
+    OuterRef,
+    Q,
+    Subquery,
+    Sum,
+)
+from django.db.models.functions import Coalesce
 from django.core.paginator import Paginator
 from django.urls import reverse
-from django.utils.http import urlencode
+from django.conf import settings
+from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 
 from django.utils import timezone
 
 from .models import (
     Course,
     CourseLesson,
+    CourseSplitSetting,
     Profile,
     Enrollment,
     LearningRecord,
@@ -26,6 +38,7 @@ from .models import (
     CouponUsage,
     Payment,
     Notification,
+    RevenueRecord,
     Review,
     Cart,
     CartItem,
@@ -36,17 +49,16 @@ from .models import (
     CourseQuestion,
     CourseAnswer,
     CourseAudit,
-    Promotion,
     CourseCategory,
-    TeacherBankAccount,
-    WithdrawalRequest,
     CourseBundle,
     CourseAnnouncement,
     CourseComment,
+    WithdrawalRequest,
 )
 
 from .forms import (
     RegisterForm,
+    CourseForm,
     CouponApplyForm,
     ReviewForm,
     ChapterForm,
@@ -54,90 +66,25 @@ from .forms import (
     QuestionForm,
     AnswerForm,
     ProfileEditForm,
-    TeacherBankAccountForm,
-    WithdrawalRequestForm,
     AnnouncementForm,
     CommentForm,
 )
 
-MIN_WITHDRAWAL_AMOUNT = 500
-
-
-def _is_teacher(profile):
-    """單一帳號體系：role=='teacher'（傳統教師帳號）或 is_teacher（Admin 額外授權）皆可使用教師專區。"""
-    return profile.role == 'teacher' or profile.is_teacher
-
 from .payments import gateway
 from . import oauth
-
-
-def _attach_reviews(courses):
-    """一次查完所有課程的評分統計，避免每堂課各發一次查詢（遠端 DB 的 N+1 效能殺手）。
-    courses 若為 QuerySet，呼叫後其 _result_cache 會被填入已標記 avg_rating/review_count
-    的物件，後續重新迭代該 QuerySet（例如樣板的 {% for %}）會直接用到快取，不需接收回傳值。"""
-    courses = list(courses)
-    ids = [c.id for c in courses]
-    stats_map = {
-        row['course']: row
-        for row in Review.objects.filter(course_id__in=ids)
-        .values('course')
-        .annotate(avg=Avg('rating'), n=Count('id'))
-    }
-    for c in courses:
-        s = stats_map.get(c.id)
-        c.avg_rating = round(s['avg'], 1) if s and s['avg'] else None
-        c.review_count = s['n'] if s else 0
-    return courses
+from .checkout import place_order, quote_basket, with_display_price
+from .transitions import (
+    approve_course,
+    approve_refund,
+    complete_withdrawal,
+    fulfill_order,
+    reject_course,
+    reject_refund,
+    reject_withdrawal,
+)
 
 
 def home(request):
-    """編輯策展式首頁：精選/熱門/最新/主題故事區塊 + 品牌信任數字，完整篩選/排序/分頁另見 course_catalog。"""
-    categories = CourseCategory.objects.order_by('name')
-    total_students = Enrollment.objects.values('student').distinct().count()
-    total_courses = Course.objects.filter(is_published=True).count()
-    total_enrollments = Enrollment.objects.count()
-    total_teachers = User.objects.filter(profile__is_teacher=True).count()
-    avg_all = Review.objects.aggregate(a=Avg('rating'))['a']
-    avg_all = round(avg_all, 1) if avg_all else 4.8
-
-    base_pub = Course.objects.filter(is_published=True).select_related('teacher', 'category')
-    popular_courses = _attach_reviews(
-        base_pub.annotate(sc=Count('enrollment', distinct=True)).order_by('-sc', '-created_at')[:10]
-    )
-    latest_courses = _attach_reviews(base_pub.order_by('-created_at')[:10])
-
-    now = timezone.now()
-    funding_courses = list(
-        base_pub.filter(
-            is_crowdfunding=True,
-            funding_start_date__lte=now,
-            funding_end_date__gte=now,
-        ).order_by('funding_end_date')[:10]
-    )
-
-    # 主題故事區塊：依課程分類分組，取代原本電商式的排序/篩選型錄頁
-    theme_sections = []
-    for category in categories:
-        cat_courses = _attach_reviews(base_pub.filter(category=category).order_by('-created_at')[:8])
-        if cat_courses:
-            theme_sections.append({'category': category, 'courses': cat_courses})
-
-    return render(request, 'main/home.html', {
-        'categories': categories,
-        'total_students': total_students,
-        'total_courses': total_courses,
-        'total_enrollments': total_enrollments,
-        'total_teachers': total_teachers,
-        'avg_all': avg_all,
-        'popular_courses': popular_courses,
-        'latest_courses': latest_courses,
-        'funding_courses': funding_courses,
-        'theme_sections': theme_sections,
-    })
-
-
-def course_catalog(request):
-    """完整課程總覽：搜尋、分類篩選、排序、分頁——從首頁搬過來，邏輯與變數名稱不變。"""
     sort = request.GET.get('sort', 'newest')
     q = request.GET.get('q', '').strip()
     cat = request.GET.get('cat', '').strip()
@@ -166,16 +113,61 @@ def course_catalog(request):
 
     paginator = Paginator(qs, 8)
     page_obj = paginator.get_page(request.GET.get('page'))
+
+    # 評分：一次查完本頁所有課程，避免每堂課各發一次查詢（遠端 DB 的 N+1 效能殺手）
+    def _attach_reviews(courses):
+        courses = list(courses)
+        ids = [c.id for c in courses]
+        stats_map = {
+            row['course']: row
+            for row in Review.objects.filter(course_id__in=ids)
+            .values('course')
+            .annotate(avg=Avg('rating'), n=Count('id'))
+        }
+        for c in courses:
+            s = stats_map.get(c.id)
+            c.avg_rating = round(s['avg'], 1) if s and s['avg'] else None
+            c.review_count = s['n'] if s else 0
+        return courses
+
     _attach_reviews(page_obj.object_list)
 
     categories = CourseCategory.objects.order_by('name')
+    total_students = Enrollment.objects.values('student').distinct().count()
+    total_courses = Course.objects.filter(is_published=True).count()
+    avg_all = Review.objects.aggregate(a=Avg('rating'))['a']
+    avg_all = round(avg_all, 1) if avg_all else 4.8
 
-    return render(request, 'main/course_catalog.html', {
+    def _decorate(qs):
+        return _attach_reviews(qs)
+
+    base_pub = Course.objects.filter(is_published=True).select_related('teacher', 'category')
+    popular_courses = _decorate(
+        base_pub.annotate(sc=Count('enrollment', distinct=True)).order_by('-sc', '-created_at')[:10]
+    )
+    latest_courses = _decorate(base_pub.order_by('-created_at')[:10])
+
+    now = timezone.now()
+    funding_courses = list(
+        base_pub.filter(
+            is_crowdfunding=True,
+            funding_start_date__lte=now,
+            funding_end_date__gte=now,
+        ).order_by('funding_end_date')[:10]
+    )
+
+    return render(request, 'main/home.html', {
         'page_obj': page_obj,
         'sort': sort,
         'q': q,
         'cat': cat,
         'categories': categories,
+        'total_students': total_students,
+        'total_courses': total_courses,
+        'avg_all': avg_all,
+        'popular_courses': popular_courses,
+        'latest_courses': latest_courses,
+        'funding_courses': funding_courses,
         'sort_options': [
             ('newest', '最新'),
             ('popular', '熱門'),
@@ -185,8 +177,71 @@ def course_catalog(request):
     })
 
 
-def course_detail(request, course_id):
+def _course_stats_annotations():
+    """課程統計（購課數／觀看分鐘／營收／平均評分）的子查詢。
+
+    為什麼用 Subquery 而不是四個 annotate：那些統計各自來自不同的 to-many
+    關聯，一起 annotate 會在 JOIN 後產生笛卡爾積，Sum 與 Avg 會被重複計算
+    放大。Subquery 各算各的，且整批課程只發一次查詢。
+
+    取代的是「每門課各發四次查詢」的迴圈 —— 在跨網路的共用資料庫上，
+    5 門課要 21 次往返、約 2.8 秒。
+    """
+    def _for(qs, expr, alias):
+        return qs.filter(course=OuterRef('pk')).values('course').annotate(
+            **{alias: expr}
+        ).values(alias)[:1]
+
+    return {
+        'purchase_count': Coalesce(
+            Subquery(_for(Enrollment.objects.all(), Count('id'), 'n'),
+                     output_field=IntegerField()), 0),
+        'watch_minutes': Coalesce(
+            Subquery(_for(LearningRecord.objects.all(), Sum('minutes'), 's'),
+                     output_field=IntegerField()), 0),
+        'revenue': Coalesce(
+            Subquery(_for(Order.objects.filter(status='paid'), Sum('final_price'), 's'),
+                     output_field=IntegerField()), 0),
+        'rating': Subquery(
+            _for(Review.objects.all(), Avg('rating'), 'a'), output_field=FloatField()),
+    }
+
+
+def _visible_course_or_404(request, course_id):
+    """取課程。未上架的只有講師本人、管理員、已購課者看得到。
+
+    回傳 (course, is_preview)。is_preview=True 表示這是未上架課程的預覽 ——
+    畫面要標示審核狀態，購買入口一律關閉（見 _purchasable_course_or_404）。
+
+    已購課者也放行，是因為課程可能在購買後才被下架；讓付過錢的人吃 404
+    等於沒收他買到的東西。
+    """
     course = get_object_or_404(Course, id=course_id)
+    if course.is_published:
+        return course, False
+
+    user = request.user
+    can_preview = user.is_authenticated and (
+        course.teacher_id == user.id
+        or user.is_superuser
+        or Enrollment.objects.filter(student=user, course=course).exists()
+    )
+    if not can_preview:
+        raise Http404('課程不存在或尚未上架')
+
+    return course, True
+
+
+def _purchasable_course_or_404(request, course_id):
+    """取可購買的課程。未上架者一律不可購買 —— 講師與管理員也不行。"""
+    course, is_preview = _visible_course_or_404(request, course_id)
+    if is_preview:
+        raise Http404('課程尚未上架，無法購買')
+    return course
+
+
+def course_detail(request, course_id):
+    course, is_preview = _visible_course_or_404(request, course_id)
 
     already_purchased = False
     can_review = False
@@ -257,40 +312,12 @@ def course_detail(request, course_id):
 
     is_course_teacher = request.user.is_authenticated and course.teacher_id == request.user.id
 
-    try:
-        teacher_bio = course.teacher.profile.bio
-    except Profile.DoesNotExist:
-        teacher_bio = None
-
     # 課程統計（銷售頁用）
     total_lessons = CourseLesson.objects.filter(chapter__course=course).count()
     total_minutes = CourseLesson.objects.filter(chapter__course=course).aggregate(
         total=Sum('duration_minutes')
     )['total'] or 0
     student_count = Enrollment.objects.filter(course=course).count()
-
-    # 合購優惠：本課程參與的啟用中組合
-    bundles = course.bundles.filter(is_active=True).prefetch_related('courses')
-    if request.user.is_authenticated:
-        for bundle in bundles:
-            bundle.user_owns_any = Enrollment.objects.filter(
-                student=request.user, course__in=bundle.courses.all()
-            ).exists()
-    else:
-        for bundle in bundles:
-            bundle.user_owns_any = False
-
-    # 課程公告：僅已購買學員／該課程教師／Admin 可見
-    can_see_announcements = already_purchased or is_course_teacher or request.user.is_superuser
-    announcements = course.announcements.select_related('author').all() if can_see_announcements else []
-
-    # 課程留言：任何登入使用者皆可留言，與需購買才能發問的問答區區隔
-    comments = course.comments.select_related('user').all()
-
-    # 試看影片：彙整本課程所有標記免費試看的單元
-    preview_lessons = CourseLesson.objects.filter(
-        chapter__course=course, is_free_preview=True
-    ).select_related('chapter').order_by('chapter__sort_order', 'sort_order')
 
     return render(request, 'main/course_detail.html', {
         'course': course,
@@ -307,16 +334,10 @@ def course_detail(request, course_id):
         'question_form': QuestionForm(),
         'answer_form': AnswerForm(),
         'is_course_teacher': is_course_teacher,
-        'teacher_bio': teacher_bio,
         'total_lessons': total_lessons,
         'total_minutes': total_minutes,
         'student_count': student_count,
-        'bundles': bundles,
-        'can_see_announcements': can_see_announcements,
-        'announcements': announcements,
-        'comments': comments,
-        'comment_form': CommentForm(),
-        'preview_lessons': preview_lessons,
+        'is_preview': is_preview,
     })
 
 
@@ -331,15 +352,17 @@ def register(request):
                 password=form.cleaned_data['password']
             )
 
-            # 所有新註冊帳號一律為學生身分；教師權限只能由 Admin 後台另外授予。
-            Profile.objects.create(user=user, role='student')
+            Profile.objects.create(
+                user=user,
+                role=form.cleaned_data['role']
+            )
 
             return redirect('register_success')
     else:
         form = RegisterForm()
 
     return render(request, 'main/register.html', {
-        'form': form,
+        'form': form
     })
 
 
@@ -347,16 +370,8 @@ def register_success(request):
     return render(request, 'main/register_success.html')
 
 
-def _post_login_redirect(user):
-    # 不論學生或具備教師權限的使用者，登入後一律回到主頁；教師專區只能透過
-    # 導覽列的「進入教師專區」按鈕主動進入，絕不在登入當下直接跳轉過去。
-    if user.is_superuser:
-        return redirect('/admin/')
-    return redirect('home')
-
-
 def login_view(request):
-    error_message = request.GET.get('error') or None
+    error_message = None
 
     if request.method == 'POST':
         login_input = request.POST.get('username')
@@ -379,86 +394,34 @@ def login_view(request):
 
         if user is not None:
             login(request, user)
-            return _post_login_redirect(user)
+
+            if user.is_superuser:
+                return redirect('/admin/')
+
+            try:
+                profile = user.profile
+
+                if profile.role == 'teacher':
+                    return redirect('teacher_dashboard')
+                elif profile.role == 'student':
+                    return redirect('student_dashboard')
+                else:
+                    return redirect('home')
+
+            except Profile.DoesNotExist:
+                return redirect('home')
+
         else:
             error_message = '帳號 / Email 或密碼錯誤。'
 
     return render(request, 'main/login.html', {
-        'error_message': error_message,
+        'error_message': error_message
     })
 
 
 def logout_view(request):
     logout(request)
     return redirect('home')
-
-
-def _login_error_redirect(message):
-    return redirect(f"{reverse('login')}?{urlencode({'error': message})}")
-
-
-def google_login(request):
-    if not settings.GOOGLE_OAUTH_CLIENT_ID:
-        return _login_error_redirect('Google 登入尚未設定。')
-    state = oauth.new_state()
-    request.session['google_oauth_state'] = state
-    return redirect(oauth.build_google_auth_url(request, state))
-
-
-def google_oauth_callback(request):
-    error = request.GET.get('error')
-    if error:
-        return _login_error_redirect('Google 登入已取消。')
-
-    state = request.GET.get('state')
-    expected_state = request.session.pop('google_oauth_state', None)
-    if not state or not expected_state or state != expected_state:
-        return _login_error_redirect('登入驗證失敗，請再試一次。')
-
-    code = request.GET.get('code')
-    if not code:
-        return _login_error_redirect('Google 未提供授權碼。')
-
-    try:
-        provider_id, email, name = oauth.fetch_google_profile(request, code)
-        user = oauth.get_or_create_user('google', provider_id, email, name)
-    except oauth.OAuthError:
-        return _login_error_redirect('Google 登入失敗，請稍後再試。')
-
-    login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-    return _post_login_redirect(user)
-
-
-def line_login(request):
-    if not settings.LINE_LOGIN_CHANNEL_ID:
-        return _login_error_redirect('LINE 登入尚未設定。')
-    state = oauth.new_state()
-    request.session['line_oauth_state'] = state
-    return redirect(oauth.build_line_auth_url(request, state))
-
-
-def line_oauth_callback(request):
-    error = request.GET.get('error')
-    if error:
-        return _login_error_redirect('LINE 登入已取消。')
-
-    state = request.GET.get('state')
-    expected_state = request.session.pop('line_oauth_state', None)
-    if not state or not expected_state or state != expected_state:
-        return _login_error_redirect('登入驗證失敗，請再試一次。')
-
-    code = request.GET.get('code')
-    if not code:
-        return _login_error_redirect('LINE 未提供授權碼。')
-
-    try:
-        provider_id, email, name = oauth.fetch_line_profile(request, code)
-        user = oauth.get_or_create_user('line', provider_id, email, name)
-    except oauth.OAuthError:
-        return _login_error_redirect('LINE 登入失敗，請稍後再試。')
-
-    login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-    return _post_login_redirect(user)
 
 
 @login_required
@@ -508,9 +471,12 @@ def edit_profile(request):
 
 @login_required
 def student_dashboard(request):
-    # 每個帳號本質上都具備學生身份（教師權限只是額外附加），此頁不限角色。
     try:
-        request.user.profile
+        profile = request.user.profile
+
+        if profile.role != 'student':
+            return redirect('home')
+
     except Profile.DoesNotExist:
         return redirect('home')
 
@@ -530,101 +496,35 @@ def student_dashboard(request):
     })
 
 
-def _teacher_finance_summary(user):
-    """依各課程的分潤比例，計算教師目前的預估淨收入與可提領餘額。"""
-    courses = Course.objects.filter(teacher=user)
-    course_net = {}
-    total_gross = 0
-    total_net = 0
-
-    for course in courses:
-        # 用 OrderItem 聚合（而非 Order.course），才能涵蓋購物車/合購優惠等多課程訂單
-        # （這類訂單 Order.course 為 None，比照 platform_analytics 的熱銷課程統計做法）
-        gross = OrderItem.objects.filter(
-            course=course, order__status='paid'
-        ).aggregate(total=Sum('price'))['total'] or 0
-        net = gross * course.teacher_revenue_share // 100
-        course_net[course.id] = {'gross_revenue': gross, 'net_revenue': net}
-        total_gross += gross
-        total_net += net
-
-    already_withdrawn = WithdrawalRequest.objects.filter(
-        teacher=user, status='APPROVED'
-    ).aggregate(s=Sum('amount'))['s'] or 0
-    pending_withdrawal = WithdrawalRequest.objects.filter(
-        teacher=user, status='PENDING'
-    ).aggregate(s=Sum('amount'))['s'] or 0
-
-    available_balance = max(0, total_net - already_withdrawn - pending_withdrawal)
-
-    return {
-        'course_net': course_net,
-        'total_gross_revenue': total_gross,
-        'total_net_income': total_net,
-        'total_withdrawn': already_withdrawn,
-        'pending_withdrawal_amount': pending_withdrawal,
-        'available_balance': available_balance,
-    }
-
-
 @login_required
 def teacher_dashboard(request):
-    """單頁式財務與提領儀表板：淨收入、提領申請、提領明細，不含任何課程資訊。"""
     try:
         profile = request.user.profile
 
-        if not _is_teacher(profile):
+        if profile.role != 'teacher':
             return redirect('home')
 
     except Profile.DoesNotExist:
         return redirect('home')
 
-    bank_account = TeacherBankAccount.objects.filter(teacher=request.user).first()
-    finance = _teacher_finance_summary(request.user)
-
-    form = None
-    if request.method == 'POST':
-        if bank_account:
-            form = WithdrawalRequestForm(
-                request.POST,
-                available_balance=finance['available_balance'],
-                min_amount=MIN_WITHDRAWAL_AMOUNT,
-            )
-            if form.is_valid():
-                snapshot = (
-                    f"{bank_account.bank_name}"
-                    f"{' ' + bank_account.branch_name if bank_account.branch_name else ''} - "
-                    f"{bank_account.account_name} {bank_account.account_number}"
-                )
-                WithdrawalRequest.objects.create(
-                    teacher=request.user,
-                    amount=form.cleaned_data['amount'],
-                    bank_info_snapshot=snapshot,
-                    status='PENDING',
-                )
-                return redirect('teacher_dashboard')
-
-    if form is None:
-        form = WithdrawalRequestForm(
-            available_balance=finance['available_balance'],
-            min_amount=MIN_WITHDRAWAL_AMOUNT,
-        )
-
-    unanswered_questions = CourseQuestion.objects.filter(
-        course__teacher=request.user
-    ).exclude(answers__isnull=False).count()
-
-    withdrawals = WithdrawalRequest.objects.filter(
+    # 一次查完所有統計，不再逐課發四次查詢（見 _course_stats_annotations）
+    teacher_courses = Course.objects.filter(
         teacher=request.user
-    ).order_by('-created_at')
+    ).select_related('category').annotate(**_course_stats_annotations())
+
+    course_data = [
+        {
+            'course': course,
+            'purchase_count': course.purchase_count,
+            'total_watch_minutes': course.watch_minutes,
+            'total_revenue': course.revenue,
+            'average_rating': round(course.rating, 1) if course.rating else None,
+        }
+        for course in teacher_courses
+    ]
 
     return render(request, 'main/teacher_dashboard.html', {
-        'finance': finance,
-        'min_withdrawal_amount': MIN_WITHDRAWAL_AMOUNT,
-        'bank_account': bank_account,
-        'form': form,
-        'withdrawals': withdrawals,
-        'unanswered_questions': unanswered_questions,
+        'course_data': course_data
     })
 
 
@@ -635,37 +535,53 @@ def my_courses(request):
     except Profile.DoesNotExist:
         return redirect('home')
 
-    enrollments = Enrollment.objects.filter(
-        student=request.user
-    ).select_related('course', 'course__teacher', 'course__category')
+    # 觀看分鐘與課程總長用子查詢一次算完，不再逐筆發查詢
+    enrollments = list(
+        Enrollment.objects.filter(student=request.user)
+        .select_related('course', 'course__teacher', 'course__category')
+        .annotate(
+            watch_minutes=Coalesce(
+                Subquery(
+                    LearningRecord.objects
+                    .filter(user=request.user, course=OuterRef('course'))
+                    .values('course').annotate(s=Sum('minutes')).values('s')[:1],
+                    output_field=IntegerField(),
+                ), 0),
+            course_total_minutes=Coalesce(
+                Subquery(
+                    CourseLesson.objects
+                    .filter(chapter__course=OuterRef('course'))
+                    .values('chapter__course')
+                    .annotate(s=Sum('duration_minutes')).values('s')[:1],
+                    output_field=IntegerField(),
+                ), 0),
+        )
+    )
+
+    # 退款整合進我的課程：訂單與退款狀態各用一次查詢批次取回，
+    # 依 id 遞增覆蓋 → 每門課留下的就是最新一筆。
+    course_ids = [e.course_id for e in enrollments]
+    orders_by_course = {
+        o.course_id: o
+        for o in Order.objects.filter(
+            user=request.user, course_id__in=course_ids, status='paid'
+        ).order_by('id')
+    }
+    refunds_by_order = {
+        r.order_id: r
+        for r in Refund.objects.filter(
+            order_id__in=[o.id for o in orders_by_course.values()]
+        ).order_by('id')
+    }
 
     for enrollment in enrollments:
-        enrollment.watch_minutes = LearningRecord.objects.filter(
-            user=request.user,
-            course=enrollment.course
-        ).aggregate(
-            total=Sum('minutes')
-        )['total'] or 0
-
-        course_total = CourseLesson.objects.filter(
-            chapter__course=enrollment.course
-        ).aggregate(total=Sum('duration_minutes'))['total'] or 0
-        enrollment.course_total_minutes = course_total
-
-        if course_total > 0:
-            pct = int(min(enrollment.watch_minutes, course_total) / course_total * 100)
-        else:
-            pct = 0
-        enrollment.progress = pct
-
-        # 退款整合進我的課程：找該課的已付款訂單與退款狀態
-        order = Order.objects.filter(
-            user=request.user, course=enrollment.course, status='paid'
-        ).order_by('-id').first()
+        total = enrollment.course_total_minutes
+        enrollment.progress = (
+            int(min(enrollment.watch_minutes, total) / total * 100) if total > 0 else 0
+        )
+        order = orders_by_course.get(enrollment.course_id)
         enrollment.order = order
-        enrollment.refund = None
-        if order:
-            enrollment.refund = Refund.objects.filter(order=order).order_by('-id').first()
+        enrollment.refund = refunds_by_order.get(order.id) if order else None
 
     total_minutes = LearningRecord.objects.filter(
         user=request.user
@@ -681,7 +597,7 @@ def my_courses(request):
 
 @login_required
 def checkout(request, course_id):
-    course = get_object_or_404(Course, id=course_id)
+    course = _purchasable_course_or_404(request, course_id)
 
     try:
         request.user.profile
@@ -696,68 +612,26 @@ def checkout(request, course_id):
 
     form = CouponApplyForm(request.POST or None)
 
-    list_price = course.price
-    original_price = course.get_effective_price()
-    coupon = None
-    discount_amount = 0
-    final_price = original_price
-    error_message = None
-    success_message = None
-    selected_code = ''
+    action = request.POST.get('action', 'buy') if request.method == 'POST' else ''
+    selected_code = request.POST.get('coupon_code', '').strip() if request.method == 'POST' else ''
 
-    if request.method == 'POST':
-        # action：apply=只套用預覽折扣、buy=確認購買
-        action = request.POST.get('action', 'buy')
-        coupon_code = request.POST.get('coupon_code', '').strip()
-        selected_code = coupon_code
+    # 定價與下單一律走 checkout module：單課只是「只有一項的購物籃」，
+    # 因此和購物車結帳算出完全相同的價格（含促銷）。詞彙見 CONTEXT.md。
+    quote = quote_basket(request.user, [course], selected_code)
+    if quote.is_empty:
+        # 上面的已購課檢查與這裡之間有購買發生（並行送出兩次表單）
+        return redirect('course_detail', course_id=course.id)
 
-        if coupon_code:
-            try:
-                coupon = Coupon.objects.get(code__iexact=coupon_code)
+    error_message = quote.coupon_error
+    success_message = (
+        f'優惠券已套用，折抵 NT$ {quote.coupon_total}。' if quote.coupon_total > 0 else None
+    )
 
-            except Coupon.DoesNotExist:
-                coupon = None
-                error_message = '找不到這張優惠券。'
-
-            if coupon:
-                if not coupon.is_valid_now():
-                    error_message = '這張優惠券目前不可使用。'
-                    coupon = None
-
-                else:
-                    discount_amount = coupon.calculate_discount(original_price)
-
-                    if discount_amount <= 0:
-                        error_message = '此優惠券未達最低消費金額或無法套用。'
-                        coupon = None
-                        discount_amount = 0
-
-                    else:
-                        final_price = original_price - discount_amount
-                        success_message = f'優惠券已套用，折抵 NT$ {discount_amount}。'
-        elif action == 'buy':
-            success_message = None  # 沒輸入券，直接原價購買
-
-        # 只有按「確認購買」且沒有錯誤時才成立「待付款」訂單，導向付款頁；
-        # 按「套用優惠券」只重新整理頁面顯示折扣預覽。付款完成後才會開通課程。
-        if action == 'buy' and not error_message:
-            order = Order.objects.create(
-                user=request.user,
-                course=course,
-                coupon=coupon,
-                original_price=original_price,
-                discount_amount=discount_amount,
-                final_price=final_price,
-                status='pending'
-            )
-            OrderItem.objects.create(
-                order=order, course=course, price=original_price,
-                discount_amount=discount_amount, paid_amount=final_price,
-            )
-            Payment.objects.create(
-                order=order, amount=final_price, status='pending', method='mock'
-            )
-            return redirect('payment', order_id=order.id)
+    # 只有按「確認購買」且沒有錯誤時才成立「待付款」訂單，導向付款頁；
+    # 按「套用優惠券」只重新整理頁面顯示折扣預覽。付款完成後才會開通課程。
+    if action == 'buy' and not error_message:
+        order = place_order(request.user, quote)
+        return redirect('payment', order_id=order.id)
 
     # A4：帶出使用者可用的優惠券供選擇
     now = timezone.now()
@@ -772,10 +646,11 @@ def checkout(request, course_id):
     return render(request, 'main/checkout.html', {
         'course': course,
         'form': form,
-        'list_price': list_price,
-        'original_price': original_price,
-        'discount_amount': discount_amount,
-        'final_price': final_price,
+        'list_price': quote.list_total,
+        'original_price': quote.subtotal,
+        'promo_discount': quote.promo_total,
+        'discount_amount': quote.coupon_total,
+        'final_price': quote.total,
         'error_message': error_message,
         'success_message': success_message,
         'my_coupons': my_coupons,
@@ -958,9 +833,112 @@ def save_progress(request, lesson_id):
 
 
 @login_required
+def create_course(request):
+    try:
+        profile = request.user.profile
+
+        if profile.role != 'teacher':
+            return redirect('home')
+
+    except Profile.DoesNotExist:
+        return redirect('home')
+
+    if request.method == 'POST':
+        form = CourseForm(request.POST, request.FILES)
+
+        if form.is_valid():
+            course = form.save(commit=False)
+            course.teacher = request.user
+            course.is_published = False  # A8：送審前不上架
+            course.save()
+
+            CourseAudit.objects.create(course=course, status='pending')
+
+            Notification.objects.create(
+                user=request.user,
+                title='課程已送審',
+                content=f'你的課程「{course.title}」已送出審核，通過後才會上架。'
+            )
+
+            return redirect('teacher_dashboard')
+
+    else:
+        form = CourseForm()
+
+    return render(request, 'main/create_course.html', {
+        'form': form
+    })
+
+
+@login_required
+def edit_course(request, course_id):
+    try:
+        profile = request.user.profile
+
+        if profile.role != 'teacher':
+            return redirect('home')
+
+    except Profile.DoesNotExist:
+        return redirect('home')
+
+    course = get_object_or_404(
+        Course,
+        id=course_id,
+        teacher=request.user
+    )
+
+    if request.method == 'POST':
+        form = CourseForm(
+            request.POST,
+            request.FILES,
+            instance=course
+        )
+
+        if form.is_valid():
+            form.save()
+            return redirect('teacher_dashboard')
+
+    else:
+        form = CourseForm(instance=course)
+
+    return render(request, 'main/edit_course.html', {
+        'form': form,
+        'course': course
+    })
+
+
+@login_required
+def delete_course(request, course_id):
+    try:
+        profile = request.user.profile
+
+        if profile.role != 'teacher':
+            return redirect('home')
+
+    except Profile.DoesNotExist:
+        return redirect('home')
+
+    course = get_object_or_404(
+        Course,
+        id=course_id,
+        teacher=request.user
+    )
+
+    if request.method == 'POST':
+        course.delete()
+        return redirect('teacher_dashboard')
+
+    return render(request, 'main/delete_course.html', {
+        'course': course
+    })
+
+
+@login_required
 def student_analytics(request):
     try:
-        request.user.profile
+        profile = request.user.profile
+        if profile.role != 'student':
+            return redirect('home')
     except Profile.DoesNotExist:
         return redirect('home')
 
@@ -1005,14 +983,15 @@ def student_analytics(request):
 def teacher_analytics(request):
     try:
         profile = request.user.profile
-        if not _is_teacher(profile):
+        if profile.role != 'teacher':
             return redirect('home')
     except Profile.DoesNotExist:
         return redirect('home')
 
+    # 逐課統計一次查完（見 _course_stats_annotations）
     teacher_courses = Course.objects.filter(
         teacher=request.user
-    )
+    ).annotate(**_course_stats_annotations())
 
     total_revenue = Order.objects.filter(
         course__teacher=request.user,
@@ -1038,32 +1017,11 @@ def teacher_analytics(request):
     rating_data = []
 
     for course in teacher_courses:
-        purchase_count = Enrollment.objects.filter(course=course).count()
-
-        revenue = Order.objects.filter(
-            course=course,
-            status='paid'
-        ).aggregate(
-            total=Sum('final_price')
-        )['total'] or 0
-
-        watch_minutes = LearningRecord.objects.filter(
-            course=course
-        ).aggregate(
-            total=Sum('minutes')
-        )['total'] or 0
-
-        avg_rating = Review.objects.filter(
-            course=course
-        ).aggregate(
-            avg=Avg('rating')
-        )['avg'] or 0
-
         course_labels.append(course.title)
-        purchase_counts.append(purchase_count)
-        revenue_data.append(revenue)
-        watch_minutes_data.append(watch_minutes)
-        rating_data.append(round(avg_rating, 1))
+        purchase_counts.append(course.purchase_count)
+        revenue_data.append(course.revenue)
+        watch_minutes_data.append(course.watch_minutes)
+        rating_data.append(round(course.rating, 1) if course.rating else 0)
 
     return render(request, 'main/teacher_analytics.html', {
         'total_revenue': total_revenue,
@@ -1075,8 +1033,6 @@ def teacher_analytics(request):
         'watch_minutes_data_json': json.dumps(watch_minutes_data),
         'rating_data_json': json.dumps(rating_data),
     })
-
-
 @login_required
 def export_data_page(request):
     if not request.user.is_superuser:
@@ -1201,7 +1157,16 @@ def platform_analytics(request):
 
 
 def create_csv_response(filename):
-    response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
+    """\u5efa\u7acb\u5e36 UTF-8 BOM \u7684 CSV response\uff0cExcel/LibreOffice \u958b\u555f\u6642\u6703\u81ea\u52d5\u5224\u65b7\u7de8\u78bc\u3001
+    \u4e0d\u8df3\u51fa\u532f\u5165\u7cbe\u9748\uff0c\u4e2d\u6587\u4e5f\u4e0d\u6703\u4e82\u78bc\u3002
+
+    \u9019\u88e1\u523b\u610f\u628a charset \u8a2d\u70ba utf-8\uff08\u4e0d\u662f utf-8-sig\uff09\u518d\u624b\u52d5\u5beb\u4e00\u6b21 BOM \u2014\u2014 HttpResponse
+    \u662f\u9010\u6b21 write() \u500b\u5225\u7de8\u78bc\uff08\u4e0d\u662f\u7528\u540c\u4e00\u689d\u4e32\u6d41\u7d2f\u52a0\uff09\uff0c\u82e5 charset \u8a2d\u6210 utf-8-sig\uff0c
+    \u4e4b\u5f8c csv.writer \u6bcf\u547c\u53eb\u4e00\u6b21 writerow() \u90fd\u6703\u5404\u81ea\u88ab\u52a0\u4e0a\u4e00\u500b BOM\uff0c
+    \u6574\u4efd CSV \u6bcf\u4e00\u884c\u524d\u9762\u90fd\u6703\u591a\u51fa\u4e00\u500b\u770b\u4e0d\u898b\u7684 BOM \u5b57\u5143\uff0cExcel \u958b\u51fa\u4f86\u6bcf\u4e00\u5217\u90fd\u6703\u932f\u4f4d\u3002
+    BOM \u53ea\u9700\u8981\u51fa\u73fe\u5728\u6a94\u6848\u6700\u958b\u982d\u4e00\u6b21\uff0c\u6240\u4ee5\u6539\u6210\u624b\u52d5\u53ea\u5beb\u4e00\u6b21\u3002
+    """
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     response.write('\ufeff')
     return response
@@ -1617,7 +1582,12 @@ def export_course_lessons_csv(request):
 
 @login_required
 def add_to_cart(request, course_id):
-    course = get_object_or_404(Course, id=course_id)
+    # 改資料庫狀態的動作只接受 POST —— GET 不受 CSRF middleware 保護，
+    # 一個 <img src> 或預抓就能代替使用者送出。畫面本來就是 POST 表單。
+    if request.method != 'POST':
+        return redirect('course_detail', course_id=course_id)
+
+    course = _purchasable_course_or_404(request, course_id)
 
     if Enrollment.objects.filter(student=request.user, course=course).exists():
         return redirect('course_detail', course_id=course.id)
@@ -1629,59 +1599,12 @@ def add_to_cart(request, course_id):
 
 
 @login_required
-def add_bundle_to_cart(request, bundle_id):
-    bundle = get_object_or_404(CourseBundle, id=bundle_id, is_active=True)
-    courses = list(bundle.courses.all())
-
-    already_owns = Enrollment.objects.filter(
-        student=request.user, course__in=courses
-    ).exists()
-    if already_owns:
-        return redirect('course_detail', course_id=courses[0].id if courses else 0)
-
-    cart, _ = Cart.objects.get_or_create(user=request.user)
-    for course in courses:
-        CartItem.objects.update_or_create(
-            cart=cart, course=course, defaults={'bundle': bundle}
-        )
-
-    return redirect('view_cart')
-
-
-def _group_cart_items_by_bundle(items):
-    """把購物車項目依合購組合分組，回傳 (display_bundles, loose_items)。
-    display_bundles 每筆含 bundle/items/is_intact/individual_total。"""
-    bundle_groups = {}
-    loose_items = []
-    for item in items:
-        if item.bundle_id:
-            bundle_groups.setdefault(item.bundle_id, []).append(item)
-        else:
-            loose_items.append(item)
-
-    display_bundles = []
-    for group_items in bundle_groups.values():
-        bundle = group_items[0].bundle
-        bundle_course_ids = set(bundle.courses.values_list('id', flat=True))
-        group_course_ids = {gi.course_id for gi in group_items}
-        is_intact = bundle_course_ids == group_course_ids and bundle.is_active
-        display_bundles.append({
-            'bundle': bundle,
-            'items': group_items,
-            'is_intact': is_intact,
-            'individual_total': sum(gi.course.get_effective_price() for gi in group_items),
-        })
-
-    return display_bundles, loose_items
-
-
-@login_required
 def view_cart(request):
     cart, _ = Cart.objects.get_or_create(user=request.user)
-    items = list(cart.items.select_related('course', 'course__teacher', 'bundle').all())
-    total = sum(item.course.get_effective_price() for item in items)
-
-    display_bundles, loose_items = _group_cart_items_by_bundle(items)
+    items = list(cart.items.select_related('course', 'course__teacher').all())
+    # 顯示價含促銷，才會和結帳實際收的錢一致（批次計算，不逐課查詢）
+    with_display_price([item.course for item in items])
+    total = sum(item.course.display_price for item in items)
 
     # 優惠券整合進購物車：可領取 + 我的優惠券
     now = timezone.now()
@@ -1697,8 +1620,6 @@ def view_cart(request):
 
     return render(request, 'main/cart.html', {
         'items': items,
-        'display_bundles': display_bundles,
-        'loose_items': loose_items,
         'total': total,
         'available_coupons': available_coupons,
         'claimed_ids': claimed_ids,
@@ -1708,6 +1629,9 @@ def view_cart(request):
 
 @login_required
 def remove_from_cart(request, item_id):
+    if request.method != 'POST':
+        return redirect('view_cart')
+
     item = get_object_or_404(CartItem, id=item_id, cart__user=request.user)
     item.delete()
     return redirect('view_cart')
@@ -1715,125 +1639,20 @@ def remove_from_cart(request, item_id):
 
 @login_required
 def cart_checkout(request):
-    cart, _ = Cart.objects.get_or_create(user=request.user)
-    items = list(cart.items.select_related('course', 'bundle').all())
-    now = timezone.now()
-
-    # A5：有效促銷 → course_id 對應 Promotion
-    promo_map = {}
-    active_promos = Promotion.objects.filter(
-        is_active=True, start_date__lte=now, end_date__gte=now
-    ).prefetch_related('courses')
-    for promo in active_promos:
-        for c in promo.courses.all():
-            promo_map.setdefault(c.id, promo)
-
-    # A5：整車套用一張優惠券（依購物車總額計算，逐筆分攤）
-    coupon = None
-    if request.method == 'POST':
-        code = request.POST.get('coupon_code', '').strip()
-        if code:
-            coupon = Coupon.objects.filter(code__iexact=code).first()
-            if coupon and not coupon.is_valid_now():
-                coupon = None
-
-    # 只結帳尚未購買的課程
-    items = [i for i in items if not Enrollment.objects.filter(
-        student=request.user, course=i.course).exists()]
-    if not items:
+    # 成立訂單會改資料庫狀態，只接受 POST（cart.html 已經是 POST 表單）。
+    # 先前沒有這道檢查，一個 GET（含瀏覽器預抓、重新整理）就會多一張訂單。
+    if request.method != 'POST':
         return redirect('view_cart')
 
-    cart_total = sum(i.course.get_effective_price() for i in items)
-    coupon_discount = coupon.calculate_discount(cart_total) if coupon else 0
+    cart, _ = Cart.objects.get_or_create(user=request.user)
+    courses = [item.course for item in cart.items.select_related('course').all()]
 
-    # 合購優惠：組合完整才套用合購價（依各課程原價比例分攤，餘數分給組內最後一筆對齊總額），
-    # 組合被拆散（使用者移除其中一堂或已購買其中一堂）就退回個別計價並清空 bundle 標記
-    bundle_groups = {}
-    loose_items = []
-    for item in items:
-        if item.bundle_id:
-            bundle_groups.setdefault(item.bundle_id, []).append(item)
-        else:
-            loose_items.append(item)
+    # 定價與下單一律走 checkout module；已購課過濾、促銷、券分攤都在裡面。
+    quote = quote_basket(request.user, courses, request.POST.get('coupon_code', ''))
+    if quote.is_empty:
+        return redirect('view_cart')
 
-    item_price = {}
-    total_original = 0
-    total_discount = 0
-
-    for group_items in bundle_groups.values():
-        bundle = group_items[0].bundle
-        bundle_course_ids = set(bundle.courses.values_list('id', flat=True))
-        group_course_ids = {gi.course_id for gi in group_items}
-
-        if not bundle.is_active or bundle_course_ids != group_course_ids:
-            for gi in group_items:
-                gi.bundle = None
-                gi.save(update_fields=['bundle'])
-            loose_items.extend(group_items)
-            continue
-
-        individual_prices = {gi.id: gi.course.get_effective_price() for gi in group_items}
-        group_total_individual = sum(individual_prices.values())
-        allocated = 0
-        for idx, gi in enumerate(group_items):
-            if idx == len(group_items) - 1:
-                price = bundle.bundle_price - allocated
-            else:
-                price = individual_prices[gi.id] * bundle.bundle_price // group_total_individual
-                allocated += price
-            item_price[gi.id] = price
-        total_original += group_total_individual
-        total_discount += (group_total_individual - bundle.bundle_price)
-
-    for item in loose_items:
-        original = item.course.get_effective_price()
-        promo = promo_map.get(item.course.id)
-        promo_disc = 0
-        if promo:
-            if promo.discount_type == 'amount':
-                promo_disc = min(promo.discount_value, original)
-            else:
-                promo_disc = int(original * promo.discount_value / 100)
-        item_price[item.id] = original - promo_disc
-        total_original += original
-        total_discount += promo_disc
-
-    total_discount += coupon_discount
-    final_price = max(total_original - total_discount, 0)
-
-    # 優惠券折扣依各項目「合購/促銷折扣後」的價格比例分攤，得出每個項目的實付金額
-    item_discount = {}
-    item_paid = {}
-    price_sum = sum(item_price.values()) or 1
-    allocated_coupon = 0
-    for idx, item in enumerate(items):
-        if idx == len(items) - 1:
-            coupon_share = coupon_discount - allocated_coupon
-        else:
-            coupon_share = item_price[item.id] * coupon_discount // price_sum
-            allocated_coupon += coupon_share
-        item_discount[item.id] = coupon_share
-        item_paid[item.id] = item_price[item.id] - coupon_share
-
-    # 建立單一「待付款」訂單（多課程訂單，course=None），付款完成後才開通
-    order = Order.objects.create(
-        user=request.user,
-        course=None,
-        coupon=coupon if coupon_discount > 0 else None,
-        original_price=total_original,
-        discount_amount=total_discount,
-        final_price=final_price,
-        status='pending'
-    )
-    for item in items:
-        OrderItem.objects.create(
-            order=order, course=item.course, price=item_price[item.id],
-            discount_amount=item_discount[item.id], paid_amount=item_paid[item.id],
-        )
-    Payment.objects.create(
-        order=order, amount=final_price, status='pending', method='mock'
-    )
-
+    order = place_order(request.user, quote)
     cart.items.all().delete()
 
     return redirect('payment', order_id=order.id)
@@ -1851,37 +1670,6 @@ def _mark_payment_paid(payment, result):
     payment.save()
 
 
-def _finalize_paid_order(order):
-    """付款成功後：開通課程、標記優惠券、發通知（具冪等性）。"""
-    if order.status == 'paid':
-        return
-    order.status = 'paid'
-    order.save()
-
-    for item in order.items.select_related('course').all():
-        Enrollment.objects.get_or_create(student=order.user, course=item.course)
-
-    if order.coupon:
-        CouponUsage.objects.get_or_create(
-            order=order,
-            defaults={
-                'user': order.user,
-                'coupon': order.coupon,
-                'discount_amount': order.discount_amount,
-            }
-        )
-        UserCoupon.objects.filter(
-            user=order.user, coupon=order.coupon, status='unused'
-        ).update(status='used', used_at=timezone.now())
-
-    titles = '、'.join(i.course.title for i in order.items.all())
-    Notification.objects.create(
-        user=order.user,
-        title='購買成功通知',
-        content=f'你已完成付款並開通課程：{titles}（實付 NT$ {order.final_price}）。'
-    )
-
-
 @login_required
 def payment(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
@@ -1889,6 +1677,8 @@ def payment(request, order_id):
     if order.status == 'paid':
         return redirect('order_success', order_id=order.id)
 
+    # place_order 是原子性的，新訂單一定帶著 Payment。這個 get_or_create 只為了
+    # 修補在該修正之前建立、可能沒有 Payment 的舊待付款訂單。
     payment_obj, _ = Payment.objects.get_or_create(
         order=order,
         defaults={'amount': order.final_price, 'status': 'pending', 'method': 'mock'}
@@ -1925,7 +1715,7 @@ def payment(request, order_id):
             result = gateway.charge_credit_card(payment_obj, card)
             if result.success:
                 _mark_payment_paid(payment_obj, result)
-                _finalize_paid_order(order)
+                fulfill_order(order)
                 return redirect('order_success', order_id=order.id)
             error = result.message
             method = 'credit_card'
@@ -1935,7 +1725,7 @@ def payment(request, order_id):
             result = gateway.confirm_offline(payment_obj)
             if result.success:
                 _mark_payment_paid(payment_obj, result)
-                _finalize_paid_order(order)
+                fulfill_order(order)
                 return redirect('order_success', order_id=order.id)
             error = result.message
             method = payment_obj.method
@@ -1955,6 +1745,9 @@ def payment(request, order_id):
 
 @login_required
 def toggle_favorite(request, course_id):
+    if request.method != 'POST':
+        return redirect('my_favorites')
+
     course = get_object_or_404(Course, id=course_id)
     favorite = Favorite.objects.filter(user=request.user, course=course).first()
 
@@ -1963,8 +1756,12 @@ def toggle_favorite(request, course_id):
     else:
         Favorite.objects.create(user=request.user, course=course)
 
-    next_url = request.POST.get('next') or request.GET.get('next')
-    if next_url:
+    # next 是使用者可控的輸入：未經驗證就 redirect 等於開放轉址，
+    # 可被拿來把人導去釣魚站再假裝是本站流程。
+    next_url = request.POST.get('next')
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
         return redirect(next_url)
     return redirect('my_favorites')
 
@@ -2034,6 +1831,9 @@ def coupon_list(request):
 
 @login_required
 def claim_coupon(request, coupon_id):
+    if request.method != 'POST':
+        return redirect('view_cart')
+
     coupon = get_object_or_404(Coupon, id=coupon_id)
 
     if coupon.is_valid_now():
@@ -2063,7 +1863,7 @@ def _require_course_teacher(request, course_id):
     except Profile.DoesNotExist:
         return None, redirect('home')
 
-    if not _is_teacher(profile):
+    if profile.role != 'teacher':
         return None, redirect('home')
 
     course = get_object_or_404(Course, id=course_id, teacher=request.user)
@@ -2083,39 +1883,7 @@ def manage_content(request, course_id):
         'chapters': chapters,
         'chapter_form': ChapterForm(),
         'lesson_form': LessonForm(),
-        'announcements': course.announcements.all(),
-        'announcement_form': AnnouncementForm(),
     })
-
-
-@login_required
-def add_announcement(request, course_id):
-    course, redirect_resp = _require_course_teacher(request, course_id)
-    if redirect_resp:
-        return redirect_resp
-
-    if request.method == 'POST':
-        form = AnnouncementForm(request.POST)
-        if form.is_valid():
-            announcement = form.save(commit=False)
-            announcement.course = course
-            announcement.author = request.user
-            announcement.save()
-
-    return redirect('manage_content', course_id=course.id)
-
-
-@login_required
-def delete_announcement(request, announcement_id):
-    announcement = get_object_or_404(CourseAnnouncement, id=announcement_id)
-    course, redirect_resp = _require_course_teacher(request, announcement.course_id)
-    if redirect_resp:
-        return redirect_resp
-
-    if request.method == 'POST':
-        announcement.delete()
-
-    return redirect('manage_content', course_id=course.id)
 
 
 @login_required
@@ -2252,7 +2020,7 @@ def manage_refunds(request):
             profile = request.user.profile
         except Profile.DoesNotExist:
             return redirect('home')
-        if not _is_teacher(profile):
+        if profile.role != 'teacher':
             return redirect('home')
         refunds = Refund.objects.filter(
             order__course__teacher=request.user
@@ -2276,29 +2044,13 @@ def process_refund(request, refund_id):
     if not (request.user.is_superuser or is_teacher):
         return redirect('home')
 
-    if request.method == 'POST':
+    if request.method == 'POST' and refund.status == 'pending':
+        # 狀態轉換一律走 transitions —— 後台 admin 的批次動作呼叫的是同一份。
         action = request.POST.get('action')
-        if action == 'approve' and refund.status == 'pending':
-            refund.status = 'approved'
-            refund.processed_at = timezone.now()
-            refund.save()
-            order = refund.order
-            order.status = 'refunded'
-            order.save()
-            Notification.objects.create(
-                user=refund.user,
-                title='退款已通過',
-                content=f'訂單 #{order.id} 的退款申請已通過，將退還 NT$ {refund.amount}。'
-            )
-        elif action == 'reject' and refund.status == 'pending':
-            refund.status = 'rejected'
-            refund.processed_at = timezone.now()
-            refund.save()
-            Notification.objects.create(
-                user=refund.user,
-                title='退款未通過',
-                content=f'訂單 #{refund.order.id} 的退款申請未通過。'
-            )
+        if action == 'approve':
+            approve_refund(refund)
+        elif action == 'reject':
+            reject_refund(refund)
 
     return redirect('manage_refunds')
 
@@ -2362,8 +2114,8 @@ def add_answer(request, question_id):
     question = get_object_or_404(CourseQuestion, id=question_id)
     course = question.course
 
-    is_course_teacher = course.teacher_id == request.user.id
-    if not (is_course_teacher or request.user.is_superuser):
+    is_teacher = course.teacher_id == request.user.id
+    if not (is_teacher or request.user.is_superuser):
         return redirect('course_detail', course_id=course.id)
 
     if request.method == 'POST':
@@ -2379,84 +2131,7 @@ def add_answer(request, question_id):
                 content=f'課程「{course.title}」中你的問題「{question.title}」已有回答。'
             )
 
-    if request.POST.get('source') == 'teacher_qna':
-        return redirect('teacher_qna')
     return redirect('course_detail', course_id=course.id)
-
-
-# =========================
-# 課程留言區（開放任何登入使用者，與需購買才能發問的問答區區隔）
-# =========================
-
-@login_required
-def add_comment(request, course_id):
-    course = get_object_or_404(Course, id=course_id)
-
-    if request.method == 'POST':
-        form = CommentForm(request.POST)
-        if form.is_valid():
-            comment = form.save(commit=False)
-            comment.user = request.user
-            comment.course = course
-            comment.save()
-
-    return redirect('course_detail', course_id=course.id)
-
-
-# =========================
-# 教師專區：Q&A 管理
-# =========================
-
-@login_required
-def teacher_qna(request):
-    try:
-        profile = request.user.profile
-        if not _is_teacher(profile):
-            return redirect('home')
-    except Profile.DoesNotExist:
-        return redirect('home')
-
-    questions = CourseQuestion.objects.filter(
-        course__teacher=request.user
-    ).select_related('user', 'course').prefetch_related('answers').annotate(
-        answer_count=Count('answers')
-    ).order_by('answer_count', '-created_at')
-
-    return render(request, 'main/teacher_qna.html', {
-        'questions': questions,
-        'answer_form': AnswerForm(),
-    })
-
-
-# =========================
-# 教師專區：銀行帳戶與提領
-# =========================
-
-@login_required
-def edit_bank_account(request):
-    try:
-        profile = request.user.profile
-        if not _is_teacher(profile):
-            return redirect('home')
-    except Profile.DoesNotExist:
-        return redirect('home')
-
-    bank_account, _created = TeacherBankAccount.objects.get_or_create(
-        teacher=request.user,
-        defaults={'bank_name': '', 'account_name': '', 'account_number': ''}
-    )
-
-    if request.method == 'POST':
-        form = TeacherBankAccountForm(request.POST, instance=bank_account)
-        if form.is_valid():
-            form.save()
-            return redirect('teacher_dashboard')
-    else:
-        form = TeacherBankAccountForm(instance=bank_account)
-
-    return render(request, 'main/edit_bank_account.html', {
-        'form': form,
-    })
 
 
 # =========================
@@ -2485,39 +2160,236 @@ def process_audit(request, audit_id):
     audit = get_object_or_404(CourseAudit, id=audit_id)
 
     if request.method == 'POST':
+        # 上架/退回一律走 transitions —— 後台的批次上架呼叫的是同一份，
+        # 因此不存在繞過 CourseAudit 的旁路。
         action = request.POST.get('action')
         comment = request.POST.get('comment', '').strip()
 
         if action == 'approve':
-            audit.status = 'approved'
-            audit.reviewer = request.user
-            audit.comment = comment
-            audit.reviewed_at = timezone.now()
-            audit.save()
-            course = audit.course
-            course.is_published = True
-            course.save()
-            Notification.objects.create(
-                user=course.teacher,
-                title='課程審核通過',
-                content=f'你的課程「{course.title}」已通過審核並上架。'
-            )
+            approve_course(audit.course, request.user, comment)
         elif action == 'reject':
-            audit.status = 'rejected'
-            audit.reviewer = request.user
-            audit.comment = comment
-            audit.reviewed_at = timezone.now()
-            audit.save()
-            course = audit.course
-            course.is_published = False
-            course.save()
-            Notification.objects.create(
-                user=course.teacher,
-                title='課程審核未通過',
-                content=f'你的課程「{course.title}」未通過審核。原因：{comment or "未提供"}'
-            )
+            reject_course(audit.course, request.user, comment)
 
     return redirect('manage_audits')
+
+
+# =========================
+# A9 分潤收支與提領（講師 / 管理員）
+#
+# 分潤計算本身（RevenueRecord.recompute / create_for_order_item）是純計算，
+# 已隨 fulfill_order／approve_refund 自動觸發，見 CONTEXT.md「分潤、收支與提領」。
+# 這裡是講師查詢與提領申請的對外入口。
+# =========================
+
+def _require_teacher_profile(request):
+    """回傳講師的 Profile；非講師或未設定角色一律回傳 None。"""
+    try:
+        profile = request.user.profile
+    except Profile.DoesNotExist:
+        return None
+    return profile if profile.role == 'teacher' else None
+
+
+@login_required
+def my_revenue(request):
+    """講師查詢收支分潤紀錄：每一筆的計算依據（比例、成本）與目前分潤規則。"""
+    if not _require_teacher_profile(request):
+        return redirect('home')
+
+    records = RevenueRecord.objects.filter(
+        teacher=request.user
+    ).select_related('course', 'order').order_by('-created_at')
+
+    paginator = Paginator(records, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    totals = records.filter(status='confirmed').aggregate(
+        gross_amount=Sum('gross_amount'),
+        marketing_cost=Sum('marketing_cost'),
+        teacher_amount=Sum('teacher_amount'),
+    )
+
+    # 每門課目前適用的分潤規則（含未自訂過、套用預設值的課程）。
+    course_rules = [
+        CourseSplitSetting.for_course(course)
+        for course in Course.objects.filter(teacher=request.user).order_by('title')
+    ]
+
+    return render(request, 'main/my_revenue.html', {
+        'page_obj': page_obj,
+        'totals': totals,
+        'course_rules': course_rules,
+        'available_balance': WithdrawalRequest.available_balance(request.user),
+        'default_teacher_split': CourseSplitSetting.DEFAULT_TEACHER_SPLIT_PERCENT,
+        'default_company_split': CourseSplitSetting.DEFAULT_COMPANY_SPLIT_PERCENT,
+        'default_teacher_marketing_share': CourseSplitSetting.DEFAULT_TEACHER_MARKETING_SHARE_PERCENT,
+        'default_company_marketing_share': CourseSplitSetting.DEFAULT_COMPANY_MARKETING_SHARE_PERCENT,
+    })
+
+
+@login_required
+def my_withdrawals(request):
+    """講師申請提領、查看自己的提領紀錄與目前可提領餘額。"""
+    if not _require_teacher_profile(request):
+        return redirect('home')
+
+    error = None
+
+    if request.method == 'POST':
+        amount_raw = request.POST.get('amount', '').strip()
+        try:
+            amount = int(amount_raw)
+            if amount <= 0:
+                raise ValueError
+        except ValueError:
+            error = '請輸入正確的提領金額（正整數）。'
+        else:
+            withdrawal = WithdrawalRequest(teacher=request.user, amount=amount)
+            try:
+                withdrawal.save()
+            except ValidationError as e:
+                error = ' '.join(e.messages)
+            else:
+                Notification.objects.create(
+                    user=request.user,
+                    title='提領申請已送出',
+                    content=f'你申請提領的 NT$ {amount} 已送出，等待處理。'
+                )
+                return redirect('my_withdrawals')
+
+    withdrawals = WithdrawalRequest.objects.filter(
+        teacher=request.user
+    ).order_by('-requested_at')
+
+    return render(request, 'main/my_withdrawals.html', {
+        'withdrawals': withdrawals,
+        'available_balance': WithdrawalRequest.available_balance(request.user),
+        'error': error,
+    })
+
+
+@login_required
+def manage_withdrawals(request):
+    """後台查看：所有講師的提領申請，僅管理員可核准／拒絕。"""
+    if not request.user.is_superuser:
+        return redirect('home')
+
+    withdrawals = WithdrawalRequest.objects.select_related(
+        'teacher'
+    ).order_by('-requested_at')
+
+    return render(request, 'main/manage_withdrawals.html', {
+        'withdrawals': withdrawals,
+    })
+
+
+@login_required
+def process_withdrawal(request, withdrawal_id):
+    if not request.user.is_superuser:
+        return redirect('home')
+
+    withdrawal = get_object_or_404(WithdrawalRequest, id=withdrawal_id)
+
+    if request.method == 'POST':
+        # 提領完成/拒絕一律走 transitions —— 與退款、審核同一套規則。
+        action = request.POST.get('action')
+        note = request.POST.get('note', '').strip()
+
+        if action == 'complete':
+            complete_withdrawal(withdrawal, note=note)
+        elif action == 'reject':
+            reject_withdrawal(withdrawal, note=note)
+
+    return redirect('manage_withdrawals')
+
+
+@login_required
+def export_my_revenue_csv(request):
+    """講師匯出自己的收支分潤紀錄。"""
+    if not _require_teacher_profile(request):
+        return redirect('home')
+
+    response = create_csv_response('my_revenue.csv')
+    writer = csv.writer(response)
+
+    writer.writerow([
+        'record_id',
+        'course_id',
+        'course_title',
+        'order_id',
+        'gross_amount',
+        'marketing_cost',
+        'teacher_split_percent',
+        'company_split_percent',
+        'teacher_marketing_share_percent',
+        'company_marketing_share_percent',
+        'teacher_amount',
+        'company_amount',
+        'status',
+        'created_at',
+        'reversed_at',
+    ])
+
+    records = RevenueRecord.objects.filter(
+        teacher=request.user
+    ).select_related('course', 'order').order_by('-created_at')
+
+    for r in records:
+        writer.writerow([
+            r.id,
+            r.course_id,
+            r.course.title,
+            r.order_id,
+            r.gross_amount,
+            r.marketing_cost,
+            r.teacher_split_percent,
+            r.company_split_percent,
+            r.teacher_marketing_share_percent,
+            r.company_marketing_share_percent,
+            r.teacher_amount,
+            r.company_amount,
+            r.get_status_display(),
+            r.created_at,
+            r.reversed_at or '',
+        ])
+
+    return response
+
+
+@login_required
+def export_my_withdrawals_csv(request):
+    """講師匯出自己的提領申請紀錄。"""
+    if not _require_teacher_profile(request):
+        return redirect('home')
+
+    response = create_csv_response('my_withdrawals.csv')
+    writer = csv.writer(response)
+
+    writer.writerow([
+        'withdrawal_id',
+        'amount',
+        'status',
+        'note',
+        'requested_at',
+        'processed_at',
+    ])
+
+    withdrawals = WithdrawalRequest.objects.filter(
+        teacher=request.user
+    ).order_by('-requested_at')
+
+    for w in withdrawals:
+        writer.writerow([
+            w.id,
+            w.amount,
+            w.get_status_display(),
+            w.note or '',
+            w.requested_at,
+            w.processed_at or '',
+        ])
+
+    return response
+
 
 # =========================
 # Task 2 課程完成證書（PDF）
@@ -2624,16 +2496,24 @@ def certificate(request, course_id):
 def teacher_profile(request, teacher_id):
     teacher = get_object_or_404(User, id=teacher_id)
 
+    # 評分統計用子查詢一次算完，不再逐課發查詢
+    review_stats = Review.objects.filter(course=OuterRef('pk')).values('course')
     courses = list(
         Course.objects.filter(teacher=teacher, is_published=True)
         .select_related('category')
-        .annotate(student_count=Count('enrollment', distinct=True))
+        .annotate(
+            student_count=Count('enrollment', distinct=True),
+            avg_rating_raw=Subquery(
+                review_stats.annotate(a=Avg('rating')).values('a')[:1],
+                output_field=FloatField()),
+            review_count=Coalesce(
+                Subquery(review_stats.annotate(n=Count('id')).values('n')[:1],
+                         output_field=IntegerField()), 0),
+        )
         .order_by('-created_at')
     )
     for c in courses:
-        stats = Review.objects.filter(course=c).aggregate(avg=Avg('rating'), n=Count('id'))
-        c.avg_rating = round(stats['avg'], 1) if stats['avg'] else None
-        c.review_count = stats['n']
+        c.avg_rating = round(c.avg_rating_raw, 1) if c.avg_rating_raw else None
 
     total_students = Enrollment.objects.filter(
         course__teacher=teacher
@@ -2680,17 +2560,12 @@ def _file_iterator(path, start, length, chunk=8192):
             yield data
 
 
-def serve_media(request, path):
+def _range_file_response(request, full):
+    """支援 HTTP Range 的檔案串流（影片才能拖曳進度條）。"""
     import os
     import re
     import mimetypes
-    from django.conf import settings
-    from django.http import StreamingHttpResponse, Http404
-
-    media_root = str(settings.MEDIA_ROOT)
-    full = os.path.normpath(os.path.join(media_root, path))
-    if not full.startswith(media_root) or not os.path.isfile(full):
-        raise Http404('media not found')
+    from django.http import StreamingHttpResponse
 
     ctype = mimetypes.guess_type(full)[0] or 'application/octet-stream'
     size = os.path.getsize(full)
@@ -2717,3 +2592,342 @@ def serve_media(request, path):
 
     resp['Accept-Ranges'] = 'bytes'
     return resp
+
+
+@login_required
+def stream_lesson_video(request, lesson_id):
+    """付費影片的唯一出口。權限與 watch_lesson 相同。
+
+    影片不再由 /media/ 直出 —— 那條路徑沒有任何存取檢查，等於只要知道
+    網址就能把課程內容整包拿走。
+    """
+    lesson = get_object_or_404(
+        CourseLesson.objects.select_related('chapter__course'), id=lesson_id
+    )
+    course = lesson.chapter.course
+
+    enrolled = Enrollment.objects.filter(student=request.user, course=course).exists()
+    is_teacher = course.teacher_id == request.user.id
+    if not (enrolled or is_teacher or lesson.is_free_preview):
+        raise Http404('沒有這個影片')
+
+    if not lesson.video_file:
+        raise Http404('這個單元沒有上傳影片')
+
+    return _range_file_response(request, lesson.video_file.path)
+
+
+def serve_media(request, path):
+    import os
+    from django.conf import settings
+
+    media_root = os.path.normpath(str(settings.MEDIA_ROOT))
+    full = os.path.normpath(os.path.join(media_root, path))
+
+    # 必須真的落在 MEDIA_ROOT 底下。startswith 會讓 <media_root>_evil/ 這種
+    # 同層兄弟目錄通過，commonpath 不會。
+    try:
+        inside = os.path.commonpath([full, media_root]) == media_root
+    except ValueError:          # 不同磁碟機
+        inside = False
+    if not inside or not os.path.isfile(full):
+        raise Http404('media not found')
+
+    # 課程影片一律改走 stream_lesson_video（會檢查購課），不從這裡直出。
+    rel = os.path.relpath(full, media_root).replace('\\', '/')
+    if rel.startswith('course_videos/'):
+        raise Http404('media not found')
+
+    return _range_file_response(request, full)
+
+
+
+# ===== 快速登入（OAuth）／合購購物車／課程公告留言／教師問答 =====
+# 上游分支沒有這幾個功能，從本機分支搬過來，邏輯與變數名稱不變。
+
+def _attach_reviews(courses):
+    """一次查完所有課程的評分統計，避免每堂課各發一次查詢（遠端 DB 的 N+1 效能殺手）。
+    courses 若為 QuerySet，呼叫後其 _result_cache 會被填入已標記 avg_rating/review_count
+    的物件，後續重新迭代該 QuerySet（例如樣板的 {% for %}）會直接用到快取，不需接收回傳值。"""
+    courses = list(courses)
+    ids = [c.id for c in courses]
+    stats_map = {
+        row['course']: row
+        for row in Review.objects.filter(course_id__in=ids)
+        .values('course')
+        .annotate(avg=Avg('rating'), n=Count('id'))
+    }
+    for c in courses:
+        s = stats_map.get(c.id)
+        c.avg_rating = round(s['avg'], 1) if s and s['avg'] else None
+        c.review_count = s['n'] if s else 0
+    return courses
+
+
+def _finalize_paid_order(order):
+    """付款成功後：開通課程、標記優惠券、發通知（具冪等性）。"""
+    if order.status == 'paid':
+        return
+    order.status = 'paid'
+    order.save()
+
+    for item in order.items.select_related('course').all():
+        Enrollment.objects.get_or_create(student=order.user, course=item.course)
+
+    if order.coupon:
+        CouponUsage.objects.get_or_create(
+            order=order,
+            defaults={
+                'user': order.user,
+                'coupon': order.coupon,
+                'discount_amount': order.discount_amount,
+            }
+        )
+        UserCoupon.objects.filter(
+            user=order.user, coupon=order.coupon, status='unused'
+        ).update(status='used', used_at=timezone.now())
+
+    titles = '、'.join(i.course.title for i in order.items.all())
+    Notification.objects.create(
+        user=order.user,
+        title='購買成功通知',
+        content=f'你已完成付款並開通課程：{titles}（實付 NT$ {order.final_price}）。'
+    )
+
+
+def _group_cart_items_by_bundle(items):
+    """把購物車項目依合購組合分組，回傳 (display_bundles, loose_items)。
+    display_bundles 每筆含 bundle/items/is_intact/individual_total。"""
+    bundle_groups = {}
+    loose_items = []
+    for item in items:
+        if item.bundle_id:
+            bundle_groups.setdefault(item.bundle_id, []).append(item)
+        else:
+            loose_items.append(item)
+
+    display_bundles = []
+    for group_items in bundle_groups.values():
+        bundle = group_items[0].bundle
+        bundle_course_ids = set(bundle.courses.values_list('id', flat=True))
+        group_course_ids = {gi.course_id for gi in group_items}
+        is_intact = bundle_course_ids == group_course_ids and bundle.is_active
+        display_bundles.append({
+            'bundle': bundle,
+            'items': group_items,
+            'is_intact': is_intact,
+            'individual_total': sum(gi.course.get_effective_price() for gi in group_items),
+        })
+
+    return display_bundles, loose_items
+
+
+def _is_teacher(profile):
+    """單一帳號體系：role=='teacher'（傳統教師帳號）或 is_teacher（Admin 額外授權）皆可使用教師專區。"""
+    return profile.role == 'teacher' or profile.is_teacher
+
+
+def _login_error_redirect(message):
+    return redirect(f"{reverse('login')}?{urlencode({'error': message})}")
+
+
+def _post_login_redirect(user):
+    # 不論學生或具備教師權限的使用者，登入後一律回到主頁；教師專區只能透過
+    # 導覽列的「進入教師專區」按鈕主動進入，絕不在登入當下直接跳轉過去。
+    if user.is_superuser:
+        return redirect('/admin/')
+    return redirect('home')
+
+
+def add_announcement(request, course_id):
+    course, redirect_resp = _require_course_teacher(request, course_id)
+    if redirect_resp:
+        return redirect_resp
+
+    if request.method == 'POST':
+        form = AnnouncementForm(request.POST)
+        if form.is_valid():
+            announcement = form.save(commit=False)
+            announcement.course = course
+            announcement.author = request.user
+            announcement.save()
+
+    return redirect('manage_content', course_id=course.id)
+
+
+def add_bundle_to_cart(request, bundle_id):
+    bundle = get_object_or_404(CourseBundle, id=bundle_id, is_active=True)
+    courses = list(bundle.courses.all())
+
+    already_owns = Enrollment.objects.filter(
+        student=request.user, course__in=courses
+    ).exists()
+    if already_owns:
+        return redirect('course_detail', course_id=courses[0].id if courses else 0)
+
+    cart, _ = Cart.objects.get_or_create(user=request.user)
+    for course in courses:
+        CartItem.objects.update_or_create(
+            cart=cart, course=course, defaults={'bundle': bundle}
+        )
+
+    return redirect('view_cart')
+
+
+def add_comment(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
+
+    if request.method == 'POST':
+        form = CommentForm(request.POST)
+        if form.is_valid():
+            comment = form.save(commit=False)
+            comment.user = request.user
+            comment.course = course
+            comment.save()
+
+    return redirect('course_detail', course_id=course.id)
+
+
+def course_catalog(request):
+    """完整課程總覽：搜尋、分類篩選、排序、分頁——從首頁搬過來，邏輯與變數名稱不變。"""
+    sort = request.GET.get('sort', 'newest')
+    q = request.GET.get('q', '').strip()
+    cat = request.GET.get('cat', '').strip()
+
+    qs = Course.objects.filter(is_published=True).select_related('teacher', 'category')
+
+    if q:
+        qs = qs.filter(Q(title__icontains=q) | Q(teacher__username__icontains=q))
+    if cat:
+        qs = qs.filter(category__name=cat)
+
+    qs = qs.annotate(student_count=Count('enrollment', distinct=True))
+
+    sort_map = {
+        'newest': '-created_at',
+        'popular': '-student_count',
+        'price_asc': 'price',
+        'price_desc': '-price',
+    }
+    if sort not in sort_map:
+        sort = 'newest'
+    if sort == 'popular':
+        qs = qs.order_by('-student_count', '-created_at')
+    else:
+        qs = qs.order_by(sort_map[sort])
+
+    paginator = Paginator(qs, 8)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    _attach_reviews(page_obj.object_list)
+
+    categories = CourseCategory.objects.order_by('name')
+
+    return render(request, 'main/course_catalog.html', {
+        'page_obj': page_obj,
+        'sort': sort,
+        'q': q,
+        'cat': cat,
+        'categories': categories,
+        'sort_options': [
+            ('newest', '最新'),
+            ('popular', '熱門'),
+            ('price_asc', '價格低→高'),
+            ('price_desc', '價格高→低'),
+        ],
+    })
+
+
+def delete_announcement(request, announcement_id):
+    announcement = get_object_or_404(CourseAnnouncement, id=announcement_id)
+    course, redirect_resp = _require_course_teacher(request, announcement.course_id)
+    if redirect_resp:
+        return redirect_resp
+
+    if request.method == 'POST':
+        announcement.delete()
+
+    return redirect('manage_content', course_id=course.id)
+
+
+def google_login(request):
+    if not settings.GOOGLE_OAUTH_CLIENT_ID:
+        return _login_error_redirect('Google 登入尚未設定。')
+    state = oauth.new_state()
+    request.session['google_oauth_state'] = state
+    return redirect(oauth.build_google_auth_url(request, state))
+
+
+def google_oauth_callback(request):
+    error = request.GET.get('error')
+    if error:
+        return _login_error_redirect('Google 登入已取消。')
+
+    state = request.GET.get('state')
+    expected_state = request.session.pop('google_oauth_state', None)
+    if not state or not expected_state or state != expected_state:
+        return _login_error_redirect('登入驗證失敗，請再試一次。')
+
+    code = request.GET.get('code')
+    if not code:
+        return _login_error_redirect('Google 未提供授權碼。')
+
+    try:
+        provider_id, email, name = oauth.fetch_google_profile(request, code)
+        user = oauth.get_or_create_user('google', provider_id, email, name)
+    except oauth.OAuthError:
+        return _login_error_redirect('Google 登入失敗，請稍後再試。')
+
+    login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+    return _post_login_redirect(user)
+
+
+def line_login(request):
+    if not settings.LINE_LOGIN_CHANNEL_ID:
+        return _login_error_redirect('LINE 登入尚未設定。')
+    state = oauth.new_state()
+    request.session['line_oauth_state'] = state
+    return redirect(oauth.build_line_auth_url(request, state))
+
+
+def line_oauth_callback(request):
+    error = request.GET.get('error')
+    if error:
+        return _login_error_redirect('LINE 登入已取消。')
+
+    state = request.GET.get('state')
+    expected_state = request.session.pop('line_oauth_state', None)
+    if not state or not expected_state or state != expected_state:
+        return _login_error_redirect('登入驗證失敗，請再試一次。')
+
+    code = request.GET.get('code')
+    if not code:
+        return _login_error_redirect('LINE 未提供授權碼。')
+
+    try:
+        provider_id, email, name = oauth.fetch_line_profile(request, code)
+        user = oauth.get_or_create_user('line', provider_id, email, name)
+    except oauth.OAuthError:
+        return _login_error_redirect('LINE 登入失敗，請稍後再試。')
+
+    login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+    return _post_login_redirect(user)
+
+
+def teacher_qna(request):
+    try:
+        profile = request.user.profile
+        if not _is_teacher(profile):
+            return redirect('home')
+    except Profile.DoesNotExist:
+        return redirect('home')
+
+    questions = CourseQuestion.objects.filter(
+        course__teacher=request.user
+    ).select_related('user', 'course').prefetch_related('answers').annotate(
+        answer_count=Count('answers')
+    ).order_by('answer_count', '-created_at')
+
+    return render(request, 'main/teacher_qna.html', {
+        'questions': questions,
+        'answer_form': AnswerForm(),
+    })

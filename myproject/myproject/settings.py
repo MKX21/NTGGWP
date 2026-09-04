@@ -144,9 +144,22 @@ USE_TZ = True
 STATIC_URL = 'static/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'noreply@example.com'
 
+# Email（密碼重設信）
+# 設了 EMAIL_HOST_USER 就走真的 SMTP；沒設就把信印在終端機。
+# 跟資料庫連線同一個哲學：有 .env 用真的，沒有也能跑，測試不會真的寄信。
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+
+if EMAIL_HOST_USER:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+    EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+    EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL') or EMAIL_HOST_USER or 'noreply@example.com'
 
 # 快速登入（Google / LINE Login）
 # 到 Google Cloud Console / LINE Developers 申請後填入 .env，本機沒填就不會顯示對應按鈕。
@@ -155,3 +168,8 @@ GOOGLE_OAUTH_CLIENT_SECRET = os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET', '')
 
 LINE_LOGIN_CHANNEL_ID = os.environ.get('LINE_LOGIN_CHANNEL_ID', '')
 LINE_LOGIN_CHANNEL_SECRET = os.environ.get('LINE_LOGIN_CHANNEL_SECRET', '')
+
+# 沒有這行時 makemigrations 會依環境的 Django 版本猜預設值，導致每個模型的
+# id 欄位在不同機器上跑出不同的遷移。既有的遷移檔全部是 BigAutoField，
+# 明確設定與資料庫現況一致，避免產生不相干的 alter id 遷移。
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

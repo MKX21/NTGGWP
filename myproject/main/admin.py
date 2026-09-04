@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from django.utils.html import format_html
 
+from . import transitions
 from .models import (
     Profile,
     CourseCategory,
@@ -30,11 +31,12 @@ from .models import (
     CourseQuestion,
     CourseAnswer,
     CourseAudit,
-    TeacherBankAccount,
-    WithdrawalRequest,
     CourseBundle,
     CourseAnnouncement,
     CourseComment,
+    CourseSplitSetting,
+    RevenueRecord,
+    WithdrawalRequest,
 )
 
 # ===== 後台品牌 =====
@@ -69,6 +71,9 @@ STATUS_COLORS = {
     'unused': ('#166534', '#dcfce7'),
     'used': ('#475569', '#e2e8f0'),
     'expired': ('#991b1b', '#fee2e2'),
+    # 分潤 / 提領
+    'confirmed': ('#166534', '#dcfce7'),
+    'reversed': ('#991b1b', '#fee2e2'),
     '已過期': ('#991b1b', '#fee2e2'),
     '使用中': ('#166534', '#dcfce7'),
     '未開始': ('#92400e', '#fef3c7'),
@@ -95,6 +100,17 @@ class CourseLessonInline(admin.TabularInline):
     extra = 1
     fields = ('sort_order', 'title', 'duration_minutes', 'is_free_preview', 'video_file', 'video_url')
     ordering = ('sort_order',)
+
+
+class CourseSplitSettingInline(admin.StackedInline):
+    model = CourseSplitSetting
+    extra = 0
+    max_num = 1
+    can_delete = False
+    fields = (
+        ('teacher_split_percent', 'company_split_percent'),
+        ('teacher_marketing_share_percent', 'company_marketing_share_percent'),
+    )
 
 
 class OrderItemInline(admin.TabularInline):
@@ -222,7 +238,7 @@ class CourseAdmin(admin.ModelAdmin):
     # 不用 autocomplete：AJAX 搜尋走 User 自己的 admin，不會套用這裡的名單限制。
     autocomplete_fields = ('category',)
     list_per_page = 25
-    inlines = [CourseChapterInline]
+    inlines = [CourseChapterInline, CourseSplitSettingInline]
     actions = ['make_published', 'make_unpublished']
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
@@ -251,15 +267,19 @@ class CourseAdmin(admin.ModelAdmin):
         fg, bg = colors.get(obj.promo_video_type, ('#475569', '#e2e8f0'))
         return _badge(obj.get_promo_video_type_display(), fg, bg)
 
-    @admin.action(description='✅ 上架選取的課程')
+    @admin.action(description='✅ 審核通過並上架選取的課程')
     def make_published(self, request, queryset):
-        n = queryset.update(is_published=True)
-        self.message_user(request, f'已上架 {n} 門課程。')
+        courses = list(queryset)
+        for course in courses:
+            transitions.approve_course(course, request.user, comment='後台批次核准')
+        self.message_user(request, f'已上架 {len(courses)} 門課程。')
 
-    @admin.action(description='⛔ 下架選取的課程')
+    @admin.action(description='⛔ 退回並下架選取的課程')
     def make_unpublished(self, request, queryset):
-        n = queryset.update(is_published=False)
-        self.message_user(request, f'已下架 {n} 門課程。')
+        courses = list(queryset)
+        for course in courses:
+            transitions.reject_course(course, request.user, comment='後台批次退回')
+        self.message_user(request, f'已下架 {len(courses)} 門課程。')
 
 
 @admin.register(CourseChapter)
@@ -407,45 +427,20 @@ class RefundAdmin(admin.ModelAdmin):
 
     @admin.action(description='✅ 核准退款')
     def approve_refund(self, request, queryset):
-        n = queryset.filter(status='pending').update(status='approved')
-        self.message_user(request, f'已核准 {n} 筆退款。')
+        pending = list(queryset.filter(status='pending').select_related('order', 'user'))
+        for refund in pending:
+            transitions.approve_refund(refund)
+        self.message_user(
+            request,
+            f'已核准 {len(pending)} 筆退款，對應的課程存取權已收回、付款已回沖。'
+        )
 
     @admin.action(description='⛔ 拒絕退款')
     def reject_refund(self, request, queryset):
-        n = queryset.filter(status='pending').update(status='rejected')
-        self.message_user(request, f'已拒絕 {n} 筆退款。')
-
-
-@admin.register(TeacherBankAccount)
-class TeacherBankAccountAdmin(admin.ModelAdmin):
-    list_display = ('teacher', 'bank_name', 'branch_name', 'account_name', 'account_number', 'updated_at')
-    search_fields = ('teacher__username', 'bank_name', 'account_name', 'account_number')
-    autocomplete_fields = ('teacher',)
-
-
-@admin.register(WithdrawalRequest)
-class WithdrawalRequestAdmin(admin.ModelAdmin):
-    list_display = ('teacher', 'amount', 'withdrawal_badge', 'created_at', 'processed_at')
-    search_fields = ('teacher__username',)
-    list_filter = ('status', 'created_at')
-    autocomplete_fields = ('teacher',)
-    readonly_fields = ('bank_info_snapshot', 'created_at')
-    actions = ['approve_withdrawal', 'reject_withdrawal']
-
-    @admin.display(description='審核狀態')
-    def withdrawal_badge(self, obj):
-        colors = {'PENDING': 'pending', 'APPROVED': 'approved', 'REJECTED': 'rejected'}
-        return status_badge(colors.get(obj.status, obj.status), obj.get_status_display())
-
-    @admin.action(description='✅ 核准提領')
-    def approve_withdrawal(self, request, queryset):
-        n = queryset.filter(status='PENDING').update(status='APPROVED', processed_at=timezone.now())
-        self.message_user(request, f'已核准 {n} 筆提領申請。')
-
-    @admin.action(description='⛔ 拒絕提領')
-    def reject_withdrawal(self, request, queryset):
-        n = queryset.filter(status='PENDING').update(status='REJECTED', processed_at=timezone.now())
-        self.message_user(request, f'已拒絕 {n} 筆提領申請。')
+        pending = list(queryset.filter(status='pending').select_related('order', 'user'))
+        for refund in pending:
+            transitions.reject_refund(refund)
+        self.message_user(request, f'已拒絕 {len(pending)} 筆退款。')
 
 
 @admin.register(Enrollment)
@@ -454,6 +449,71 @@ class EnrollmentAdmin(admin.ModelAdmin):
     search_fields = ('student__username', 'course__title')
     list_filter = ('purchased_at', 'course')
     autocomplete_fields = ('student', 'course')
+
+
+# ===== 分潤與提領 =====
+@admin.register(CourseSplitSetting)
+class CourseSplitSettingAdmin(admin.ModelAdmin):
+    list_display = (
+        'course', 'teacher_split_percent', 'company_split_percent',
+        'teacher_marketing_share_percent', 'company_marketing_share_percent', 'updated_at',
+    )
+    search_fields = ('course__title', 'course__teacher__username')
+    autocomplete_fields = ('course',)
+
+
+@admin.register(RevenueRecord)
+class RevenueRecordAdmin(admin.ModelAdmin):
+    list_display = (
+        'course', 'teacher', 'order', 'gross_amount', 'marketing_cost',
+        'teacher_amount', 'company_amount', 'revenue_badge', 'created_at',
+    )
+    search_fields = ('course__title', 'teacher__username', 'order__id')
+    list_filter = ('status', 'created_at')
+    autocomplete_fields = ('order', 'order_item', 'course', 'teacher')
+    # gross_amount / 各比例 / 計算結果都是付款當下拍照存檔，只開放 marketing_cost
+    # 讓後台事後填入實際廣告花費；儲存時 model.save() 會自動重算 teacher/company_amount。
+    readonly_fields = (
+        'order_item', 'order', 'course', 'teacher', 'gross_amount',
+        'teacher_split_percent', 'company_split_percent',
+        'teacher_marketing_share_percent', 'company_marketing_share_percent',
+        'teacher_amount', 'company_amount', 'created_at', 'reversed_at',
+    )
+
+    @admin.display(description='狀態')
+    def revenue_badge(self, obj):
+        return status_badge(obj.status, obj.get_status_display())
+
+    def has_add_permission(self, request):
+        # 只能由訂單付款成功（fulfill_order）自動產生，後台不開放手動新增。
+        return False
+
+
+@admin.register(WithdrawalRequest)
+class WithdrawalRequestAdmin(admin.ModelAdmin):
+    list_display = ('teacher', 'amount', 'withdrawal_badge', 'requested_at', 'processed_at')
+    search_fields = ('teacher__username',)
+    list_filter = ('status', 'requested_at')
+    autocomplete_fields = ('teacher',)
+    actions = ['mark_completed', 'mark_rejected']
+
+    @admin.display(description='狀態')
+    def withdrawal_badge(self, obj):
+        return status_badge(obj.status, obj.get_status_display())
+
+    @admin.action(description='✅ 標記為已完成')
+    def mark_completed(self, request, queryset):
+        pending = list(queryset.filter(status='pending').select_related('teacher'))
+        for withdrawal in pending:
+            transitions.complete_withdrawal(withdrawal)
+        self.message_user(request, f'已標記 {len(pending)} 筆提領為已完成。')
+
+    @admin.action(description='⛔ 拒絕提領')
+    def mark_rejected(self, request, queryset):
+        pending = list(queryset.filter(status='pending').select_related('teacher'))
+        for withdrawal in pending:
+            transitions.reject_withdrawal(withdrawal)
+        self.message_user(request, f'已拒絕 {len(pending)} 筆提領申請。')
 
 
 # ===== 行銷 =====
@@ -622,9 +682,9 @@ from django.urls import reverse as _reverse
 _CUSTOM_GROUPS = [
     ('📚 課程管理', ['Course', 'CourseCategory', 'CourseChapter', 'CourseLesson', 'CourseAudit', 'CourseBundle', 'CourseAnnouncement']),
     ('🧾 交易管理', ['Order', 'OrderItem', 'Payment', 'Refund', 'Enrollment']),
+    ('💰 分潤與提領', ['CourseSplitSetting', 'RevenueRecord', 'WithdrawalRequest']),
     ('🎯 行銷管理', ['Coupon', 'UserCoupon', 'CouponUsage', 'Promotion', 'Cart']),
     ('👥 會員與互動', ['Profile', 'LearningRecord', 'LessonProgress', 'Favorite', 'Review', 'Notification', 'CourseQuestion', 'CourseAnswer', 'CourseComment']),
-    ('💸 教師分潤與提領', ['TeacherBankAccount', 'WithdrawalRequest']),
 ]
 
 _ORDER_INDEX = {

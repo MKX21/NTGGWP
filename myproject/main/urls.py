@@ -15,8 +15,11 @@ urlpatterns = [
     path('course/<int:course_id>/watch/', views.watch_course, name='watch_course'),
     path('lesson/<int:lesson_id>/watch/', views.watch_lesson, name='watch_lesson'),
     path('lesson/<int:lesson_id>/progress/', views.save_progress, name='save_progress'),
+    path('lesson/<int:lesson_id>/video/', views.stream_lesson_video, name='stream_lesson_video'),
     path('course/<int:course_id>/certificate/', views.certificate, name='certificate'),
     path('teacher/<int:teacher_id>/profile/', views.teacher_profile, name='teacher_profile'),
+    path('course/<int:course_id>/edit/', views.edit_course, name='edit_course'),
+    path('course/<int:course_id>/delete/', views.delete_course, name='delete_course'),
 
     path('student/dashboard/', views.student_dashboard, name='student_dashboard'),
     path('student/analytics/', views.student_analytics, name='student_analytics'),
@@ -24,7 +27,6 @@ urlpatterns = [
     path('teacher/dashboard/', views.teacher_dashboard, name='teacher_dashboard'),
     path('teacher/analytics/', views.teacher_analytics, name='teacher_analytics'),
     path('teacher/qna/', views.teacher_qna, name='teacher_qna'),
-    path('teacher/bank-account/', views.edit_bank_account, name='edit_bank_account'),
 
     path('export-data/', views.export_data_page, name='export_data_page'),
     path('analytics/', views.platform_analytics, name='platform_analytics'),
@@ -54,6 +56,8 @@ urlpatterns = [
     path('profile/', views.profile_view, name='profile'),
     path('profile/edit/', views.edit_profile, name='edit_profile'),
     path('my-courses/', views.my_courses, name='my_courses'),
+
+    path('create-course/', views.create_course, name='create_course'),
 
     # 購物車
     path('cart/', views.view_cart, name='view_cart'),
@@ -107,6 +111,14 @@ urlpatterns = [
     path('audits/manage/', views.manage_audits, name='manage_audits'),
     path('audits/<int:audit_id>/process/', views.process_audit, name='process_audit'),
 
+    # A9 分潤收支與提領
+    path('revenue/', views.my_revenue, name='my_revenue'),
+    path('revenue/export.csv', views.export_my_revenue_csv, name='export_my_revenue_csv'),
+    path('withdrawals/', views.my_withdrawals, name='my_withdrawals'),
+    path('withdrawals/export.csv', views.export_my_withdrawals_csv, name='export_my_withdrawals_csv'),
+    path('withdrawals/manage/', views.manage_withdrawals, name='manage_withdrawals'),
+    path('withdrawals/<int:withdrawal_id>/process/', views.process_withdrawal, name='process_withdrawal'),
+
     path('password-reset/', auth_views.PasswordResetView.as_view(
         template_name='main/password_reset.html'
     ), name='password_reset'),
@@ -114,4 +126,14 @@ urlpatterns = [
     path('password-reset/done/', auth_views.PasswordResetDoneView.as_view(
         template_name='main/password_reset_done.html'
     ), name='password_reset_done'),
+
+    # 少了這兩個，PasswordResetView 在產生信件內容時 reverse
+    # 'password_reset_confirm' 會 NoReverseMatch，整個流程一送出就 500。
+    path('password-reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(
+        template_name='main/password_reset_confirm.html'
+    ), name='password_reset_confirm'),
+
+    path('password-reset/complete/', auth_views.PasswordResetCompleteView.as_view(
+        template_name='main/password_reset_complete.html'
+    ), name='password_reset_complete'),
 ]

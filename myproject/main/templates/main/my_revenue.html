@@ -1,0 +1,142 @@
+{% extends 'main/base_eduflow.html' %}
+{% block title %}我的收支 | EduFlow{% endblock %}
+
+{% block content %}
+<main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+  <div class="flex items-center justify-between flex-wrap gap-3 mb-6">
+    <div>
+      <h1 class="text-2xl font-black text-slate-900 mb-1">我的收支</h1>
+      <p class="text-slate-500">每一筆訂單付款成功後自動產生的分潤計算紀錄。</p>
+    </div>
+    <div class="flex gap-3">
+      <a href="{% url 'export_my_revenue_csv' %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-2.5 rounded-lg transition inline-flex items-center gap-2">
+        <i class="fas fa-file-csv"></i> 匯出 CSV
+      </a>
+      <a href="{% url 'my_withdrawals' %}" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-5 py-2.5 rounded-lg transition">前往申請提領</a>
+    </div>
+  </div>
+
+  <!-- 累計摘要 -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-5">
+      <div class="text-sm text-slate-500 mb-1">累計實付金額</div>
+      <div class="text-2xl font-black text-slate-900">NT$ {{ totals.gross_amount|default:0 }}</div>
+    </div>
+    <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-5">
+      <div class="text-sm text-slate-500 mb-1">累計行銷成本</div>
+      <div class="text-2xl font-black text-slate-900">NT$ {{ totals.marketing_cost|default:0 }}</div>
+    </div>
+    <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-5">
+      <div class="text-sm text-slate-500 mb-1">累計應付給我</div>
+      <div class="text-2xl font-black text-brand-600">NT$ {{ totals.teacher_amount|default:0 }}</div>
+    </div>
+    <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-5">
+      <div class="text-sm text-slate-500 mb-1">目前可提領餘額</div>
+      <div class="text-2xl font-black text-accent-600">NT$ {{ available_balance }}</div>
+    </div>
+  </div>
+
+  <!-- 計算規則說明 -->
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-7 mb-6">
+    <h2 class="text-lg font-black text-slate-900 mb-3">收入怎麼算</h2>
+    <div class="bg-slate-50 rounded-xl p-4 font-mono text-sm text-slate-600 leading-relaxed mb-4 overflow-x-auto">
+      講師應收(毛額) = 實付金額 × 講師分潤比例（四捨五入）<br>
+      公司應收(毛額) = 實付金額 − 講師應收(毛額)<br>
+      講師負擔成本&nbsp;&nbsp; = 行銷成本 × 講師成本負擔比例（四捨五入）<br>
+      公司負擔成本&nbsp;&nbsp; = 行銷成本 − 講師負擔成本<br>
+      <b class="text-brand-700">講師應付金額 = 講師應收(毛額) − 講師負擔成本</b>
+    </div>
+    <p class="text-sm text-slate-500 mb-1">
+      平台預設：講師分潤 {{ default_teacher_split }}% / 公司分潤 {{ default_company_split }}%，
+      行銷成本（如 Facebook 廣告費）雙方各負擔 {{ default_teacher_marketing_share }}% / {{ default_company_marketing_share }}%。
+      每堂課可個別調整，調整前已產生的紀錄不受影響。
+    </p>
+    <p class="text-sm text-slate-400">行銷成本由平台事後依實際廣告花費填入，未填入前預設為 0。</p>
+
+    {% if course_rules %}
+    <div class="mt-5 overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-slate-400 border-b border-slate-100">
+            <th class="py-2 pr-4">課程</th>
+            <th class="py-2 pr-4">講師分潤</th>
+            <th class="py-2 pr-4">公司分潤</th>
+            <th class="py-2 pr-4">講師負擔成本</th>
+            <th class="py-2">公司負擔成本</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-50">
+          {% for setting in course_rules %}
+          <tr>
+            <td class="py-2.5 pr-4 font-medium text-slate-800">{{ setting.course.title }}</td>
+            <td class="py-2.5 pr-4">{{ setting.teacher_split_percent }}%</td>
+            <td class="py-2.5 pr-4">{{ setting.company_split_percent }}%</td>
+            <td class="py-2.5 pr-4">{{ setting.teacher_marketing_share_percent }}%</td>
+            <td class="py-2.5">{{ setting.company_marketing_share_percent }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- 明細列表 -->
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-7">
+    <h2 class="text-lg font-black text-slate-900 mb-4">收支明細</h2>
+    {% if page_obj %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-slate-400 border-b border-slate-100">
+            <th class="py-2 pr-4">課程</th>
+            <th class="py-2 pr-4">訂單</th>
+            <th class="py-2 pr-4">實付</th>
+            <th class="py-2 pr-4">行銷成本</th>
+            <th class="py-2 pr-4">分潤比例</th>
+            <th class="py-2 pr-4">應付給我</th>
+            <th class="py-2 pr-4">狀態</th>
+            <th class="py-2">時間</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-50">
+          {% for r in page_obj %}
+          <tr>
+            <td class="py-2.5 pr-4 font-medium text-slate-800">{{ r.course.title }}</td>
+            <td class="py-2.5 pr-4 text-slate-500">#{{ r.order_id }}</td>
+            <td class="py-2.5 pr-4">NT$ {{ r.gross_amount }}</td>
+            <td class="py-2.5 pr-4">NT$ {{ r.marketing_cost }}</td>
+            <td class="py-2.5 pr-4 text-slate-500">{{ r.teacher_split_percent }}% / {{ r.company_split_percent }}%</td>
+            <td class="py-2.5 pr-4 font-bold {% if r.teacher_amount < 0 %}text-red-600{% else %}text-brand-700{% endif %}">NT$ {{ r.teacher_amount }}</td>
+            <td class="py-2.5 pr-4">
+              <span class="px-3 py-1 rounded-full text-xs font-bold
+                {% if r.status == 'confirmed' %}bg-green-100 text-green-700{% else %}bg-red-50 text-red-600{% endif %}">
+                {{ r.get_status_display }}
+              </span>
+            </td>
+            <td class="py-2.5 text-slate-400">{{ r.created_at|date:"Y-m-d H:i" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="flex items-center justify-center gap-2 mt-6">
+      {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}" class="px-4 py-2 rounded-lg bg-white ring-1 ring-slate-200 text-slate-600 hover:ring-brand-300 font-medium">← 上一頁</a>
+      {% endif %}
+      {% for num in page_obj.paginator.page_range %}
+      <a href="?page={{ num }}" class="px-4 py-2 rounded-lg font-bold {% if num == page_obj.number %}bg-brand-600 text-white{% else %}bg-white ring-1 ring-slate-200 text-slate-600 hover:ring-brand-300{% endif %}">{{ num }}</a>
+      {% endfor %}
+      {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}" class="px-4 py-2 rounded-lg bg-white ring-1 ring-slate-200 text-slate-600 hover:ring-brand-300 font-medium">下一頁 →</a>
+      {% endif %}
+    </div>
+    {% endif %}
+    {% else %}
+    <p class="text-slate-500">目前沒有任何收支紀錄。</p>
+    {% endif %}
+  </div>
+</main>
+{% endblock %}
