@@ -3,9 +3,9 @@
 
 {% block content %}
 <main class="max-w-md mx-auto px-4 py-14">
-  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8">
-    <h1 class="text-2xl font-black text-slate-900 mb-1">登入</h1>
-    <p class="text-slate-500 mb-6">輸入帳號名稱或 Gmail 與密碼登入平台。</p>
+  <div class="bg-jp-surface rounded-xl ring-1 ring-jp-border shadow-sm p-8">
+    <h1 class="text-2xl font-bold tracking-wide text-jp-text mb-1">登入</h1>
+    <p class="text-jp-muted mb-6">輸入帳號名稱或 Gmail 與密碼登入平台。</p>
 
     {% if error_message %}
     <div class="bg-red-50 text-red-600 font-medium px-4 py-3 rounded-lg mb-5 text-sm">{{ error_message }}</div>
@@ -14,21 +14,37 @@
     <form method="post" class="space-y-4">
       {% csrf_token %}
       <div>
-        <label class="block font-semibold text-slate-700 mb-1.5" for="username">帳號名稱或 Gmail</label>
+        <label class="block font-semibold text-jp-text mb-1.5" for="username">帳號名稱或 Gmail</label>
         <input type="text" id="username" name="username" placeholder="請輸入帳號名稱或 Gmail" required
-               class="w-full border border-slate-200 rounded-lg py-2.5 px-3 outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-200 transition">
+               class="w-full border border-jp-border rounded-lg py-2.5 px-3 outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-200 transition">
       </div>
       <div>
-        <label class="block font-semibold text-slate-700 mb-1.5" for="password">密碼</label>
+        <label class="block font-semibold text-jp-text mb-1.5" for="password">密碼</label>
         <input type="password" id="password" name="password" required
-               class="w-full border border-slate-200 rounded-lg py-2.5 px-3 outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-200 transition">
+               class="w-full border border-jp-border rounded-lg py-2.5 px-3 outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-200 transition">
       </div>
-      <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-lg transition">登入</button>
+      <button type="submit" class="w-full bg-jp-primary hover:bg-jp-primaryHover text-white font-medium tracking-wide py-3 rounded-lg transition">登入</button>
     </form>
 
+    <div class="flex items-center gap-3 my-5">
+      <div class="flex-1 h-px bg-jp-border"></div>
+      <span class="text-xs text-jp-muted">或使用快速登入</span>
+      <div class="flex-1 h-px bg-jp-border"></div>
+    </div>
+    <div class="space-y-3">
+      <a href="{% url 'google_login' %}"
+         class="flex items-center justify-center gap-2 w-full border border-jp-border hover:bg-jp-bg text-jp-text font-medium py-2.5 rounded-lg transition">
+        <span>使用 Google 登入</span>
+      </a>
+      <a href="{% url 'line_login' %}"
+         class="flex items-center justify-center gap-2 w-full bg-[#06C755] hover:bg-[#05b34c] text-white font-medium py-2.5 rounded-lg transition">
+        <span>使用 LINE 登入</span>
+      </a>
+    </div>
+
     <div class="flex items-center justify-between mt-4 text-sm">
-      <a href="{% url 'password_reset' %}" class="text-brand-600 hover:underline">忘記密碼？</a>
-      <a href="{% url 'register' %}" class="text-slate-500 hover:text-brand-600">還沒有帳號？免費註冊</a>
+      <a href="{% url 'password_reset' %}" class="text-jp-primary hover:underline">忘記密碼？</a>
+      <a href="{% url 'register' %}" class="text-jp-muted hover:text-jp-primary">還沒有帳號？免費註冊</a>
     </div>
   </div>
 </main>

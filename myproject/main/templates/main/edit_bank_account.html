@@ -1,0 +1,20 @@
+{% extends 'main/base_eduflow.html' %}
+{% block title %}收款銀行帳戶 | EduFlow{% endblock %}
+
+{% block content %}
+<main class="max-w-md mx-auto px-4 py-10">
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8">
+    <h1 class="text-2xl font-black text-slate-900 mb-1">收款銀行帳戶</h1>
+    <p class="text-slate-500 mb-6">申請提領前請先綁定收款帳戶，提領審核通過後將依此資訊撥款。</p>
+
+    <form method="post" class="ef-form">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="flex gap-3 mt-4">
+        <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-6 py-2.5 rounded-lg transition">儲存帳戶</button>
+        <a href="{% url 'teacher_dashboard' %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-6 py-2.5 rounded-lg transition">返回教師專區</a>
+      </div>
+    </form>
+  </div>
+</main>
+{% endblock %}

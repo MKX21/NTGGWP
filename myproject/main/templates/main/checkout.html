@@ -19,9 +19,6 @@
       {% else %}
       <div class="flex justify-between py-3 text-slate-700"><span>課程原價</span><strong>NT$ {{ original_price }}</strong></div>
       {% endif %}
-      {% if promo_discount %}
-      <div class="flex justify-between py-3 text-slate-700"><span>促銷折扣</span><strong>− NT$ {{ promo_discount }}</strong></div>
-      {% endif %}
       <div class="flex justify-between py-3 text-slate-700"><span>優惠券折扣</span><strong>− NT$ {{ discount_amount }}</strong></div>
       <div class="flex justify-between py-3 text-xl font-black text-brand-700"><span>實付金額</span><span>NT$ {{ final_price }}</span></div>
     </div>

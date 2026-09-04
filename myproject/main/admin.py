@@ -1,9 +1,10 @@
+from django import forms
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
+from django.contrib.auth.models import User
+from django.utils import timezone
 from django.utils.html import format_html
 
-# 狀態轉換一律走 transitions —— 後台的批次動作與前台審核頁呼叫同一份，
-# 因此不會出現「從後台核准的退款沒有撤銷課程」這類分歧。
-from . import transitions
 from .models import (
     Profile,
     CourseCategory,
@@ -29,6 +30,11 @@ from .models import (
     CourseQuestion,
     CourseAnswer,
     CourseAudit,
+    TeacherBankAccount,
+    WithdrawalRequest,
+    CourseBundle,
+    CourseAnnouncement,
+    CourseComment,
 )
 
 # ===== 後台品牌 =====
@@ -119,17 +125,81 @@ class CourseAnswerInline(admin.StackedInline):
 # ===== 會員 =====
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'role_badge')
+    list_display = ('user', 'role_badge', 'is_teacher', 'oauth_badge')
+    list_editable = ('is_teacher',)
     search_fields = ('user__username', 'user__email')
-    list_filter = ('role',)
+    list_filter = ('role', 'is_teacher')
+    actions = ['grant_teacher_access', 'revoke_teacher_access']
 
     @admin.display(description='角色')
     def role_badge(self, obj):
         fg, bg = ('#3730a3', '#eef2ff') if obj.role == 'teacher' else ('#166534', '#dcfce7')
         return _badge(obj.get_role_display(), fg, bg)
 
+    @admin.display(description='快速登入')
+    def oauth_badge(self, obj):
+        if obj.google_id:
+            return _badge('Google', '#1d4ed8', '#dbeafe')
+        if obj.line_id:
+            return _badge('LINE', '#166534', '#dcfce7')
+        return '—'
+
+    @admin.action(description='✅ 賦予教師權限')
+    def grant_teacher_access(self, request, queryset):
+        n = queryset.update(is_teacher=True)
+        self.message_user(request, f'已賦予 {n} 位使用者教師權限。')
+
+    @admin.action(description='⛔ 收回教師權限')
+    def revoke_teacher_access(self, request, queryset):
+        n = queryset.update(is_teacher=False)
+        self.message_user(request, f'已收回 {n} 位使用者的教師權限。')
+
+
+class ProfileInline(admin.StackedInline):
+    """讓 Admin 直接在使用者編輯頁勾選是否給予教師身分，不用切去另一頁。"""
+    model = Profile
+    can_delete = False
+    extra = 0
+    max_num = 1
+    fields = ('is_teacher',)
+    verbose_name = '教師專區權限'
+    verbose_name_plural = '教師專區權限'
+
+
+class CustomUserAdmin(DjangoUserAdmin):
+    inlines = [ProfileInline]
+
+
+admin.site.unregister(User)
+admin.site.register(User, CustomUserAdmin)
+
 
 # ===== 課程 =====
+class RevenueShareSliderWidget(forms.NumberInput):
+    """分潤比例拉桿：拖動時即時顯示百分比，平台分潤 = 100 - 教師分潤。"""
+    input_type = 'range'
+
+    def render(self, name, value, attrs=None, renderer=None):
+        attrs = {**(attrs or {}), 'min': 0, 'max': 100, 'step': 5,
+                 'oninput': 'this.nextElementSibling.value = this.value + "% 教師 / " + (100 - this.value) + "% 平台"',
+                 'style': 'width:260px;vertical-align:middle;'}
+        input_html = super().render(name, value, attrs, renderer)
+        display_value = f'{value}% 教師 / {100 - int(value)}% 平台' if value not in (None, '') else '70% 教師 / 30% 平台'
+        return format_html(
+            '{} <output style="font-weight:700;margin-left:10px;">{}</output>',
+            input_html, display_value
+        )
+
+
+class CourseAdminForm(forms.ModelForm):
+    class Meta:
+        model = Course
+        fields = '__all__'
+        widgets = {
+            'teacher_revenue_share': RevenueShareSliderWidget,
+        }
+
+
 @admin.register(CourseCategory)
 class CourseCategoryAdmin(admin.ModelAdmin):
     list_display = ('name', 'course_count', 'created_at')
@@ -142,37 +212,54 @@ class CourseCategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
-    list_display = ('title', 'teacher', 'category', 'level', 'price', 'published_badge', 'created_at')
+    form = CourseAdminForm
+    list_display = ('title', 'teacher', 'category', 'level', 'price', 'revenue_share_display', 'promo_badge', 'published_badge', 'created_at')
     list_editable = ('price',)
     list_display_links = ('title',)
     search_fields = ('title', 'teacher__username', 'category__name')
-    list_filter = ('is_published', 'level', 'category', 'teacher')
-    autocomplete_fields = ('teacher', 'category')
+    list_filter = ('is_published', 'level', 'category', 'teacher', 'promo_video_type')
+    # 'teacher' 改用限制過名單的一般下拉選單（見 formfield_for_foreignkey），
+    # 不用 autocomplete：AJAX 搜尋走 User 自己的 admin，不會套用這裡的名單限制。
+    autocomplete_fields = ('category',)
     list_per_page = 25
     inlines = [CourseChapterInline]
     actions = ['make_published', 'make_unpublished']
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'teacher':
+            kwargs['queryset'] = User.objects.filter(
+                profile__is_teacher=True
+            ).order_by('username')
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     @admin.display(description='上架狀態')
     def published_badge(self, obj):
         return status_badge('paid' if obj.is_published else 'pending',
                             '已上架' if obj.is_published else '未上架')
 
-    @admin.action(description='✅ 審核通過並上架選取的課程')
-    def make_published(self, request, queryset):
-        courses = list(queryset.select_related('teacher'))
-        for course in courses:
-            transitions.approve_course(course, request.user, comment='後台批次核准')
-        self.message_user(
-            request,
-            f'已審核通過並上架 {len(courses)} 門課程，審核紀錄與講師通知都已產生。'
-        )
+    @admin.display(description='分潤（師/平台）')
+    def revenue_share_display(self, obj):
+        return f'{obj.teacher_revenue_share}% / {obj.platform_revenue_share()}%'
 
-    @admin.action(description='⛔ 退回並下架選取的課程')
+    @admin.display(description='宣傳模式')
+    def promo_badge(self, obj):
+        colors = {
+            'NONE': ('#475569', '#e2e8f0'),
+            'PHYSICAL_SHOOT': ('#3730a3', '#eef2ff'),
+            'AI_GENERATED': ('#9d174d', '#fce7f3'),
+        }
+        fg, bg = colors.get(obj.promo_video_type, ('#475569', '#e2e8f0'))
+        return _badge(obj.get_promo_video_type_display(), fg, bg)
+
+    @admin.action(description='✅ 上架選取的課程')
+    def make_published(self, request, queryset):
+        n = queryset.update(is_published=True)
+        self.message_user(request, f'已上架 {n} 門課程。')
+
+    @admin.action(description='⛔ 下架選取的課程')
     def make_unpublished(self, request, queryset):
-        courses = list(queryset.select_related('teacher'))
-        for course in courses:
-            transitions.reject_course(course, request.user, comment='後台批次退回')
-        self.message_user(request, f'已退回並下架 {len(courses)} 門課程。')
+        n = queryset.update(is_published=False)
+        self.message_user(request, f'已下架 {n} 門課程。')
 
 
 @admin.register(CourseChapter)
@@ -225,6 +312,52 @@ class CourseAuditAdmin(admin.ModelAdmin):
         return status_badge(obj.status, obj.get_status_display())
 
 
+class CourseBundleAdminForm(forms.ModelForm):
+    class Meta:
+        model = CourseBundle
+        fields = '__all__'
+
+    def clean(self):
+        cleaned = super().clean()
+        bundle_price = cleaned.get('bundle_price')
+        courses = cleaned.get('courses')
+        if bundle_price and courses:
+            total = sum(c.get_effective_price() for c in courses)
+            if bundle_price >= total:
+                self.add_error('bundle_price', f'合購價必須低於課程原價總和（NT$ {total}），否則不是優惠。')
+        return cleaned
+
+
+@admin.register(CourseBundle)
+class CourseBundleAdmin(admin.ModelAdmin):
+    form = CourseBundleAdminForm
+    list_display = ('name', 'course_count', 'total_individual_price_display', 'bundle_price', 'savings_display', 'active_badge', 'created_at')
+    filter_horizontal = ('courses',)
+    search_fields = ('name',)
+    list_filter = ('is_active',)
+
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        if db_field.name == 'courses':
+            kwargs['queryset'] = Course.objects.filter(is_published=True).order_by('title')
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
+
+    @admin.display(description='課程數')
+    def course_count(self, obj):
+        return obj.courses.count()
+
+    @admin.display(description='原價總和')
+    def total_individual_price_display(self, obj):
+        return f'NT$ {obj.total_individual_price()}'
+
+    @admin.display(description='折抵金額')
+    def savings_display(self, obj):
+        return f'NT$ {obj.savings()}'
+
+    @admin.display(description='狀態')
+    def active_badge(self, obj):
+        return status_badge('paid' if obj.is_active else 'cancelled', '啟用中' if obj.is_active else '已停用')
+
+
 # ===== 交易 =====
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
@@ -244,7 +377,7 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
-    list_display = ('order', 'course', 'price')
+    list_display = ('order', 'course', 'price', 'discount_amount', 'paid_amount')
     search_fields = ('order__user__username', 'course__title')
     autocomplete_fields = ('order', 'course')
 
@@ -274,20 +407,45 @@ class RefundAdmin(admin.ModelAdmin):
 
     @admin.action(description='✅ 核准退款')
     def approve_refund(self, request, queryset):
-        pending = list(queryset.filter(status='pending').select_related('order', 'user'))
-        for refund in pending:
-            transitions.approve_refund(refund)
-        self.message_user(
-            request,
-            f'已核准 {len(pending)} 筆退款，對應的課程存取權已收回、付款已回沖。'
-        )
+        n = queryset.filter(status='pending').update(status='approved')
+        self.message_user(request, f'已核准 {n} 筆退款。')
 
     @admin.action(description='⛔ 拒絕退款')
     def reject_refund(self, request, queryset):
-        pending = list(queryset.filter(status='pending').select_related('order', 'user'))
-        for refund in pending:
-            transitions.reject_refund(refund)
-        self.message_user(request, f'已拒絕 {len(pending)} 筆退款。')
+        n = queryset.filter(status='pending').update(status='rejected')
+        self.message_user(request, f'已拒絕 {n} 筆退款。')
+
+
+@admin.register(TeacherBankAccount)
+class TeacherBankAccountAdmin(admin.ModelAdmin):
+    list_display = ('teacher', 'bank_name', 'branch_name', 'account_name', 'account_number', 'updated_at')
+    search_fields = ('teacher__username', 'bank_name', 'account_name', 'account_number')
+    autocomplete_fields = ('teacher',)
+
+
+@admin.register(WithdrawalRequest)
+class WithdrawalRequestAdmin(admin.ModelAdmin):
+    list_display = ('teacher', 'amount', 'withdrawal_badge', 'created_at', 'processed_at')
+    search_fields = ('teacher__username',)
+    list_filter = ('status', 'created_at')
+    autocomplete_fields = ('teacher',)
+    readonly_fields = ('bank_info_snapshot', 'created_at')
+    actions = ['approve_withdrawal', 'reject_withdrawal']
+
+    @admin.display(description='審核狀態')
+    def withdrawal_badge(self, obj):
+        colors = {'PENDING': 'pending', 'APPROVED': 'approved', 'REJECTED': 'rejected'}
+        return status_badge(colors.get(obj.status, obj.status), obj.get_status_display())
+
+    @admin.action(description='✅ 核准提領')
+    def approve_withdrawal(self, request, queryset):
+        n = queryset.filter(status='PENDING').update(status='APPROVED', processed_at=timezone.now())
+        self.message_user(request, f'已核准 {n} 筆提領申請。')
+
+    @admin.action(description='⛔ 拒絕提領')
+    def reject_withdrawal(self, request, queryset):
+        n = queryset.filter(status='PENDING').update(status='REJECTED', processed_at=timezone.now())
+        self.message_user(request, f'已拒絕 {n} 筆提領申請。')
 
 
 @admin.register(Enrollment)
@@ -438,14 +596,35 @@ class CourseAnswerAdmin(admin.ModelAdmin):
     autocomplete_fields = ('question', 'user')
 
 
+@admin.register(CourseAnnouncement)
+class CourseAnnouncementAdmin(admin.ModelAdmin):
+    list_display = ('course', 'author', 'title', 'created_at')
+    search_fields = ('title', 'content', 'course__title')
+    list_filter = ('created_at',)
+    autocomplete_fields = ('course', 'author')
+
+
+@admin.register(CourseComment)
+class CourseCommentAdmin(admin.ModelAdmin):
+    list_display = ('course', 'user', 'short_content', 'created_at')
+    search_fields = ('content', 'course__title', 'user__username')
+    list_filter = ('created_at',)
+    autocomplete_fields = ('course', 'user')
+
+    @admin.display(description='留言')
+    def short_content(self, obj):
+        return (obj.content[:20] + '…') if len(obj.content) > 20 else obj.content
+
+
 # ===== 後台側邊選單自訂分組（課程 / 交易 / 行銷 / 會員） =====
 from django.urls import reverse as _reverse
 
 _CUSTOM_GROUPS = [
-    ('📚 課程管理', ['Course', 'CourseCategory', 'CourseChapter', 'CourseLesson', 'CourseAudit']),
+    ('📚 課程管理', ['Course', 'CourseCategory', 'CourseChapter', 'CourseLesson', 'CourseAudit', 'CourseBundle', 'CourseAnnouncement']),
     ('🧾 交易管理', ['Order', 'OrderItem', 'Payment', 'Refund', 'Enrollment']),
     ('🎯 行銷管理', ['Coupon', 'UserCoupon', 'CouponUsage', 'Promotion', 'Cart']),
-    ('👥 會員與互動', ['Profile', 'LearningRecord', 'LessonProgress', 'Favorite', 'Review', 'Notification', 'CourseQuestion', 'CourseAnswer']),
+    ('👥 會員與互動', ['Profile', 'LearningRecord', 'LessonProgress', 'Favorite', 'Review', 'Notification', 'CourseQuestion', 'CourseAnswer', 'CourseComment']),
+    ('💸 教師分潤與提領', ['TeacherBankAccount', 'WithdrawalRequest']),
 ]
 
 _ORDER_INDEX = {

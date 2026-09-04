@@ -4,6 +4,7 @@ from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     path('', views.home, name='home'),
+    path('courses/', views.course_catalog, name='course_catalog'),
 
     path('course/<int:course_id>/', views.course_detail, name='course_detail'),
     path('course/<int:course_id>/buy/', views.buy_course, name='buy_course'),
@@ -14,17 +15,16 @@ urlpatterns = [
     path('course/<int:course_id>/watch/', views.watch_course, name='watch_course'),
     path('lesson/<int:lesson_id>/watch/', views.watch_lesson, name='watch_lesson'),
     path('lesson/<int:lesson_id>/progress/', views.save_progress, name='save_progress'),
-    path('lesson/<int:lesson_id>/video/', views.stream_lesson_video, name='stream_lesson_video'),
     path('course/<int:course_id>/certificate/', views.certificate, name='certificate'),
     path('teacher/<int:teacher_id>/profile/', views.teacher_profile, name='teacher_profile'),
-    path('course/<int:course_id>/edit/', views.edit_course, name='edit_course'),
-    path('course/<int:course_id>/delete/', views.delete_course, name='delete_course'),
 
     path('student/dashboard/', views.student_dashboard, name='student_dashboard'),
     path('student/analytics/', views.student_analytics, name='student_analytics'),
 
     path('teacher/dashboard/', views.teacher_dashboard, name='teacher_dashboard'),
     path('teacher/analytics/', views.teacher_analytics, name='teacher_analytics'),
+    path('teacher/qna/', views.teacher_qna, name='teacher_qna'),
+    path('teacher/bank-account/', views.edit_bank_account, name='edit_bank_account'),
 
     path('export-data/', views.export_data_page, name='export_data_page'),
     path('analytics/', views.platform_analytics, name='platform_analytics'),
@@ -45,15 +45,20 @@ urlpatterns = [
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
 
+    # 快速登入（OAuth）
+    path('oauth/google/login/', views.google_login, name='google_login'),
+    path('oauth/google/callback/', views.google_oauth_callback, name='google_oauth_callback'),
+    path('oauth/line/login/', views.line_login, name='line_login'),
+    path('oauth/line/callback/', views.line_oauth_callback, name='line_oauth_callback'),
+
     path('profile/', views.profile_view, name='profile'),
     path('profile/edit/', views.edit_profile, name='edit_profile'),
     path('my-courses/', views.my_courses, name='my_courses'),
 
-    path('create-course/', views.create_course, name='create_course'),
-
     # 購物車
     path('cart/', views.view_cart, name='view_cart'),
     path('cart/add/<int:course_id>/', views.add_to_cart, name='add_to_cart'),
+    path('cart/add-bundle/<int:bundle_id>/', views.add_bundle_to_cart, name='add_bundle_to_cart'),
     path('cart/remove/<int:item_id>/', views.remove_from_cart, name='remove_from_cart'),
     path('cart/checkout/', views.cart_checkout, name='cart_checkout'),
 
@@ -91,6 +96,13 @@ urlpatterns = [
     path('course/<int:course_id>/question/add/', views.add_question, name='add_question'),
     path('question/<int:question_id>/answer/', views.add_answer, name='add_answer'),
 
+    # 課程留言區
+    path('course/<int:course_id>/comment/add/', views.add_comment, name='add_comment'),
+
+    # 課程公告
+    path('course/<int:course_id>/announcement/add/', views.add_announcement, name='add_announcement'),
+    path('announcement/<int:announcement_id>/delete/', views.delete_announcement, name='delete_announcement'),
+
     # A8 課程審核
     path('audits/manage/', views.manage_audits, name='manage_audits'),
     path('audits/<int:audit_id>/process/', views.process_audit, name='process_audit'),
@@ -102,14 +114,4 @@ urlpatterns = [
     path('password-reset/done/', auth_views.PasswordResetDoneView.as_view(
         template_name='main/password_reset_done.html'
     ), name='password_reset_done'),
-
-    # 少了這兩個，PasswordResetView 在產生信件內容時 reverse
-    # 'password_reset_confirm' 會 NoReverseMatch，整個流程一送出就 500。
-    path('password-reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(
-        template_name='main/password_reset_confirm.html'
-    ), name='password_reset_confirm'),
-
-    path('password-reset/complete/', auth_views.PasswordResetCompleteView.as_view(
-        template_name='main/password_reset_complete.html'
-    ), name='password_reset_complete'),
 ]

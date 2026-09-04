@@ -26,14 +26,10 @@ load_dotenv(BASE_DIR.parent / '.env')
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-# 不放固定的 fallback —— 版控裡的金鑰等於沒有金鑰（任何人都能偽造 session
-# 與密碼重設連結）。沒設 .env 時每次啟動自動產生一把臨時金鑰：程式照跑，
-# 但重啟會作廢所有登入狀態。正式部署務必在 .env 設固定值。
-SECRET_KEY = os.environ.get('SECRET_KEY')
-if not SECRET_KEY:
-    import secrets
-
-    SECRET_KEY = 'django-insecure-dev-' + secrets.token_urlsafe(50)
+SECRET_KEY = os.environ.get(
+    'SECRET_KEY',
+    'django-insecure-!myfgv08#hs01651h)z0w9m48ywynf10)135pb!5tnmn%zug2n',
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
@@ -94,9 +90,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': os.environ.get('DB_NAME', 'course_platform_db'),
         'USER': os.environ.get('DB_USER', 'root'),
-        # 沒有預設密碼：本機 MySQL 的密碼每個人都不一樣，寫死一個在版控裡
-        # 既不會對，又等於公開一組密碼。請在 .env 設定（見 .env.example）。
-        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+        'PASSWORD': os.environ.get('DB_PASSWORD', '0000'),
         'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
         'PORT': os.environ.get('DB_PORT', '3306'),
         # 遠端資料庫每次重新建立連線很花時間，保持連線 60 秒重複使用
@@ -150,18 +144,14 @@ USE_TZ = True
 STATIC_URL = 'static/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-# Email（密碼重設信）
-# 設了 EMAIL_HOST_USER 就走真的 SMTP；沒設就把信印在終端機。
-# 跟資料庫連線同一個哲學：有 .env 用真的，沒有也能跑，測試不會真的寄信。
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@example.com'
 
-if EMAIL_HOST_USER:
-    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-    EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
-    EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
-    EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
-else:
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL') or EMAIL_HOST_USER or 'noreply@example.com'
+# 快速登入（Google / LINE Login）
+# 到 Google Cloud Console / LINE Developers 申請後填入 .env，本機沒填就不會顯示對應按鈕。
+GOOGLE_OAUTH_CLIENT_ID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID', '')
+GOOGLE_OAUTH_CLIENT_SECRET = os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET', '')
+
+LINE_LOGIN_CHANNEL_ID = os.environ.get('LINE_LOGIN_CHANNEL_ID', '')
+LINE_LOGIN_CHANNEL_SECRET = os.environ.get('LINE_LOGIN_CHANNEL_SECRET', '')

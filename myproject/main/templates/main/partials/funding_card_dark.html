@@ -1,0 +1,38 @@
+<article class="{{ card_extra }} bg-satdark-surface rounded-xl overflow-hidden border border-satdark-border hover:-translate-y-1 hover:border-electric/50 transition-all group">
+    <a href="{% url 'course_detail' course.id %}" class="block">
+        <div class="relative aspect-video overflow-hidden bg-satdark-bg">
+            {% if course.image %}
+            <img src="{{ course.image.url }}" alt="{{ course.title }}" class="w-full h-full object-cover zoom" loading="lazy">
+            {% else %}
+            <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-electric to-brand-500 text-white text-4xl font-bold">{{ course.title|slice:":1"|upper }}</div>
+            {% endif %}
+            <span class="absolute top-3 left-3 bg-electric/20 text-electric text-xs font-medium px-2.5 py-1 rounded-full">
+                <i class="fas fa-clock mr-1"></i>剩 {{ course.funding_days_left }} 天
+            </span>
+        </div>
+        <div class="p-5">
+            {% if course.category %}<p class="text-xs text-electric font-medium mb-1">{{ course.category.name }}</p>{% endif %}
+            <h3 class="font-medium text-satdark-text leading-snug mb-3 line-clamp-2 h-11 group-hover:text-electric transition">{{ course.title }}</h3>
+
+            <div class="mb-1 flex justify-between text-sm">
+                <span class="font-medium {% if course.funding_is_goal_met %}text-electric{% else %}text-satdark-text{% endif %}">{{ course.funding_progress_percent }}%</span>
+                <span class="text-satdark-muted">{% if course.funding_is_goal_met %}已達標{% else %}募資中{% endif %}</span>
+            </div>
+            <div class="h-2 w-full bg-satdark-bg rounded-full overflow-hidden mb-3">
+                <div class="h-full bg-electric rounded-full" style="width:{{ course.funding_progress_percent }}%"></div>
+            </div>
+
+            <div class="flex justify-between items-center text-sm text-satdark-muted">
+                <span><i class="fas fa-user-group mr-1"></i>{{ course.funding_backers_count }} / {{ course.funding_goal }} 人</span>
+                <span class="flex items-baseline gap-1.5">
+                    {% if course.early_bird_price %}
+                    <span class="text-xs text-satdark-muted line-through">NT$ {{ course.price }}</span>
+                    <span class="text-lg font-bold text-electric">NT$ {{ course.early_bird_price }}</span>
+                    {% else %}
+                    <span class="text-lg font-bold text-electric">NT$ {{ course.price }}</span>
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+    </a>
+</article>

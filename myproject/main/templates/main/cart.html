@@ -7,18 +7,54 @@
   <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-7 mb-6">
     <h1 class="text-2xl font-black text-slate-900 mb-5">我的購物車</h1>
     {% if items %}
+      {% if display_bundles %}
+      <div class="space-y-3 mb-4">
+        {% for group in display_bundles %}
+        <div class="border {% if group.is_intact %}border-brand-200 bg-brand-50{% else %}border-amber-200 bg-amber-50{% endif %} rounded-xl p-4">
+          <div class="flex items-center justify-between gap-3 flex-wrap mb-2">
+            <span class="font-bold text-slate-800">🎁 {{ group.bundle.name }}</span>
+            {% if group.is_intact %}
+            <span class="text-right">
+              <span class="text-xs text-red-500 line-through decoration-2 mr-1">NT$ {{ group.individual_total }}</span>
+              <span class="text-lg font-black text-red-600">NT$ {{ group.bundle.bundle_price }}</span>
+            </span>
+            {% else %}
+            <span class="text-sm font-bold text-amber-700">此合購組合已不完整，將以個別價格計算</span>
+            {% endif %}
+          </div>
+          <div class="divide-y divide-white">
+            {% for item in group.items %}
+            <div class="flex items-center justify-between gap-4 py-2">
+              <div>
+                <div class="font-medium text-slate-700">{{ item.course.title }}</div>
+                <div class="text-xs text-slate-500">講師：{{ item.course.teacher.username }}</div>
+              </div>
+              <div class="flex items-center gap-3">
+                {% if not group.is_intact %}<span class="text-sm text-slate-600">NT$ {{ item.course.get_effective_price }}</span>{% endif %}
+                <form method="post" action="{% url 'remove_from_cart' item.id %}">
+                  {% csrf_token %}
+                  <button type="submit" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-3 py-1.5 rounded-lg text-xs transition">移除</button>
+                </form>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
       <div class="divide-y divide-slate-100">
-        {% for item in items %}
+        {% for item in loose_items %}
         <div class="flex items-center justify-between gap-4 py-4">
           <div>
             <div class="font-bold text-slate-800">{{ item.course.title }}</div>
             <div class="text-sm text-slate-500">講師：{{ item.course.teacher.username }}</div>
           </div>
           <div class="text-right whitespace-nowrap">
-            {# display_price 含促銷，逐項加總才等於下方「合計」與實際結帳金額 #}
-            {% if item.course.display_has_discount %}
+            {% if item.course.has_discount %}
             <div class="text-xs text-red-500 line-through decoration-2">NT$ {{ item.course.price }}</div>
-            <div class="text-lg font-black text-red-600">NT$ {{ item.course.display_price }}</div>
+            <div class="text-lg font-black text-red-600">NT$ {{ item.course.get_effective_price }}</div>
             {% else %}
             <div class="text-lg font-black text-brand-700">NT$ {{ item.course.price }}</div>
             {% endif %}
@@ -42,7 +78,7 @@
     {% else %}
       <p class="text-slate-500">購物車目前是空的。</p>
     {% endif %}
-    <a href="{% url 'home' %}#courses" class="inline-block mt-5 text-brand-600 hover:underline font-medium">← 回首頁繼續逛課程</a>
+    <a href="{% url 'course_catalog' %}" class="inline-block mt-5 text-brand-600 hover:underline font-medium">← 回首頁繼續逛課程</a>
   </div>
 
   <!-- 領取優惠券 -->

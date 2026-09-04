@@ -1,3 +1,4 @@
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -14,6 +15,20 @@ class Profile(models.Model):
     avatar = models.ImageField(
         upload_to='avatars/', blank=True, null=True, verbose_name="大頭貼"
     )
+
+    # 快速登入（OAuth）綁定用的第三方帳號 ID
+    google_id = models.CharField(
+        max_length=255, unique=True, blank=True, null=True, verbose_name="Google 帳號 ID"
+    )
+    line_id = models.CharField(
+        max_length=255, unique=True, blank=True, null=True, verbose_name="LINE 帳號 ID"
+    )
+
+    # 單一帳號體系：is_teacher 由 Admin 後台賦予，具備教師權限後可在前台切換進教師專區，
+    # 與既有 role（學生/老師二選一）並存，兩者的整合會在後續 Phase 處理。
+    is_teacher = models.BooleanField(default=False, verbose_name="具備教師權限")
+
+    bio = models.TextField(blank=True, null=True, verbose_name="講師簡介")
 
     def __str__(self):
         return f"{self.user.username} - {self.get_role_display()}"
@@ -82,6 +97,42 @@ class Course(models.Model):
     early_bird_price = models.PositiveIntegerField(
         blank=True, null=True, verbose_name="早鳥優惠價（募資期間適用，需低於原價）"
     )
+
+    # 分潤設定：Admin 於建立/編輯課程時以拉桿設定教師分潤比例，平台分潤 = 100 - 教師分潤
+    teacher_revenue_share = models.PositiveSmallIntegerField(
+        default=70,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="教師分潤比例（%）"
+    )
+
+    # 宣傳影片意向：教師於新課程需求單或課程設定中標示，供行政人員後續安排
+    PROMO_VIDEO_TYPE_CHOICES = [
+        ('NONE', '未設定'),
+        ('PHYSICAL_SHOOT', '實體拍攝'),
+        ('AI_GENERATED', 'AI 形象廣告'),
+    ]
+    promo_video_type = models.CharField(
+        max_length=20,
+        choices=PROMO_VIDEO_TYPE_CHOICES,
+        default='NONE',
+        verbose_name="宣傳影片模式"
+    )
+
+    # 課程資訊卡：開課時間 / 觀看期限（僅顯示用，不做到期強制下架）
+    start_date = models.DateTimeField(blank=True, null=True, verbose_name="開課時間")
+    access_duration_days = models.PositiveIntegerField(
+        blank=True, null=True, verbose_name="觀看期限（天數，留空代表無限）"
+    )
+
+    # 課程介紹影片（頁面主視覺用，與 promo_video_type 不同：這是實際公開的影片素材）
+    intro_video_url = models.URLField(blank=True, null=True, verbose_name="課程介紹影片連結")
+    intro_video_file = models.FileField(
+        upload_to='course_intro_videos/', blank=True, null=True, verbose_name="課程介紹影片檔"
+    )
+
+    def platform_revenue_share(self):
+        """平台分潤比例（%），為 100 減去教師分潤比例。"""
+        return 100 - self.teacher_revenue_share
 
     def __str__(self):
         return self.title
@@ -174,6 +225,29 @@ class CourseLesson(models.Model):
         verbose_name = "課程單元"
         verbose_name_plural = "課程單元"
         ordering = ['chapter', 'sort_order']
+
+
+class CourseBundle(models.Model):
+    """合購優惠組合：Admin 指定數門課程以合購價一起販售。"""
+    name = models.CharField(max_length=200, verbose_name="合購名稱")
+    description = models.TextField(blank=True, null=True, verbose_name="合購說明")
+    courses = models.ManyToManyField(Course, related_name="bundles", verbose_name="包含課程")
+    bundle_price = models.PositiveIntegerField(verbose_name="合購優惠價")
+    is_active = models.BooleanField(default=True, verbose_name="是否啟用")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="建立時間")
+
+    def total_individual_price(self):
+        return sum(c.get_effective_price() for c in self.courses.all())
+
+    def savings(self):
+        return max(0, self.total_individual_price() - self.bundle_price)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = "合購優惠組合"
+        verbose_name_plural = "合購優惠組合"
 
 
 class Enrollment(models.Model):
@@ -292,12 +366,11 @@ class Coupon(models.Model):
             return '已用完'
         return '使用中'
 
-    def discount_for(self, price):
-        """純計算折扣金額，不檢查券是否有效。
+    def calculate_discount(self, price):
+        # 期限/啟用/使用次數任一不符 → 一律 0 折扣（防止過期券被折抵）
+        if not self.is_valid_now():
+            return 0
 
-        有效性由呼叫端負責（見 checkout.quote_basket），因為 is_valid_now()
-        會查資料庫，而定價計算必須能在沒有資料庫的情況下被測。
-        """
         if price < self.min_spend:
             return 0
 
@@ -308,13 +381,10 @@ class Coupon(models.Model):
         else:
             discount = 0
 
-        return min(discount, price)
+        if discount > price:
+            discount = price
 
-    def calculate_discount(self, price):
-        # 期限/啟用/使用次數任一不符 → 一律 0 折扣（防止過期券被折抵）
-        if not self.is_valid_now():
-            return 0
-        return self.discount_for(price)
+        return discount
 
     class Meta:
         verbose_name = "優惠券"
@@ -371,26 +441,6 @@ class Promotion(models.Model):
     def __str__(self):
         return self.name
 
-    def is_active_now(self):
-        now = timezone.now()
-        return self.is_active and self.start_date <= now <= self.end_date
-
-    def discount_for(self, price):
-        """純計算折扣金額，作用於售價。不檢查活動是否在期間內。
-
-        期間判定由呼叫端負責（見 checkout._active_promotion_map，那裡用
-        資料庫過濾一次撈完，避免逐課查詢）。
-        """
-        if self.discount_type == 'amount':
-            discount = self.discount_value
-        elif self.discount_type == 'percent':
-            discount = int(price * self.discount_value / 100)
-        else:
-            discount = 0
-
-        # 夾住上限：discount_value 設成 150（%）也不會折出負數金額
-        return min(discount, price)
-
     class Meta:
         verbose_name = "促銷活動"
         verbose_name_plural = "促銷活動"
@@ -418,6 +468,10 @@ class CartItem(models.Model):
     )
     course = models.ForeignKey(Course, on_delete=models.CASCADE, verbose_name="課程")
     added_at = models.DateTimeField(auto_now_add=True, verbose_name="加入時間")
+    bundle = models.ForeignKey(
+        CourseBundle, on_delete=models.SET_NULL, blank=True, null=True,
+        verbose_name="所屬合購組合"
+    )
 
     def __str__(self):
         return f"{self.cart.user.username} - {self.course.title}"
@@ -479,11 +533,9 @@ class OrderItem(models.Model):
         verbose_name="訂單"
     )
     course = models.ForeignKey(Course, on_delete=models.CASCADE, verbose_name="課程")
-    price = models.PositiveIntegerField(verbose_name="購買當下售價")
-    # 分攤到這一項的促銷 + 優惠券折扣；paid_amount = price - discount_amount。
-    # 同一張訂單所有明細的 paid_amount 加總，精確等於 Order.final_price。
-    discount_amount = models.PositiveIntegerField(default=0, verbose_name="分攤折扣")
-    paid_amount = models.PositiveIntegerField(default=0, verbose_name="實付金額")
+    price = models.PositiveIntegerField(verbose_name="購買當下價格")
+    discount_amount = models.PositiveIntegerField(default=0, verbose_name="此項折扣金額")
+    paid_amount = models.PositiveIntegerField(default=0, verbose_name="此項實付金額")
 
     def __str__(self):
         return f"{self.order.id} - {self.course.title}"
@@ -695,6 +747,43 @@ class CourseAnswer(models.Model):
         verbose_name_plural = "課程回答"
 
 
+class CourseAnnouncement(models.Model):
+    """課程公告：教師（本人課程）或 Admin 可發布，僅已購買學員/該課程教師/Admin 看得到。"""
+    course = models.ForeignKey(
+        Course, on_delete=models.CASCADE, related_name="announcements", verbose_name="課程"
+    )
+    author = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="發布者")
+    title = models.CharField(max_length=200, verbose_name="公告標題")
+    content = models.TextField(verbose_name="公告內容")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="發布時間")
+
+    def __str__(self):
+        return f"{self.course.title} - {self.title}"
+
+    class Meta:
+        verbose_name = "課程公告"
+        verbose_name_plural = "課程公告"
+        ordering = ['-created_at']
+
+
+class CourseComment(models.Model):
+    """課程留言區：開放任何登入使用者留言，與需購買才能發問的課程問答區區隔。"""
+    course = models.ForeignKey(
+        Course, on_delete=models.CASCADE, related_name="comments", verbose_name="課程"
+    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="留言者")
+    content = models.TextField(verbose_name="留言內容")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="留言時間")
+
+    def __str__(self):
+        return f"{self.course.title} - {self.user.username}"
+
+    class Meta:
+        verbose_name = "課程留言"
+        verbose_name_plural = "課程留言"
+        ordering = ['-created_at']
+
+
 class CourseAudit(models.Model):
     STATUS_CHOICES = [
         ('pending', '待審核'),
@@ -726,3 +815,50 @@ class CourseAudit(models.Model):
     class Meta:
         verbose_name = "課程審核"
         verbose_name_plural = "課程審核"
+
+
+class TeacherBankAccount(models.Model):
+    """教師收款銀行帳戶（一位教師一組，提領申請時會存快照，不受後續修改影響）。"""
+    teacher = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="bank_account", verbose_name="教師"
+    )
+    bank_name = models.CharField(max_length=100, verbose_name="銀行名稱")
+    bank_code = models.CharField(max_length=10, blank=True, null=True, verbose_name="銀行代碼")
+    branch_name = models.CharField(max_length=100, blank=True, null=True, verbose_name="分行名稱")
+    account_name = models.CharField(max_length=100, verbose_name="戶名")
+    account_number = models.CharField(max_length=50, verbose_name="帳號")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新時間")
+
+    def __str__(self):
+        return f"{self.teacher.username} - {self.bank_name} {self.account_number}"
+
+    class Meta:
+        verbose_name = "教師銀行帳戶"
+        verbose_name_plural = "教師銀行帳戶"
+
+
+class WithdrawalRequest(models.Model):
+    STATUS_CHOICES = [
+        ('PENDING', '審核中'),
+        ('APPROVED', '已核准'),
+        ('REJECTED', '已拒絕'),
+    ]
+
+    teacher = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="withdrawal_requests", verbose_name="教師"
+    )
+    amount = models.PositiveIntegerField(verbose_name="提領金額")
+    bank_info_snapshot = models.TextField(verbose_name="銀行帳戶快照（申請當下）")
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default='PENDING', verbose_name="審核狀態"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="申請時間")
+    processed_at = models.DateTimeField(blank=True, null=True, verbose_name="處理時間")
+
+    def __str__(self):
+        return f"{self.teacher.username} - NT$ {self.amount} - {self.get_status_display()}"
+
+    class Meta:
+        verbose_name = "提領申請"
+        verbose_name_plural = "提領申請"
+        ordering = ['-created_at']
