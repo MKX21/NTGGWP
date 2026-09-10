@@ -37,6 +37,10 @@ from .models import (
     CourseSplitSetting,
     RevenueRecord,
     WithdrawalRequest,
+    TeacherFollow,
+    TeacherColumn,
+    TeacherArticle,
+    TeacherMaterial,
 )
 
 # ===== 後台品牌 =====
@@ -676,6 +680,38 @@ class CourseCommentAdmin(admin.ModelAdmin):
         return (obj.content[:20] + '…') if len(obj.content) > 20 else obj.content
 
 
+@admin.register(TeacherFollow)
+class TeacherFollowAdmin(admin.ModelAdmin):
+    list_display = ('follower', 'teacher', 'created_at')
+    search_fields = ('follower__username', 'teacher__username')
+    list_filter = ('created_at',)
+    autocomplete_fields = ('follower', 'teacher')
+
+
+@admin.register(TeacherColumn)
+class TeacherColumnAdmin(admin.ModelAdmin):
+    list_display = ('title', 'teacher', 'is_published', 'created_at')
+    search_fields = ('title', 'teacher__username')
+    list_filter = ('is_published', 'created_at')
+    autocomplete_fields = ('teacher',)
+
+
+@admin.register(TeacherArticle)
+class TeacherArticleAdmin(admin.ModelAdmin):
+    list_display = ('title', 'teacher', 'column', 'is_published', 'created_at')
+    search_fields = ('title', 'content', 'teacher__username')
+    list_filter = ('is_published', 'created_at')
+    autocomplete_fields = ('teacher', 'column')
+
+
+@admin.register(TeacherMaterial)
+class TeacherMaterialAdmin(admin.ModelAdmin):
+    list_display = ('title', 'teacher', 'is_published', 'created_at')
+    search_fields = ('title', 'description', 'teacher__username')
+    list_filter = ('is_published', 'created_at')
+    autocomplete_fields = ('teacher',)
+
+
 # ===== 後台側邊選單自訂分組（課程 / 交易 / 行銷 / 會員） =====
 from django.urls import reverse as _reverse
 
@@ -684,7 +720,8 @@ _CUSTOM_GROUPS = [
     ('🧾 交易管理', ['Order', 'OrderItem', 'Payment', 'Refund', 'Enrollment']),
     ('💰 分潤與提領', ['CourseSplitSetting', 'RevenueRecord', 'WithdrawalRequest']),
     ('🎯 行銷管理', ['Coupon', 'UserCoupon', 'CouponUsage', 'Promotion', 'Cart']),
-    ('👥 會員與互動', ['Profile', 'LearningRecord', 'LessonProgress', 'Favorite', 'Review', 'Notification', 'CourseQuestion', 'CourseAnswer', 'CourseComment']),
+    ('📝 講師內容', ['TeacherColumn', 'TeacherArticle', 'TeacherMaterial']),
+    ('👥 會員與互動', ['Profile', 'TeacherFollow', 'LearningRecord', 'LessonProgress', 'Favorite', 'Review', 'Notification', 'CourseQuestion', 'CourseAnswer', 'CourseComment']),
 ]
 
 _ORDER_INDEX = {

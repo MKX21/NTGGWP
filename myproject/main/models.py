@@ -32,8 +32,22 @@ class Profile(models.Model):
 
     bio = models.TextField(blank=True, null=True, verbose_name="講師簡介")
 
+    # 講師頁形象：封面 banner、稱號與社群連結
+    cover_image = models.ImageField(
+        upload_to='teacher_covers/', blank=True, null=True, verbose_name="講師頁封面"
+    )
+    headline = models.CharField(
+        max_length=100, blank=True, default='', verbose_name="講師稱號"
+    )
+    facebook_url = models.URLField(blank=True, default='', verbose_name="Facebook 連結")
+    youtube_url = models.URLField(blank=True, default='', verbose_name="YouTube 連結")
+
     def __str__(self):
         return f"{self.user.username} - {self.get_role_display()}"
+
+    @property
+    def follower_count(self):
+        return self.user.followers.count()
 
     @property
     def display_name(self):
@@ -1040,3 +1054,96 @@ class WithdrawalRequest(models.Model):
         verbose_name = "提領紀錄"
         verbose_name_plural = "提領紀錄"
         ordering = ['-requested_at']
+
+
+# =========================
+# 追蹤講師與講師內容（專欄／文章／教材）
+# =========================
+
+class TeacherFollow(models.Model):
+    """學員追蹤講師：追蹤後會收到該講師的新課程、新公告、新促銷等通知。"""
+    follower = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="following", verbose_name="追蹤者"
+    )
+    teacher = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="followers", verbose_name="講師"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="追蹤時間")
+
+    def __str__(self):
+        return f"{self.follower.username} → {self.teacher.username}"
+
+    class Meta:
+        verbose_name = "追蹤講師"
+        verbose_name_plural = "追蹤講師"
+        unique_together = ('follower', 'teacher')
+        ordering = ['-created_at']
+
+
+class TeacherColumn(models.Model):
+    """專欄：講師開設的主題系列，可歸類多篇文章。"""
+    teacher = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="columns", verbose_name="講師"
+    )
+    title = models.CharField(max_length=200, verbose_name="專欄名稱")
+    description = models.TextField(blank=True, default='', verbose_name="專欄簡介")
+    cover_image = models.ImageField(
+        upload_to='teacher_columns/', blank=True, null=True, verbose_name="專欄封面"
+    )
+    is_published = models.BooleanField(default=True, verbose_name="是否公開")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="建立時間")
+
+    def __str__(self):
+        return f"{self.teacher.username} - {self.title}"
+
+    class Meta:
+        verbose_name = "專欄"
+        verbose_name_plural = "專欄"
+        ordering = ['-created_at']
+
+
+class TeacherArticle(models.Model):
+    """文章：講師發布的圖文內容，可獨立存在或歸屬於某個專欄。"""
+    teacher = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="articles", verbose_name="講師"
+    )
+    column = models.ForeignKey(
+        TeacherColumn, on_delete=models.SET_NULL, blank=True, null=True,
+        related_name="articles", verbose_name="所屬專欄"
+    )
+    title = models.CharField(max_length=200, verbose_name="文章標題")
+    content = models.TextField(verbose_name="文章內容")
+    cover_image = models.ImageField(
+        upload_to='teacher_articles/', blank=True, null=True, verbose_name="文章封面"
+    )
+    is_published = models.BooleanField(default=True, verbose_name="是否公開")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="建立時間")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新時間")
+
+    def __str__(self):
+        return f"{self.teacher.username} - {self.title}"
+
+    class Meta:
+        verbose_name = "文章"
+        verbose_name_plural = "文章"
+        ordering = ['-created_at']
+
+
+class TeacherMaterial(models.Model):
+    """教材：講師提供的可下載檔案資源。"""
+    teacher = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="materials", verbose_name="講師"
+    )
+    title = models.CharField(max_length=200, verbose_name="教材名稱")
+    description = models.TextField(blank=True, default='', verbose_name="教材說明")
+    file = models.FileField(upload_to='teacher_materials/', verbose_name="教材檔案")
+    is_published = models.BooleanField(default=True, verbose_name="是否公開")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="建立時間")
+
+    def __str__(self):
+        return f"{self.teacher.username} - {self.title}"
+
+    class Meta:
+        verbose_name = "教材"
+        verbose_name_plural = "教材"
+        ordering = ['-created_at']
