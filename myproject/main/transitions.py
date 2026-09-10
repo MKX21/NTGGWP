@@ -185,7 +185,8 @@ def approve_course(course, reviewer, comment=''):
     audit.reviewed_at = timezone.now()
     audit.save()
 
-    if not course.is_published:
+    newly_published = not course.is_published
+    if newly_published:
         course.is_published = True
         course.save(update_fields=['is_published'])
 
@@ -194,6 +195,15 @@ def approve_course(course, reviewer, comment=''):
         title='課程審核通過',
         content=f'你的課程「{course.title}」已通過審核並上架。'
     )
+
+    # 首次上架時通知講師的追蹤者（冪等：重複審核不會再發）
+    if newly_published:
+        from .notifications import notify_followers
+        notify_followers(
+            course.teacher,
+            '追蹤講師有新課程上架',
+            f'{course.teacher.profile.display_name}老師發布了新課程「{course.title}」，快來看看！'
+        )
     return audit
 
 

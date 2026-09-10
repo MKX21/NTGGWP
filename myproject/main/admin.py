@@ -527,10 +527,27 @@ class CouponAdmin(admin.ModelAdmin):
     list_editable = ('is_active',)
     search_fields = ('code', 'name')
     list_filter = ('discount_type', 'is_active')
+    actions = ['broadcast_to_members']
 
     @admin.display(description='目前狀態')
     def current_status(self, obj):
         return status_badge(obj.status_label(), obj.status_label())
+
+    @admin.action(description='📣 推播選取的優惠券給所有會員')
+    def broadcast_to_members(self, request, queryset):
+        from .notifications import notify_users
+        member_ids = list(User.objects.filter(is_active=True).values_list('id', flat=True))
+        total = 0
+        for coupon in queryset:
+            total += notify_users(
+                member_ids,
+                f'新優惠券上線：{coupon.name}',
+                f'輸入優惠碼「{coupon.code}」即可享有折扣，快到購物車使用！'
+            )
+        self.message_user(
+            request,
+            f'已將 {queryset.count()} 張優惠券推播給 {len(member_ids)} 位會員（共 {total} 則通知）。'
+        )
 
 
 @admin.register(UserCoupon)

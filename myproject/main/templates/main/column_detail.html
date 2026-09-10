@@ -1,0 +1,35 @@
+{% extends 'main/base_eduflow.html' %}
+{% block title %}{{ column.title }} | EduFlow{% endblock %}
+
+{% block content %}
+<main class="max-w-3xl mx-auto px-4 sm:px-6 py-10">
+  <a href="{% url 'teacher_profile' column.teacher.id %}?tab=column" class="text-sm text-slate-500 hover:text-jp-primary">← 回 {{ column.teacher.profile.display_name }} 的講師頁</a>
+
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm overflow-hidden mt-4">
+    <div class="h-40 bg-center bg-cover {% if not column.cover_image %}bg-gradient-to-br from-brand-500 to-violet-500{% endif %}" {% if column.cover_image %}style="background-image:url('{{ column.cover_image.url }}')"{% endif %}></div>
+    <div class="p-7">
+      <div class="flex items-center gap-2">
+        <h1 class="text-2xl font-black text-slate-900">{{ column.title }}</h1>
+        {% if not column.is_published %}<span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">未公開</span>{% endif %}
+      </div>
+      {% if column.description %}<p class="text-slate-600 whitespace-pre-line mt-2">{{ column.description }}</p>{% endif %}
+    </div>
+  </div>
+
+  <h2 class="text-lg font-black text-slate-900 mt-8 mb-4">專欄文章（{{ articles|length }}）</h2>
+  {% if articles %}
+  <div class="divide-y divide-slate-100 bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm">
+    {% for a in articles %}
+    <a href="{% url 'article_detail' a.id %}" class="flex gap-4 p-5 hover:bg-slate-50 transition">
+      {% if a.cover_image %}<img src="{{ a.cover_image.url }}" class="w-24 h-16 rounded-lg object-cover shrink-0">{% endif %}
+      <div class="min-w-0">
+        <h3 class="font-bold text-slate-900 truncate">{{ a.title }}</h3>
+        <p class="text-sm text-slate-500 line-clamp-2 mt-1">{{ a.content|truncatechars:80 }}</p>
+        <p class="text-xs text-slate-400 mt-1">{{ a.created_at|date:"Y-m-d" }}</p>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}<p class="text-slate-500">這個專欄還沒有文章。</p>{% endif %}
+</main>
+{% endblock %}

@@ -107,6 +107,24 @@ urlpatterns = [
     path('course/<int:course_id>/announcement/add/', views.add_announcement, name='add_announcement'),
     path('announcement/<int:announcement_id>/delete/', views.delete_announcement, name='delete_announcement'),
 
+    # 追蹤講師
+    path('teacher/<int:teacher_id>/follow/', views.toggle_follow, name='toggle_follow'),
+    path('following/', views.my_following, name='my_following'),
+
+    # 講師內容管理：專欄 / 文章 / 教材
+    path('teacher/content/', views.teacher_content, name='teacher_content'),
+    path('teacher/content/column/add/', views.add_column, name='add_column'),
+    path('teacher/content/column/<int:column_id>/edit/', views.edit_column, name='edit_column'),
+    path('teacher/content/column/<int:column_id>/delete/', views.delete_column, name='delete_column'),
+    path('column/<int:column_id>/', views.column_detail, name='column_detail'),
+    path('teacher/content/article/add/', views.add_article, name='add_article'),
+    path('teacher/content/article/<int:article_id>/edit/', views.edit_article, name='edit_article'),
+    path('teacher/content/article/<int:article_id>/delete/', views.delete_article, name='delete_article'),
+    path('article/<int:article_id>/', views.article_detail, name='article_detail'),
+    path('teacher/content/material/add/', views.add_material, name='add_material'),
+    path('teacher/content/material/<int:material_id>/edit/', views.edit_material, name='edit_material'),
+    path('teacher/content/material/<int:material_id>/delete/', views.delete_material, name='delete_material'),
+
     # A8 課程審核
     path('audits/manage/', views.manage_audits, name='manage_audits'),
     path('audits/<int:audit_id>/process/', views.process_audit, name='process_audit'),

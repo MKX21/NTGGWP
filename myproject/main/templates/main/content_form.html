@@ -1,0 +1,20 @@
+{% extends 'main/base_eduflow.html' %}
+{% block title %}{% if is_edit %}編輯{% else %}新增{% endif %}{{ content_kind }} | EduFlow{% endblock %}
+
+{% block content %}
+<main class="max-w-2xl mx-auto px-4 py-10">
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8 ef-form">
+    <h1 class="text-2xl font-black text-slate-900 mb-1">{% if is_edit %}編輯{% else %}新增{% endif %}{{ content_kind }}</h1>
+    <p class="text-slate-500 mb-6">填寫下列內容後儲存。</p>
+
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="flex gap-3 mt-4">
+        <button type="submit" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-6 py-2.5 rounded-lg transition">儲存</button>
+        <a href="{% url 'teacher_content' %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-6 py-2.5 rounded-lg transition">取消</a>
+      </div>
+    </form>
+  </div>
+</main>
+{% endblock %}

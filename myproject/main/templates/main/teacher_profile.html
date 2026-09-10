@@ -1,55 +1,202 @@
 {% extends 'main/base_eduflow.html' %}
-{% block title %}{{ teacher.username }} ｜ 講師頁 | EduFlow{% endblock %}
+{% block title %}{{ teacher.profile.display_name }} ｜ 講師頁 | EduFlow{% endblock %}
 
 {% block content %}
-<main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-  <!-- 講師資訊 -->
-  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8 mb-6 flex items-center gap-6 flex-wrap">
-    {% if teacher.profile.avatar %}
-    <img src="{{ teacher.profile.avatar.url }}" alt="{{ teacher.profile.display_name }}" class="w-[92px] h-[92px] rounded-full object-cover shrink-0">
-    {% else %}
-    <span class="w-[92px] h-[92px] rounded-full bg-gradient-to-br from-brand-500 to-violet-500 text-white flex items-center justify-center text-4xl font-black shrink-0">{{ teacher.profile.display_name|slice:":1"|upper }}</span>
-    {% endif %}
-    <div class="flex-1">
-      <h1 class="text-2xl font-black text-slate-900">{{ teacher.profile.display_name }}</h1>
-      {% if role_display %}<span class="inline-block mt-1 bg-brand-50 text-jp-primaryHover text-xs font-bold px-3 py-1 rounded-full">{{ role_display }}</span>{% endif %}
-      <div class="flex gap-8 flex-wrap mt-4">
-        <div><div class="text-2xl font-black text-jp-primaryHover">{{ course_count }}</div><div class="text-sm text-slate-500">開設課程</div></div>
-        <div><div class="text-2xl font-black text-jp-primaryHover">{{ total_students }}</div><div class="text-sm text-slate-500">學生人次</div></div>
-        <div><div class="text-2xl font-black text-jp-primaryHover">{% if avg_rating %}★ {{ avg_rating }}{% else %}—{% endif %}</div><div class="text-sm text-slate-500">平均評分（{{ review_count }} 則）</div></div>
-      </div>
-    </div>
-  </div>
+<!-- 封面 banner -->
+<div class="relative">
+  {% if profile.cover_image %}
+  <div class="h-56 sm:h-72 w-full bg-center bg-cover" style="background-image:url('{{ profile.cover_image.url }}')"></div>
+  {% else %}
+  <div class="h-56 sm:h-72 w-full bg-gradient-to-br from-brand-600 via-brand-500 to-violet-500"></div>
+  {% endif %}
 
-  <!-- 開設的課程 -->
-  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-7 mb-6">
-    <h2 class="text-xl font-black text-slate-900 mb-5">開設的課程</h2>
-    {% if courses %}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      {% for course in courses %}
-      {% include 'main/partials/course_card.html' with card_extra="" %}
-      {% endfor %}
-    </div>
-    {% else %}<p class="text-slate-500">這位講師目前沒有已上架的課程。</p>{% endif %}
-  </div>
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- 講師資訊卡：頭像跨在 banner 上 -->
+    <div class="relative -mt-20 sm:-mt-24 mb-8">
+      <div class="flex flex-col sm:flex-row sm:items-end gap-5">
+        {% if profile.avatar %}
+        <img src="{{ profile.avatar.url }}" alt="{{ teacher.profile.display_name }}"
+             class="w-36 h-36 sm:w-44 sm:h-44 rounded-full object-cover ring-4 ring-white shadow-xl bg-white shrink-0">
+        {% else %}
+        <span class="w-36 h-36 sm:w-44 sm:h-44 rounded-full ring-4 ring-white shadow-xl bg-gradient-to-br from-brand-500 to-violet-500 text-white flex items-center justify-center text-6xl font-black shrink-0">{{ teacher.profile.display_name|slice:":1"|upper }}</span>
+        {% endif %}
 
-  <!-- 學生評價 -->
-  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-7">
-    <h2 class="text-xl font-black text-slate-900 mb-4">學生評價</h2>
-    {% if recent_reviews %}
-    <div class="divide-y divide-slate-100">
-      {% for r in recent_reviews %}
-      <div class="py-4">
-        <div class="flex items-center justify-between gap-3 flex-wrap">
-          <span class="font-bold text-slate-800">{{ r.user.username }}</span>
-          <span class="text-amber-400 text-sm">{% for i in "12345"|make_list %}{% if forloop.counter <= r.rating %}<i class="fas fa-star"></i>{% else %}<i class="far fa-star"></i>{% endif %}{% endfor %}</span>
+        <div class="flex-1 sm:pb-2">
+          <div class="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="text-3xl font-black text-slate-900">{{ teacher.profile.display_name }}</h1>
+              {% if profile.headline %}
+              <p class="text-lg text-slate-600 mt-1">{{ profile.headline }}</p>
+              {% elif role_display %}
+              <span class="inline-block mt-2 bg-brand-50 text-jp-primaryHover text-xs font-bold px-3 py-1 rounded-full">{{ role_display }}</span>
+              {% endif %}
+              <p class="text-slate-500 mt-2">追蹤人數 <span class="text-jp-primaryHover font-black">{{ follower_count }}</span></p>
+            </div>
+
+            <div class="flex items-center gap-3">
+              {% if is_owner %}
+              <a href="{% url 'edit_profile' %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-2.5 rounded-lg transition">編輯個人資料</a>
+              <a href="{% url 'teacher_content' %}" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-5 py-2.5 rounded-lg transition">內容管理</a>
+              {% elif user.is_authenticated %}
+              <form method="post" action="{% url 'toggle_follow' teacher.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                {% if is_following %}
+                <button type="submit" class="bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-700 font-bold px-6 py-2.5 rounded-lg transition"><i class="fas fa-check mr-1"></i> 追蹤中</button>
+                {% else %}
+                <button type="submit" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-6 py-2.5 rounded-lg transition"><i class="fas fa-plus mr-1"></i> 追蹤講師</button>
+                {% endif %}
+              </form>
+              {% else %}
+              <a href="{% url 'login' %}" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-6 py-2.5 rounded-lg transition"><i class="fas fa-plus mr-1"></i> 追蹤講師</a>
+              {% endif %}
+            </div>
+          </div>
+
+          {% if profile.bio %}
+          <p class="text-slate-600 whitespace-pre-line mt-4 max-w-3xl">{{ profile.bio }}</p>
+          {% endif %}
+
+          {% if profile.facebook_url or profile.youtube_url %}
+          <div class="flex items-center gap-3 mt-4">
+            {% if profile.facebook_url %}
+            <a href="{{ profile.facebook_url }}" target="_blank" rel="noopener" class="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center hover:bg-brand-600 transition"><i class="fab fa-facebook-f"></i></a>
+            {% endif %}
+            {% if profile.youtube_url %}
+            <a href="{{ profile.youtube_url }}" target="_blank" rel="noopener" class="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center hover:bg-rose-600 transition"><i class="fab fa-youtube"></i></a>
+            {% endif %}
+          </div>
+          {% endif %}
+
+          <div class="flex gap-8 flex-wrap mt-5">
+            <div><div class="text-xl font-black text-jp-primaryHover">{{ course_count }}</div><div class="text-sm text-slate-500">開設課程</div></div>
+            <div><div class="text-xl font-black text-jp-primaryHover">{{ total_students }}</div><div class="text-sm text-slate-500">學生人次</div></div>
+            <div><div class="text-xl font-black text-jp-primaryHover">{% if avg_rating %}★ {{ avg_rating }}{% else %}—{% endif %}</div><div class="text-sm text-slate-500">平均評分（{{ review_count }} 則）</div></div>
+          </div>
         </div>
-        <div class="text-sm text-slate-400">課程：{{ r.course.title }} ・ {{ r.created_at|date:"Y-m-d" }}</div>
-        {% if r.comment %}<p class="text-slate-600 mt-1">{{ r.comment }}</p>{% endif %}
       </div>
-      {% endfor %}
     </div>
-    {% else %}<p class="text-slate-500">目前尚無評價。</p>{% endif %}
-  </div>
-</main>
+
+    <!-- 內容區：左側分類 + 右側內容 -->
+    <div class="flex flex-col lg:flex-row gap-8 pb-12">
+      <!-- 左側內容分類 -->
+      <aside class="lg:w-56 shrink-0">
+        <h3 class="text-sm font-bold text-slate-400 mb-3 px-2">內容分類</h3>
+        <nav class="flex lg:flex-col gap-1 overflow-x-auto">
+          {% for key, label, count in tabs %}
+          <a href="?tab={{ key }}"
+             class="flex items-center justify-between px-4 py-2.5 rounded-lg font-medium transition whitespace-nowrap {% if active_tab == key %}bg-brand-50 text-jp-primaryHover font-bold{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+            <span>{{ label }}</span>
+            <span class="text-xs text-slate-400">{{ count }}</span>
+          </a>
+          {% endfor %}
+        </nav>
+      </aside>
+
+      <!-- 右側內容 -->
+      <div class="flex-1 min-w-0">
+        {% if active_tab == 'course' %}
+        <div class="flex items-center justify-between mb-5">
+          <h2 class="text-xl font-black text-slate-900">課程</h2>
+          <span class="text-sm text-slate-400">共 {{ course_count }} 堂課程</span>
+        </div>
+        {% if courses %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+          {% for course in courses %}{% include 'main/partials/course_card.html' with card_extra="" %}{% endfor %}
+        </div>
+        {% else %}<p class="text-slate-500">這位講師目前沒有已上架的課程。</p>{% endif %}
+
+        {% elif active_tab == 'column' %}
+        <div class="flex items-center justify-between mb-5">
+          <h2 class="text-xl font-black text-slate-900">專欄</h2>
+          {% if is_owner %}<a href="{% url 'add_column' %}" class="text-jp-primary hover:underline font-medium text-sm"><i class="fas fa-plus mr-1"></i>新增專欄</a>{% endif %}
+        </div>
+        {% if columns %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {% for col in columns %}
+          <a href="{% url 'column_detail' col.id %}" class="block bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm overflow-hidden hover:shadow-md transition">
+            <div class="h-36 bg-center bg-cover {% if not col.cover_image %}bg-gradient-to-br from-brand-500 to-violet-500{% endif %}" {% if col.cover_image %}style="background-image:url('{{ col.cover_image.url }}')"{% endif %}></div>
+            <div class="p-5">
+              <div class="flex items-center gap-2 mb-1">
+                <h3 class="font-bold text-slate-900">{{ col.title }}</h3>
+                {% if not col.is_published %}<span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">未公開</span>{% endif %}
+              </div>
+              <p class="text-sm text-slate-500 line-clamp-2">{{ col.description|default:"—" }}</p>
+              <p class="text-xs text-slate-400 mt-2">{{ col.articles.count }} 篇文章</p>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+        {% else %}<p class="text-slate-500">尚無專欄。</p>{% endif %}
+
+        {% elif active_tab == 'article' %}
+        <div class="flex items-center justify-between mb-5">
+          <h2 class="text-xl font-black text-slate-900">文章</h2>
+          {% if is_owner %}<a href="{% url 'add_article' %}" class="text-jp-primary hover:underline font-medium text-sm"><i class="fas fa-plus mr-1"></i>新增文章</a>{% endif %}
+        </div>
+        {% if articles %}
+        <div class="divide-y divide-slate-100 bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm">
+          {% for a in articles %}
+          <a href="{% url 'article_detail' a.id %}" class="flex gap-4 p-5 hover:bg-slate-50 transition">
+            {% if a.cover_image %}<img src="{{ a.cover_image.url }}" class="w-24 h-16 rounded-lg object-cover shrink-0">{% endif %}
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <h3 class="font-bold text-slate-900 truncate">{{ a.title }}</h3>
+                {% if not a.is_published %}<span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full shrink-0">未公開</span>{% endif %}
+              </div>
+              {% if a.column %}<span class="text-xs text-jp-primaryHover">專欄：{{ a.column.title }}</span>{% endif %}
+              <p class="text-sm text-slate-500 line-clamp-2 mt-1">{{ a.content|truncatechars:80 }}</p>
+              <p class="text-xs text-slate-400 mt-1">{{ a.created_at|date:"Y-m-d" }}</p>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+        {% else %}<p class="text-slate-500">尚無文章。</p>{% endif %}
+
+        {% elif active_tab == 'material' %}
+        <div class="flex items-center justify-between mb-5">
+          <h2 class="text-xl font-black text-slate-900">教材</h2>
+          {% if is_owner %}<a href="{% url 'add_material' %}" class="text-jp-primary hover:underline font-medium text-sm"><i class="fas fa-plus mr-1"></i>新增教材</a>{% endif %}
+        </div>
+        {% if materials %}
+        <div class="divide-y divide-slate-100 bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm">
+          {% for m in materials %}
+          <div class="flex items-center gap-4 p-5">
+            <span class="w-11 h-11 rounded-lg bg-brand-50 text-jp-primaryHover flex items-center justify-center shrink-0"><i class="fas fa-file-arrow-down"></i></span>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <h3 class="font-bold text-slate-900 truncate">{{ m.title }}</h3>
+                {% if not m.is_published %}<span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full shrink-0">未公開</span>{% endif %}
+              </div>
+              {% if m.description %}<p class="text-sm text-slate-500 line-clamp-1">{{ m.description }}</p>{% endif %}
+            </div>
+            <a href="{{ m.file.url }}" target="_blank" rel="noopener" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-4 py-2 rounded-lg text-sm shrink-0">下載</a>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}<p class="text-slate-500">尚無教材。</p>{% endif %}
+        {% endif %}
+
+        <!-- 學生評價 -->
+        <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-7 mt-8">
+          <h2 class="text-xl font-black text-slate-900 mb-4">學生評價</h2>
+          {% if recent_reviews %}
+          <div class="divide-y divide-slate-100">
+            {% for r in recent_reviews %}
+            <div class="py-4">
+              <div class="flex items-center justify-between gap-3 flex-wrap">
+                <span class="font-bold text-slate-800">{{ r.user.profile.display_name|default:r.user.username }}</span>
+                <span class="text-amber-400 text-sm">{% for i in "12345"|make_list %}{% if forloop.counter <= r.rating %}<i class="fas fa-star"></i>{% else %}<i class="far fa-star"></i>{% endif %}{% endfor %}</span>
+              </div>
+              <div class="text-sm text-slate-400">課程：{{ r.course.title }} ・ {{ r.created_at|date:"Y-m-d" }}</div>
+              {% if r.comment %}<p class="text-slate-600 mt-1">{{ r.comment }}</p>{% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}<p class="text-slate-500">目前尚無評價。</p>{% endif %}
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
 {% endblock %}

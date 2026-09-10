@@ -12,6 +12,9 @@ from .models import (
     CourseAnnouncement,
     CourseComment,
     Profile,
+    TeacherColumn,
+    TeacherArticle,
+    TeacherMaterial,
 )
 
 
@@ -285,15 +288,29 @@ class ProfileEditForm(forms.ModelForm):
     last_name = forms.CharField(label='姓氏', max_length=150, required=False)
     email = forms.EmailField(label='Email')
 
-    field_order = ['username', 'first_name', 'last_name', 'email', 'avatar', 'bio']
+    field_order = [
+        'username', 'first_name', 'last_name', 'email',
+        'avatar', 'cover_image', 'headline', 'bio', 'facebook_url', 'youtube_url',
+    ]
 
     class Meta:
         model = Profile
-        fields = ['avatar', 'bio']
-        labels = {'avatar': '大頭貼', 'bio': '講師簡介（若為教師身分，會顯示在你的課程頁面）'}
+        fields = ['avatar', 'cover_image', 'headline', 'bio', 'facebook_url', 'youtube_url']
+        labels = {
+            'avatar': '大頭貼',
+            'cover_image': '講師頁封面（建議寬版橫幅）',
+            'headline': '講師稱號（例：臺灣經營管理大師）',
+            'bio': '講師簡介（若為教師身分，會顯示在你的課程頁面）',
+            'facebook_url': 'Facebook 連結',
+            'youtube_url': 'YouTube 連結',
+        }
         widgets = {
             'avatar': forms.ClearableFileInput(attrs={'accept': 'image/*'}),
+            'cover_image': forms.ClearableFileInput(attrs={'accept': 'image/*'}),
+            'headline': forms.TextInput(attrs={'placeholder': '一句話介紹你的定位'}),
             'bio': forms.Textarea(attrs={'rows': 4, 'placeholder': '介紹你的教學背景與專長'}),
+            'facebook_url': forms.URLInput(attrs={'placeholder': 'https://facebook.com/...'}),
+            'youtube_url': forms.URLInput(attrs={'placeholder': 'https://youtube.com/...'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -328,5 +345,60 @@ class ProfileEditForm(forms.ModelForm):
             self.user.save()
             profile.save()
         return profile
+
+
+class ColumnForm(forms.ModelForm):
+    class Meta:
+        model = TeacherColumn
+        fields = ['title', 'description', 'cover_image', 'is_published']
+        labels = {
+            'title': '專欄名稱',
+            'description': '專欄簡介',
+            'cover_image': '專欄封面',
+            'is_published': '公開顯示',
+        }
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 3, 'placeholder': '這個專欄在談什麼？'}),
+            'cover_image': forms.ClearableFileInput(attrs={'accept': 'image/*'}),
+        }
+
+
+class ArticleForm(forms.ModelForm):
+    class Meta:
+        model = TeacherArticle
+        fields = ['title', 'column', 'content', 'cover_image', 'is_published']
+        labels = {
+            'title': '文章標題',
+            'column': '所屬專欄（選填）',
+            'content': '文章內容',
+            'cover_image': '文章封面',
+            'is_published': '公開顯示',
+        }
+        widgets = {
+            'content': forms.Textarea(attrs={'rows': 10, 'placeholder': '開始撰寫你的內容…'}),
+            'cover_image': forms.ClearableFileInput(attrs={'accept': 'image/*'}),
+        }
+
+    def __init__(self, *args, teacher=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        # 專欄下拉只列出該講師自己的專欄
+        if teacher is not None:
+            self.fields['column'].queryset = TeacherColumn.objects.filter(teacher=teacher)
+        self.fields['column'].required = False
+
+
+class MaterialForm(forms.ModelForm):
+    class Meta:
+        model = TeacherMaterial
+        fields = ['title', 'description', 'file', 'is_published']
+        labels = {
+            'title': '教材名稱',
+            'description': '教材說明',
+            'file': '教材檔案',
+            'is_published': '公開顯示',
+        }
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 3, 'placeholder': '這份教材的用途與內容'}),
+        }
 
 

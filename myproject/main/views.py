@@ -54,6 +54,10 @@ from .models import (
     CourseAnnouncement,
     CourseComment,
     WithdrawalRequest,
+    TeacherFollow,
+    TeacherColumn,
+    TeacherArticle,
+    TeacherMaterial,
 )
 
 from .forms import (
@@ -68,6 +72,9 @@ from .forms import (
     ProfileEditForm,
     AnnouncementForm,
     CommentForm,
+    ColumnForm,
+    ArticleForm,
+    MaterialForm,
 )
 
 from .payments import gateway
@@ -870,6 +877,30 @@ def create_course(request):
     })
 
 
+def _notify_promotion_changes(course, old_discount, old_is_crowdfunding, old_early_bird):
+    """課程促銷有新變動時通知講師的追蹤者。
+
+    觸發條件：新設/調降折扣價、首次開啟募資、或新設早鳥價。
+    """
+    from .notifications import notify_followers
+
+    messages = []
+    if course.discount_price and (not old_discount or course.discount_price < old_discount):
+        messages.append(f'折扣價 NT$ {course.discount_price}')
+    if course.is_crowdfunding and not old_is_crowdfunding:
+        messages.append('開啟募資開課')
+    if course.early_bird_price and not old_early_bird:
+        messages.append(f'早鳥優惠價 NT$ {course.early_bird_price}')
+
+    if messages:
+        notify_followers(
+            course.teacher,
+            f'課程優惠：{course.title}',
+            f'{course.teacher.profile.display_name}老師的「{course.title}」推出'
+            + '、'.join(messages) + '，把握機會！'
+        )
+
+
 @login_required
 def edit_course(request, course_id):
     try:
@@ -888,6 +919,12 @@ def edit_course(request, course_id):
     )
 
     if request.method == 'POST':
+        # 記下舊的促銷狀態，存檔後用來判斷是否要通知追蹤者
+        old_discount = course.discount_price
+        old_is_crowdfunding = course.is_crowdfunding
+        old_early_bird = course.early_bird_price
+        was_published = course.is_published
+
         form = CourseForm(
             request.POST,
             request.FILES,
@@ -895,7 +932,11 @@ def edit_course(request, course_id):
         )
 
         if form.is_valid():
-            form.save()
+            course = form.save()
+            if was_published:
+                _notify_promotion_changes(
+                    course, old_discount, old_is_crowdfunding, old_early_bird
+                )
             return redirect('teacher_dashboard')
 
     else:
@@ -1966,6 +2007,14 @@ def add_lesson(request, chapter_id):
             lesson.save()
             _autoset_lesson_duration(lesson)
 
+            # 通知已購買學員：課程有新影片
+            from .notifications import notify_course_buyers
+            notify_course_buyers(
+                course,
+                f'課程新影片：{course.title}',
+                f'你購買的「{course.title}」新增了單元「{lesson.title}」，快去觀看！'
+            )
+
     return redirect('manage_content', course_id=course.id)
 
 
@@ -2528,12 +2577,42 @@ def teacher_profile(request, teacher_id):
     ).select_related('user', 'course').order_by('-created_at')[:6]
 
     try:
-        role_display = teacher.profile.get_role_display()
+        profile = teacher.profile
+        role_display = profile.get_role_display()
     except Profile.DoesNotExist:
+        profile = None
         role_display = ''
+
+    # 講師是否為本人（決定要不要顯示管理按鈕）
+    is_owner = request.user.is_authenticated and request.user.id == teacher.id
+
+    # 追蹤狀態與人數
+    is_following = (
+        request.user.is_authenticated
+        and not is_owner
+        and TeacherFollow.objects.filter(follower=request.user, teacher=teacher).exists()
+    )
+    follower_count = TeacherFollow.objects.filter(teacher=teacher).count()
+
+    # 內容分類（本人看得到未公開的，訪客只看得到已公開的）
+    columns = TeacherColumn.objects.filter(teacher=teacher)
+    articles = TeacherArticle.objects.filter(teacher=teacher).select_related('column')
+    materials = TeacherMaterial.objects.filter(teacher=teacher)
+    if not is_owner:
+        columns = columns.filter(is_published=True)
+        articles = articles.filter(is_published=True)
+        materials = materials.filter(is_published=True)
+    columns = list(columns)
+    articles = list(articles)
+    materials = list(materials)
+
+    tab = request.GET.get('tab', 'course')
+    if tab not in ('course', 'column', 'article', 'material'):
+        tab = 'course'
 
     return render(request, 'main/teacher_profile.html', {
         'teacher': teacher,
+        'profile': profile,
         'role_display': role_display,
         'courses': courses,
         'course_count': len(courses),
@@ -2541,7 +2620,242 @@ def teacher_profile(request, teacher_id):
         'avg_rating': avg_rating,
         'review_count': review_count,
         'recent_reviews': recent_reviews,
+        'is_owner': is_owner,
+        'is_following': is_following,
+        'follower_count': follower_count,
+        'columns': columns,
+        'articles': articles,
+        'materials': materials,
+        'column_count': len(columns),
+        'article_count': len(articles),
+        'material_count': len(materials),
+        'active_tab': tab,
+        'tabs': [
+            ('course', '課程', len(courses)),
+            ('column', '專欄', len(columns)),
+            ('article', '文章', len(articles)),
+            ('material', '教材', len(materials)),
+        ],
     })
+
+
+@login_required
+def toggle_follow(request, teacher_id):
+    """追蹤／取消追蹤講師（POST）。"""
+    teacher = get_object_or_404(User, id=teacher_id)
+    if request.method == 'POST' and teacher.id != request.user.id:
+        existing = TeacherFollow.objects.filter(follower=request.user, teacher=teacher).first()
+        if existing:
+            existing.delete()
+        else:
+            TeacherFollow.objects.create(follower=request.user, teacher=teacher)
+    next_url = request.POST.get('next') or reverse('teacher_profile', args=[teacher.id])
+    return redirect(next_url)
+
+
+@login_required
+def my_following(request):
+    """我追蹤的講師清單。"""
+    follows = TeacherFollow.objects.filter(
+        follower=request.user
+    ).select_related('teacher', 'teacher__profile').order_by('-created_at')
+    return render(request, 'main/my_following.html', {
+        'follows': follows,
+    })
+
+
+# =========================
+# 講師內容管理：專欄／文章／教材
+# =========================
+
+def _require_teacher(request):
+    """確認登入者為教師；不是就回傳 redirect。回傳 (profile, redirect_resp)。"""
+    try:
+        profile = request.user.profile
+    except Profile.DoesNotExist:
+        return None, redirect('home')
+    if profile.role != 'teacher':
+        return None, redirect('home')
+    return profile, None
+
+
+@login_required
+def teacher_content(request):
+    """講師內容管理中心：管理自己的專欄、文章與教材。"""
+    profile, redirect_resp = _require_teacher(request)
+    if redirect_resp:
+        return redirect_resp
+
+    columns = TeacherColumn.objects.filter(teacher=request.user)
+    articles = TeacherArticle.objects.filter(teacher=request.user).select_related('column')
+    materials = TeacherMaterial.objects.filter(teacher=request.user)
+
+    tab = request.GET.get('tab', 'column')
+    if tab not in ('column', 'article', 'material'):
+        tab = 'column'
+
+    return render(request, 'main/teacher_content.html', {
+        'columns': columns,
+        'articles': articles,
+        'materials': materials,
+        'active_tab': tab,
+        'tab_defs': [('column', '專欄'), ('article', '文章'), ('material', '教材')],
+    })
+
+
+# ---- 專欄 ----
+@login_required
+def add_column(request):
+    profile, redirect_resp = _require_teacher(request)
+    if redirect_resp:
+        return redirect_resp
+    if request.method == 'POST':
+        form = ColumnForm(request.POST, request.FILES)
+        if form.is_valid():
+            column = form.save(commit=False)
+            column.teacher = request.user
+            column.save()
+            return redirect('teacher_content')
+    else:
+        form = ColumnForm()
+    return render(request, 'main/content_form.html', {
+        'form': form, 'content_kind': '專欄', 'is_edit': False,
+    })
+
+
+@login_required
+def edit_column(request, column_id):
+    column = get_object_or_404(TeacherColumn, id=column_id, teacher=request.user)
+    if request.method == 'POST':
+        form = ColumnForm(request.POST, request.FILES, instance=column)
+        if form.is_valid():
+            form.save()
+            return redirect('teacher_content')
+    else:
+        form = ColumnForm(instance=column)
+    return render(request, 'main/content_form.html', {
+        'form': form, 'content_kind': '專欄', 'is_edit': True,
+    })
+
+
+@login_required
+def delete_column(request, column_id):
+    column = get_object_or_404(TeacherColumn, id=column_id, teacher=request.user)
+    if request.method == 'POST':
+        column.delete()
+    return redirect('teacher_content')
+
+
+def column_detail(request, column_id):
+    column = get_object_or_404(TeacherColumn, id=column_id)
+    is_owner = request.user.is_authenticated and request.user.id == column.teacher_id
+    if not column.is_published and not is_owner:
+        raise Http404()
+    articles = column.articles.all()
+    if not is_owner:
+        articles = articles.filter(is_published=True)
+    return render(request, 'main/column_detail.html', {
+        'column': column, 'articles': articles, 'is_owner': is_owner,
+    })
+
+
+# ---- 文章 ----
+@login_required
+def add_article(request):
+    profile, redirect_resp = _require_teacher(request)
+    if redirect_resp:
+        return redirect_resp
+    if request.method == 'POST':
+        form = ArticleForm(request.POST, request.FILES, teacher=request.user)
+        if form.is_valid():
+            article = form.save(commit=False)
+            article.teacher = request.user
+            article.save()
+            return redirect('teacher_content')
+    else:
+        form = ArticleForm(teacher=request.user)
+    return render(request, 'main/content_form.html', {
+        'form': form, 'content_kind': '文章', 'is_edit': False,
+    })
+
+
+@login_required
+def edit_article(request, article_id):
+    article = get_object_or_404(TeacherArticle, id=article_id, teacher=request.user)
+    if request.method == 'POST':
+        form = ArticleForm(request.POST, request.FILES, instance=article, teacher=request.user)
+        if form.is_valid():
+            form.save()
+            return redirect('teacher_content')
+    else:
+        form = ArticleForm(instance=article, teacher=request.user)
+    return render(request, 'main/content_form.html', {
+        'form': form, 'content_kind': '文章', 'is_edit': True,
+    })
+
+
+@login_required
+def delete_article(request, article_id):
+    article = get_object_or_404(TeacherArticle, id=article_id, teacher=request.user)
+    if request.method == 'POST':
+        article.delete()
+    return redirect('teacher_content')
+
+
+def article_detail(request, article_id):
+    article = get_object_or_404(
+        TeacherArticle.objects.select_related('teacher', 'teacher__profile', 'column'),
+        id=article_id,
+    )
+    is_owner = request.user.is_authenticated and request.user.id == article.teacher_id
+    if not article.is_published and not is_owner:
+        raise Http404()
+    return render(request, 'main/article_detail.html', {
+        'article': article, 'is_owner': is_owner,
+    })
+
+
+# ---- 教材 ----
+@login_required
+def add_material(request):
+    profile, redirect_resp = _require_teacher(request)
+    if redirect_resp:
+        return redirect_resp
+    if request.method == 'POST':
+        form = MaterialForm(request.POST, request.FILES)
+        if form.is_valid():
+            material = form.save(commit=False)
+            material.teacher = request.user
+            material.save()
+            return redirect('teacher_content')
+    else:
+        form = MaterialForm()
+    return render(request, 'main/content_form.html', {
+        'form': form, 'content_kind': '教材', 'is_edit': False,
+    })
+
+
+@login_required
+def edit_material(request, material_id):
+    material = get_object_or_404(TeacherMaterial, id=material_id, teacher=request.user)
+    if request.method == 'POST':
+        form = MaterialForm(request.POST, request.FILES, instance=material)
+        if form.is_valid():
+            form.save()
+            return redirect('teacher_content')
+    else:
+        form = MaterialForm(instance=material)
+    return render(request, 'main/content_form.html', {
+        'form': form, 'content_kind': '教材', 'is_edit': True,
+    })
+
+
+@login_required
+def delete_material(request, material_id):
+    material = get_object_or_404(TeacherMaterial, id=material_id, teacher=request.user)
+    if request.method == 'POST':
+        material.delete()
+    return redirect('teacher_content')
 
 
 # =========================
@@ -2751,6 +3065,20 @@ def add_announcement(request, course_id):
             announcement.course = course
             announcement.author = request.user
             announcement.save()
+
+            # 通知已購買學員與講師追蹤者（同一人只發一則）
+            from .models import Enrollment as _Enrollment, TeacherFollow as _Follow
+            from .notifications import notify_users
+            audience = set(
+                _Enrollment.objects.filter(course=course).values_list('student_id', flat=True)
+            ) | set(
+                _Follow.objects.filter(teacher=course.teacher).values_list('follower_id', flat=True)
+            )
+            notify_users(
+                audience,
+                f'課程新公告：{course.title}',
+                f'「{course.title}」發布了新公告：{announcement.title}'
+            )
 
     return redirect('manage_content', course_id=course.id)
 
