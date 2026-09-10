@@ -277,9 +277,15 @@ class ReviewForm(forms.ModelForm):
 
 
 class ProfileEditForm(forms.ModelForm):
+    username = forms.CharField(
+        label='帳號名稱', max_length=150,
+        help_text='用於登入與顯示，不可與其他帳號重複。',
+    )
     first_name = forms.CharField(label='名字', max_length=150, required=False)
     last_name = forms.CharField(label='姓氏', max_length=150, required=False)
     email = forms.EmailField(label='Email')
+
+    field_order = ['username', 'first_name', 'last_name', 'email', 'avatar', 'bio']
 
     class Meta:
         model = Profile
@@ -293,9 +299,18 @@ class ProfileEditForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user')
         super().__init__(*args, **kwargs)
+        self.fields['username'].initial = self.user.username
         self.fields['first_name'].initial = self.user.first_name
         self.fields['last_name'].initial = self.user.last_name
         self.fields['email'].initial = self.user.email
+
+    def clean_username(self):
+        username = (self.cleaned_data.get('username') or '').strip()
+        if not username:
+            raise forms.ValidationError('請輸入帳號名稱。')
+        if User.objects.filter(username=username).exclude(pk=self.user.pk).exists():
+            raise forms.ValidationError('這個帳號名稱已經被使用。')
+        return username
 
     def clean_email(self):
         email = self.cleaned_data['email']
@@ -305,6 +320,7 @@ class ProfileEditForm(forms.ModelForm):
 
     def save(self, commit=True):
         profile = super().save(commit=False)
+        self.user.username = self.cleaned_data['username']
         self.user.first_name = self.cleaned_data['first_name']
         self.user.last_name = self.cleaned_data['last_name']
         self.user.email = self.cleaned_data['email']

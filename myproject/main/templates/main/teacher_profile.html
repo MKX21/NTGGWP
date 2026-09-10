@@ -5,9 +5,13 @@
 <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
   <!-- 講師資訊 -->
   <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8 mb-6 flex items-center gap-6 flex-wrap">
-    <span class="w-[92px] h-[92px] rounded-full bg-gradient-to-br from-brand-500 to-violet-500 text-white flex items-center justify-center text-4xl font-black shrink-0">{{ teacher.username|slice:":1"|upper }}</span>
+    {% if teacher.profile.avatar %}
+    <img src="{{ teacher.profile.avatar.url }}" alt="{{ teacher.profile.display_name }}" class="w-[92px] h-[92px] rounded-full object-cover shrink-0">
+    {% else %}
+    <span class="w-[92px] h-[92px] rounded-full bg-gradient-to-br from-brand-500 to-violet-500 text-white flex items-center justify-center text-4xl font-black shrink-0">{{ teacher.profile.display_name|slice:":1"|upper }}</span>
+    {% endif %}
     <div class="flex-1">
-      <h1 class="text-2xl font-black text-slate-900">{{ teacher.username }}</h1>
+      <h1 class="text-2xl font-black text-slate-900">{{ teacher.profile.display_name }}</h1>
       {% if role_display %}<span class="inline-block mt-1 bg-brand-50 text-jp-primaryHover text-xs font-bold px-3 py-1 rounded-full">{{ role_display }}</span>{% endif %}
       <div class="flex gap-8 flex-wrap mt-4">
         <div><div class="text-2xl font-black text-jp-primaryHover">{{ course_count }}</div><div class="text-sm text-slate-500">開設課程</div></div>

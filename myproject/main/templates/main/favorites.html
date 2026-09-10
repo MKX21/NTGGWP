@@ -14,7 +14,7 @@
       </a>
       <div class="p-5 flex flex-col flex-1">
         <h3 class="font-medium text-jp-text line-clamp-2 mb-1">{{ fav.course.title }}</h3>
-        <p class="text-sm text-jp-muted mb-1">講師：{{ fav.course.teacher.username }}</p>
+        <p class="text-sm text-jp-muted mb-1">講師：{{ fav.course.teacher.profile.display_name }}</p>
         <p class="text-lg font-bold text-jp-accent mb-3">NT$ {{ fav.course.price }}</p>
         <div class="flex gap-2 mt-auto">
           <a href="{% url 'course_detail' fav.course.id %}" class="flex-1 text-center bg-jp-primary hover:bg-jp-primaryHover text-white font-medium py-2.5 rounded-lg text-sm transition">看課程</a>

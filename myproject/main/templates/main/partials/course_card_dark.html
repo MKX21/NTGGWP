@@ -14,7 +14,7 @@
         <div class="p-5">
             {% if course.category %}<p class="text-xs text-electric font-medium mb-1">{{ course.category.name }}</p>{% endif %}
             <h3 class="font-medium text-satdark-text leading-snug mb-2 line-clamp-2 h-11 group-hover:text-electric transition">{{ course.title }}</h3>
-            <p class="text-sm text-satdark-muted mb-3">{{ course.teacher.username }} 老師</p>
+            <p class="text-sm text-satdark-muted mb-3">{{ course.teacher.profile.display_name }} 老師</p>
             <div class="flex items-center gap-1 text-sm mb-3">
                 {% if course.avg_rating %}
                 <span class="text-amber-400"><i class="fas fa-star"></i></span>

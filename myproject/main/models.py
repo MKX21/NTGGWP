@@ -35,6 +35,12 @@ class Profile(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.get_role_display()}"
 
+    @property
+    def display_name(self):
+        """對外顯示名稱：姓+名（中文順序），沒填真實姓名時退回帳號名稱。"""
+        full = f"{self.user.last_name}{self.user.first_name}".strip()
+        return full or self.user.username
+
     class Meta:
         verbose_name = "使用者資料"
         verbose_name_plural = "使用者資料"
