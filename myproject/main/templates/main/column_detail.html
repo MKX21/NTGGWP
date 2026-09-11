@@ -13,6 +13,23 @@
         {% if not column.is_published %}<span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">未公開</span>{% endif %}
       </div>
       {% if column.description %}<p class="text-slate-600 whitespace-pre-line mt-2">{{ column.description }}</p>{% endif %}
+
+      {% if column.is_paid %}
+      <div class="mt-4 flex items-center gap-3 flex-wrap">
+        {% if has_access %}
+        <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 font-bold text-sm px-3 py-1.5 rounded-full">✓ 已訂閱</span>
+        {% else %}
+        <span class="text-slate-500 text-sm">付費專欄 ・ 月費 <span class="font-black text-jp-primaryHover">NT$ {{ column.monthly_price }}</span></span>
+        {% if user.is_authenticated %}
+        <form method="post" action="{% url 'subscribe_column' column.id %}">{% csrf_token %}
+          <button class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-5 py-2 rounded-lg text-sm transition">訂閱專欄</button>
+        </form>
+        {% else %}
+        <a href="{% url 'login' %}" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-5 py-2 rounded-lg text-sm transition">登入後訂閱</a>
+        {% endif %}
+        {% endif %}
+      </div>
+      {% endif %}
     </div>
   </div>
 

@@ -41,6 +41,8 @@ from .models import (
     TeacherColumn,
     TeacherArticle,
     TeacherMaterial,
+    UserBadge,
+    ColumnSubscription,
 )
 
 # ===== 後台品牌 =====
@@ -729,6 +731,22 @@ class TeacherMaterialAdmin(admin.ModelAdmin):
     autocomplete_fields = ('teacher',)
 
 
+@admin.register(UserBadge)
+class UserBadgeAdmin(admin.ModelAdmin):
+    list_display = ('user', 'code', 'earned_at')
+    search_fields = ('user__username', 'code')
+    list_filter = ('code', 'earned_at')
+    autocomplete_fields = ('user',)
+
+
+@admin.register(ColumnSubscription)
+class ColumnSubscriptionAdmin(admin.ModelAdmin):
+    list_display = ('user', 'column', 'started_at', 'expires_at')
+    search_fields = ('user__username', 'column__title')
+    list_filter = ('started_at', 'expires_at')
+    autocomplete_fields = ('user', 'column')
+
+
 # ===== 後台側邊選單自訂分組（課程 / 交易 / 行銷 / 會員） =====
 from django.urls import reverse as _reverse
 
@@ -737,8 +755,8 @@ _CUSTOM_GROUPS = [
     ('🧾 交易管理', ['Order', 'OrderItem', 'Payment', 'Refund', 'Enrollment']),
     ('💰 分潤與提領', ['CourseSplitSetting', 'RevenueRecord', 'WithdrawalRequest']),
     ('🎯 行銷管理', ['Coupon', 'UserCoupon', 'CouponUsage', 'Promotion', 'Cart']),
-    ('📝 講師內容', ['TeacherColumn', 'TeacherArticle', 'TeacherMaterial']),
-    ('👥 會員與互動', ['Profile', 'TeacherFollow', 'LearningRecord', 'LessonProgress', 'Favorite', 'Review', 'Notification', 'CourseQuestion', 'CourseAnswer', 'CourseComment']),
+    ('📝 講師內容', ['TeacherColumn', 'TeacherArticle', 'TeacherMaterial', 'ColumnSubscription']),
+    ('👥 會員與互動', ['Profile', 'TeacherFollow', 'UserBadge', 'LearningRecord', 'LessonProgress', 'Favorite', 'Review', 'Notification', 'CourseQuestion', 'CourseAnswer', 'CourseComment']),
 ]
 
 _ORDER_INDEX = {

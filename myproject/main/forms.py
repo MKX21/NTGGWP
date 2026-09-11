@@ -350,17 +350,28 @@ class ProfileEditForm(forms.ModelForm):
 class ColumnForm(forms.ModelForm):
     class Meta:
         model = TeacherColumn
-        fields = ['title', 'description', 'cover_image', 'is_published']
+        fields = ['title', 'description', 'cover_image', 'is_published', 'is_paid', 'monthly_price']
         labels = {
             'title': '專欄名稱',
             'description': '專欄簡介',
             'cover_image': '專欄封面',
             'is_published': '公開顯示',
+            'is_paid': '設為付費訂閱專欄',
+            'monthly_price': '月費（NT$，付費專欄才需填）',
+        }
+        help_texts = {
+            'monthly_price': '訂閱者付費後可閱讀本專欄所有文章，未訂閱者只能看到預覽。',
         }
         widgets = {
             'description': forms.Textarea(attrs={'rows': 3, 'placeholder': '這個專欄在談什麼？'}),
             'cover_image': forms.ClearableFileInput(attrs={'accept': 'image/*'}),
         }
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('is_paid') and not cleaned.get('monthly_price'):
+            self.add_error('monthly_price', '付費專欄請設定月費（大於 0）。')
+        return cleaned
 
 
 class ArticleForm(forms.ModelForm):

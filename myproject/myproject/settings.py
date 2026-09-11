@@ -169,6 +169,10 @@ GOOGLE_OAUTH_CLIENT_SECRET = os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET', '')
 LINE_LOGIN_CHANNEL_ID = os.environ.get('LINE_LOGIN_CHANNEL_ID', '')
 LINE_LOGIN_CHANNEL_SECRET = os.environ.get('LINE_LOGIN_CHANNEL_SECRET', '')
 
+# AI 課程助教（Anthropic Claude）。沒設定金鑰時前台會顯示「未啟用」，不影響其他功能。
+ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
+AI_ASSISTANT_MODEL = os.environ.get('AI_ASSISTANT_MODEL', 'claude-opus-5')
+
 # 沒有這行時 makemigrations 會依環境的 Django 版本猜預設值，導致每個模型的
 # id 欄位在不同機器上跑出不同的遷移。既有的遷移檔全部是 BigAutoField，
 # 明確設定與資料庫現況一致，避免產生不相干的 alter id 遷移。

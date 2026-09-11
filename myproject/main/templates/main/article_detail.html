@@ -14,7 +14,20 @@
     <h1 class="text-3xl font-black text-slate-900 mt-2 mb-2">{{ article.title }}</h1>
     <p class="text-sm text-slate-400 mb-6">{{ article.teacher.profile.display_name }} ・ {{ article.created_at|date:"Y-m-d" }}</p>
     {% if article.cover_image %}<img src="{{ article.cover_image.url }}" class="w-full rounded-xl mb-6">{% endif %}
+    {% if locked %}
+    <div class="relative">
+      <div class="prose max-w-none text-slate-700 whitespace-pre-line leading-relaxed max-h-40 overflow-hidden">{{ article.content|truncatechars:180 }}</div>
+      <div class="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white to-transparent"></div>
+    </div>
+    <div class="mt-6 bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
+      <p class="text-2xl mb-1">🔒</p>
+      <p class="font-bold text-slate-800">此文章屬於付費專欄「{{ article.column.title }}」</p>
+      <p class="text-slate-500 text-sm mt-1">訂閱後即可閱讀完整內容與專欄所有文章。</p>
+      <a href="{% url 'column_detail' article.column.id %}" class="inline-block mt-4 bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-6 py-2.5 rounded-lg transition">前往訂閱（月費 NT$ {{ article.column.monthly_price }}）</a>
+    </div>
+    {% else %}
     <div class="prose max-w-none text-slate-700 whitespace-pre-line leading-relaxed">{{ article.content }}</div>
+    {% endif %}
     {% if is_owner %}
     <div class="flex gap-3 mt-8 pt-6 border-t border-slate-100">
       <a href="{% url 'edit_article' article.id %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-2 rounded-lg text-sm">編輯</a>

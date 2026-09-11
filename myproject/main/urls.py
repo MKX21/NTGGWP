@@ -107,6 +107,9 @@ urlpatterns = [
     path('course/<int:course_id>/announcement/add/', views.add_announcement, name='add_announcement'),
     path('announcement/<int:announcement_id>/delete/', views.delete_announcement, name='delete_announcement'),
 
+    # AI 課程助教
+    path('course/<int:course_id>/ask-ai/', views.ask_ai, name='ask_ai'),
+
     # 追蹤講師
     path('teacher/<int:teacher_id>/follow/', views.toggle_follow, name='toggle_follow'),
     path('following/', views.my_following, name='my_following'),
@@ -117,6 +120,7 @@ urlpatterns = [
     path('teacher/content/column/<int:column_id>/edit/', views.edit_column, name='edit_column'),
     path('teacher/content/column/<int:column_id>/delete/', views.delete_column, name='delete_column'),
     path('column/<int:column_id>/', views.column_detail, name='column_detail'),
+    path('column/<int:column_id>/subscribe/', views.subscribe_column, name='subscribe_column'),
     path('teacher/content/article/add/', views.add_article, name='add_article'),
     path('teacher/content/article/<int:article_id>/edit/', views.edit_article, name='edit_article'),
     path('teacher/content/article/<int:article_id>/delete/', views.delete_article, name='delete_article'),

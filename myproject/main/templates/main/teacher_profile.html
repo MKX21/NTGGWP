@@ -119,6 +119,7 @@
             <div class="p-5">
               <div class="flex items-center gap-2 mb-1">
                 <h3 class="font-bold text-slate-900">{{ col.title }}</h3>
+                {% if col.is_paid %}<span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">付費 NT${{ col.monthly_price }}/月</span>{% endif %}
                 {% if not col.is_published %}<span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">未公開</span>{% endif %}
               </div>
               <p class="text-sm text-slate-500 line-clamp-2">{{ col.description|default:"—" }}</p>

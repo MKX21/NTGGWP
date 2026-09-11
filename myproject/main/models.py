@@ -1091,10 +1091,25 @@ class TeacherColumn(models.Model):
         upload_to='teacher_columns/', blank=True, null=True, verbose_name="專欄封面"
     )
     is_published = models.BooleanField(default=True, verbose_name="是否公開")
+    # 付費訂閱：開啟後非訂閱者只能看到文章預覽
+    is_paid = models.BooleanField(default=False, verbose_name="付費訂閱專欄")
+    monthly_price = models.PositiveIntegerField(default=0, verbose_name="月費（NT$）")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="建立時間")
 
     def __str__(self):
         return f"{self.teacher.username} - {self.title}"
+
+    def has_access(self, user):
+        """使用者能否讀取這個專欄的完整內容。"""
+        if not self.is_paid:
+            return True
+        if not user.is_authenticated:
+            return False
+        if user.id == self.teacher_id:
+            return True
+        return self.subscriptions.filter(
+            user=user, expires_at__gte=timezone.now()
+        ).exists()
 
     class Meta:
         verbose_name = "專欄"
@@ -1147,3 +1162,52 @@ class TeacherMaterial(models.Model):
         verbose_name = "教材"
         verbose_name_plural = "教材"
         ordering = ['-created_at']
+
+
+# =========================
+# 遊戲化：學習成就徽章
+# =========================
+
+class UserBadge(models.Model):
+    """使用者已獲得的成就徽章。徽章定義見 gamification.BADGES（code 對應）。"""
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="badges", verbose_name="使用者"
+    )
+    code = models.CharField(max_length=50, verbose_name="徽章代碼")
+    earned_at = models.DateTimeField(auto_now_add=True, verbose_name="獲得時間")
+
+    def __str__(self):
+        return f"{self.user.username} - {self.code}"
+
+    class Meta:
+        verbose_name = "成就徽章"
+        verbose_name_plural = "成就徽章"
+        unique_together = ('user', 'code')
+        ordering = ['-earned_at']
+
+
+# =========================
+# 付費專欄訂閱
+# =========================
+
+class ColumnSubscription(models.Model):
+    """學員對付費專欄的訂閱；到期後 is_active 由 expires_at 判定。"""
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="column_subscriptions", verbose_name="訂閱者"
+    )
+    column = models.ForeignKey(
+        'TeacherColumn', on_delete=models.CASCADE, related_name="subscriptions", verbose_name="專欄"
+    )
+    started_at = models.DateTimeField(auto_now_add=True, verbose_name="訂閱開始")
+    expires_at = models.DateTimeField(verbose_name="到期時間")
+
+    def is_active(self):
+        return self.expires_at >= timezone.now()
+
+    def __str__(self):
+        return f"{self.user.username} → {self.column.title}"
+
+    class Meta:
+        verbose_name = "專欄訂閱"
+        verbose_name_plural = "專欄訂閱"
+        ordering = ['-started_at']

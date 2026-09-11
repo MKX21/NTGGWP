@@ -58,6 +58,7 @@ from .models import (
     TeacherColumn,
     TeacherArticle,
     TeacherMaterial,
+    ColumnSubscription,
 )
 
 from .forms import (
@@ -497,9 +498,18 @@ def student_dashboard(request):
         student=request.user
     ).count()
 
+    # 遊戲化：連續學習天數與徽章（進入頁面時懶惰結算）
+    from . import gamification
+    gamification.evaluate_badges(request.user)
+    badges = gamification.badge_progress(request.user)
+
     return render(request, 'main/student_dashboard.html', {
         'total_minutes': total_minutes,
         'purchased_count': purchased_count,
+        'current_streak': gamification.current_streak(request.user),
+        'longest_streak': gamification.longest_streak(request.user),
+        'badges': badges,
+        'earned_badge_count': sum(1 for b in badges if b['earned']),
     })
 
 
@@ -2754,9 +2764,40 @@ def column_detail(request, column_id):
     articles = column.articles.all()
     if not is_owner:
         articles = articles.filter(is_published=True)
+    has_access = column.has_access(request.user)
     return render(request, 'main/column_detail.html', {
         'column': column, 'articles': articles, 'is_owner': is_owner,
+        'has_access': has_access,
     })
+
+
+@login_required
+def subscribe_column(request, column_id):
+    """訂閱付費專欄（mock 付款，開通 30 天；已訂閱則延長 30 天）。"""
+    column = get_object_or_404(TeacherColumn, id=column_id, is_published=True)
+    if request.method != 'POST' or not column.is_paid or column.teacher_id == request.user.id:
+        return redirect('column_detail', column_id=column.id)
+
+    now = timezone.now()
+    sub = ColumnSubscription.objects.filter(
+        user=request.user, column=column, expires_at__gte=now
+    ).order_by('-expires_at').first()
+    base = sub.expires_at if sub else now
+    new_expiry = base + timezone.timedelta(days=30)
+    if sub:
+        sub.expires_at = new_expiry
+        sub.save(update_fields=['expires_at'])
+    else:
+        ColumnSubscription.objects.create(
+            user=request.user, column=column, expires_at=new_expiry
+        )
+
+    Notification.objects.create(
+        user=column.teacher,
+        title='專欄有新訂閱',
+        content=f'{request.user.profile.display_name} 訂閱了你的專欄「{column.title}」。'
+    )
+    return redirect('column_detail', column_id=column.id)
 
 
 # ---- 文章 ----
@@ -2810,8 +2851,10 @@ def article_detail(request, article_id):
     is_owner = request.user.is_authenticated and request.user.id == article.teacher_id
     if not article.is_published and not is_owner:
         raise Http404()
+    # 付費專欄的文章：非訂閱者只能看到預覽
+    locked = bool(article.column and article.column.is_paid and not article.column.has_access(request.user))
     return render(request, 'main/article_detail.html', {
-        'article': article, 'is_owner': is_owner,
+        'article': article, 'is_owner': is_owner, 'locked': locked,
     })
 
 
@@ -2856,6 +2899,34 @@ def delete_material(request, material_id):
     if request.method == 'POST':
         material.delete()
     return redirect('teacher_content')
+
+
+# =========================
+# AI 課程助教
+# =========================
+
+@login_required
+def ask_ai(request, course_id):
+    """課程 AI 助教問答（POST，回傳 JSON）。限已購買學員、該課講師或管理員。"""
+    course = get_object_or_404(Course, id=course_id)
+
+    is_teacher = course.teacher_id == request.user.id
+    enrolled = Enrollment.objects.filter(course=course, student=request.user).exists()
+    if not (is_teacher or enrolled or request.user.is_superuser):
+        return JsonResponse({'ok': False, 'error': '購買本課程後即可使用 AI 助教。'}, status=403)
+
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': '方法不允許。'}, status=405)
+
+    try:
+        payload = json.loads(request.body.decode('utf-8'))
+        question = payload.get('question', '')
+    except (ValueError, AttributeError):
+        question = request.POST.get('question', '')
+
+    from . import ai_assistant
+    result = ai_assistant.answer_course_question(course, question)
+    return JsonResponse(result)
 
 
 # =========================
