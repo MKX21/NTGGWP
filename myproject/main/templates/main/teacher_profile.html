@@ -35,20 +35,20 @@
 
             <div class="flex items-center gap-3">
               {% if is_owner %}
-              <a href="{% url 'edit_profile' %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-2.5 rounded-lg transition">編輯個人資料</a>
-              <a href="{% url 'teacher_content' %}" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-5 py-2.5 rounded-lg transition">內容管理</a>
+              <a href="{% url 'edit_profile' %}" class="btn-glass px-5 py-2.5" style="color:#334155;background:rgba(148,163,184,.18)">編輯個人資料</a>
+              <a href="{% url 'teacher_content' %}" class="btn-glass-primary px-5 py-2.5">內容管理</a>
               {% elif user.is_authenticated %}
               <form method="post" action="{% url 'toggle_follow' teacher.id %}">
                 {% csrf_token %}
                 <input type="hidden" name="next" value="{{ request.get_full_path }}">
                 {% if is_following %}
-                <button type="submit" class="bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-700 font-bold px-6 py-2.5 rounded-lg transition"><i class="fas fa-check mr-1"></i> 追蹤中</button>
+                <button type="submit" class="btn-glass px-6 py-2.5" style="color:#334155;background:rgba(148,163,184,.18)"><i class="fas fa-check"></i> 追蹤中</button>
                 {% else %}
-                <button type="submit" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-6 py-2.5 rounded-lg transition"><i class="fas fa-plus mr-1"></i> 追蹤講師</button>
+                <button type="submit" class="btn-glass-primary px-6 py-2.5"><i class="fas fa-plus"></i> 追蹤講師</button>
                 {% endif %}
               </form>
               {% else %}
-              <a href="{% url 'login' %}" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-6 py-2.5 rounded-lg transition"><i class="fas fa-plus mr-1"></i> 追蹤講師</a>
+              <a href="{% url 'login' %}" class="btn-glass-primary px-6 py-2.5"><i class="fas fa-plus"></i> 追蹤講師</a>
               {% endif %}
             </div>
           </div>

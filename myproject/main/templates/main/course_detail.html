@@ -67,15 +67,15 @@
             <div class="flex flex-wrap items-center gap-3 mt-6">
                 {% if user.is_authenticated %}
                     {% if already_purchased %}
-                    <a href="{% url 'watch_course' course.id %}" class="bg-green-600 hover:bg-green-700 text-white font-bold px-7 py-3 rounded-xl text-lg shadow-lg transition"><i class="fas fa-play mr-1"></i>開始上課</a>
+                    <a href="{% url 'watch_course' course.id %}" class="btn-glass-primary px-7 py-3 text-lg"><i class="fas fa-play"></i> 開始上課</a>
                     {% else %}
-                    <a href="{% url 'checkout' course.id %}" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-7 py-3 rounded-xl text-lg shadow-lg transition">立即購買 NT$ {{ course.get_effective_price }}</a>
+                    <a href="{% url 'checkout' course.id %}" class="btn-glass-primary px-7 py-3 text-lg">立即購買 NT$ {{ course.get_effective_price }}</a>
                     {% endif %}
                 {% else %}
-                    <a href="{% url 'login' %}" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-7 py-3 rounded-xl text-lg shadow-lg transition">登入後購買 NT$ {{ course.get_effective_price }}</a>
+                    <a href="{% url 'login' %}" class="btn-glass-primary px-7 py-3 text-lg">登入後購買 NT$ {{ course.get_effective_price }}</a>
                 {% endif %}
                 {% if course.intro_video_file or course.intro_video_url %}
-                <button type="button" data-intro-open class="inline-flex items-center gap-2 bg-white/15 hover:bg-white/25 backdrop-blur text-white font-bold px-5 py-3 rounded-xl ring-1 ring-white/40 transition"><i class="fas fa-circle-play text-lg"></i> 觀看介紹片</button>
+                <button type="button" data-intro-open class="btn-glass px-5 py-3 text-base"><i class="fas fa-circle-play text-lg"></i> 觀看介紹片</button>
                 {% endif %}
             </div>
         </div>
