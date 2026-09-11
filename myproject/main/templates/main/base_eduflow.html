@@ -76,20 +76,24 @@
             html { scroll-behavior: auto; }
             *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
         }
-        /* Django 表單控制項在 EduFlow 版型的基礎樣式（Tailwind preflight 會 reset） */
+        /* Django 表單控制項在 EduFlow 版型的統一樣式（與「編輯個人資料」一致）*/
         .ef-form input:not([type=checkbox]):not([type=radio]):not([type=file]),
         .ef-form select, .ef-form textarea {
-            width: 100%; border: 1px solid #ebe8e1; border-radius: 0.6rem;
-            padding: 0.625rem 0.75rem; font-size: 0.95rem; background: #fff; color: #2b2b2b;
+            width: 100%; border: 1px solid #e2e8f0; border-radius: 0.7rem;
+            padding: 0.65rem 0.85rem; font-size: 0.95rem; background: #fff; color: #0f172a;
+            transition: border-color .15s, box-shadow .15s;
         }
+        .ef-form input::placeholder, .ef-form textarea::placeholder { color: #94a3b8; }
         .ef-form input:focus, .ef-form select:focus, .ef-form textarea:focus {
-            outline: none; border-color: #5f7fa8; box-shadow: 0 0 0 3px rgba(43,76,126,.15);
+            outline: none; border-color: #a5b4fc; box-shadow: 0 0 0 3px rgba(99,102,241,.16);
         }
-        .ef-form label { font-weight: 600; color: #2b2b2b; display: block; margin: 0.6rem 0 0.25rem; }
-        .ef-form p { margin-bottom: 0.6rem; }
+        .ef-form textarea { resize: vertical; min-height: 6.5rem; }
+        .ef-form label { font-weight: 700; color: #334155; display: block; margin: 0.8rem 0 0.4rem; }
+        .ef-form p { margin-bottom: 0.9rem; }
         .ef-form ul.errorlist { color: #dc2626; font-size: 0.85rem; list-style: none; padding: 0; margin: 0.25rem 0; }
-        .ef-form .helptext { color: #7a7a7a; font-size: 0.8rem; }
+        .ef-form .helptext { color: #94a3b8; font-size: 0.8rem; }
         .ef-form input[type=file] { font-size: 0.9rem; }
+        .ef-form input[type=checkbox], .ef-form input[type=radio] { accent-color: #6366f1; width: 1rem; height: 1rem; vertical-align: middle; }
 
         /* ===== iOS 液態玻璃按鈕（Liquid Glass）===== */
         .btn-glass, .btn-glass-primary {

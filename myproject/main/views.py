@@ -142,7 +142,22 @@ def home(request):
 
     _attach_reviews(page_obj.object_list)
 
-    categories = CourseCategory.objects.order_by('name')
+    categories = list(CourseCategory.objects.order_by('name'))
+    # 依分類名稱配對應圖示（找不到關鍵字就用預設資料夾）
+    _CATEGORY_ICONS = {
+        '個人成長': 'fa-seedling', '商業管理': 'fa-briefcase', '學術教育': 'fa-graduation-cap',
+        '影視製作': 'fa-film', '手作生活': 'fa-palette', '攝影剪輯': 'fa-camera',
+        '程式設計': 'fa-code', '程式': 'fa-code', '設計': 'fa-pen-nib', '語言': 'fa-language',
+        '音樂': 'fa-music', '行銷': 'fa-bullhorn', '理財': 'fa-coins', '健身': 'fa-dumbbell',
+        '料理': 'fa-utensils', '攝影': 'fa-camera', '數據': 'fa-chart-line',
+    }
+    for c in categories:
+        icon = 'fa-folder-open'
+        for key, val in _CATEGORY_ICONS.items():
+            if key in c.name:
+                icon = val
+                break
+        c.icon = icon
     total_students = Enrollment.objects.values('student').distinct().count()
     total_courses = Course.objects.filter(is_published=True).count()
     avg_all = Review.objects.aggregate(a=Avg('rating'))['a']

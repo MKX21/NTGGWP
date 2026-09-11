@@ -88,24 +88,22 @@
 <section class="bg-satdark-bg">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div class="grid sm:grid-cols-2 gap-6">
-            <a href="{% url 'course_catalog' %}" class="group relative overflow-hidden rounded-2xl bg-satdark-surface border border-satdark-border h-64 flex flex-col justify-end p-8 transition hover:border-electric/50">
-                <div class="pointer-events-none absolute inset-0 bg-gradient-to-br from-electric/25 via-transparent to-transparent"></div>
-                <div class="pointer-events-none absolute -top-10 -right-10 h-56 w-56 rounded-full bg-electric/20 blur-3xl"></div>
-                <i class="fas fa-arrow-right absolute top-8 right-8 text-satdark-muted group-hover:text-electric group-hover:translate-x-1 transition"></i>
+            <a href="{% url 'course_catalog' %}" class="group relative overflow-hidden rounded-2xl bg-satdark-surface border border-satdark-border h-64 flex flex-col justify-end p-8 transition hover:border-electric/50 bg-center bg-cover" style="background-image:url('/media/site/hero-courses.jpg')">
+                <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-black/25"></div>
+                <i class="fas fa-arrow-right absolute top-8 right-8 text-white/80 group-hover:text-electric group-hover:translate-x-1 transition"></i>
                 <div class="relative">
-                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-electric/20 text-electric text-2xl mb-4"><i class="fas fa-book-open"></i></span>
-                    <h3 class="text-2xl font-bold text-satdark-text mb-1">課程</h3>
-                    <p class="text-sm text-satdark-muted">探索 {{ total_courses }}+ 堂精選課程</p>
+                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-electric/30 backdrop-blur text-white text-2xl mb-4"><i class="fas fa-book-open"></i></span>
+                    <h3 class="text-2xl font-bold text-white mb-1">課程</h3>
+                    <p class="text-sm text-white/75">探索 {{ total_courses }}+ 堂精選課程</p>
                 </div>
             </a>
-            <a href="{% url 'course_catalog' %}" class="group relative overflow-hidden rounded-2xl bg-satdark-surface border border-satdark-border h-64 flex flex-col justify-end p-8 transition hover:border-electric/50">
-                <div class="pointer-events-none absolute inset-0 bg-gradient-to-br from-brand-400/25 via-transparent to-transparent"></div>
-                <div class="pointer-events-none absolute -top-10 -right-10 h-56 w-56 rounded-full bg-brand-400/20 blur-3xl"></div>
-                <i class="fas fa-arrow-right absolute top-8 right-8 text-satdark-muted group-hover:text-electric group-hover:translate-x-1 transition"></i>
+            <a href="{% url 'course_catalog' %}" class="group relative overflow-hidden rounded-2xl bg-satdark-surface border border-satdark-border h-64 flex flex-col justify-end p-8 transition hover:border-electric/50 bg-center bg-cover" style="background-image:url('/media/site/hero-teachers.jpg')">
+                <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-black/25"></div>
+                <i class="fas fa-arrow-right absolute top-8 right-8 text-white/80 group-hover:text-electric group-hover:translate-x-1 transition"></i>
                 <div class="relative">
-                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-brand-400/20 text-brand-300 text-2xl mb-4"><i class="fas fa-chalkboard-user"></i></span>
-                    <h3 class="text-2xl font-bold text-satdark-text mb-1">講師</h3>
-                    <p class="text-sm text-satdark-muted">{{ total_teachers }}+ 位業界專家親自授課</p>
+                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-brand-400/30 backdrop-blur text-white text-2xl mb-4"><i class="fas fa-chalkboard-user"></i></span>
+                    <h3 class="text-2xl font-bold text-white mb-1">講師</h3>
+                    <p class="text-sm text-white/75">{{ total_teachers }}+ 位業界專家親自授課</p>
                 </div>
             </a>
         </div>
@@ -119,7 +117,7 @@
         <div class="grid grid-cols-3 md:grid-cols-6 gap-3">
             {% for category in categories|slice:":6" %}
             <a href="{% url 'course_catalog' %}?cat={{ category.name }}" class="group flex flex-col items-center gap-2 bg-satdark-surface border border-satdark-border rounded-xl py-5 hover:border-electric hover:-translate-y-1 transition-all">
-                <span class="h-12 w-12 rounded-xl bg-black/40 text-electric flex items-center justify-center text-xl group-hover:bg-electric group-hover:text-white transition"><i class="fas fa-folder-open"></i></span>
+                <span class="h-12 w-12 rounded-xl bg-black/40 text-electric flex items-center justify-center text-xl group-hover:bg-electric group-hover:text-white transition"><i class="fas {{ category.icon }}"></i></span>
                 <span class="text-sm font-medium text-satdark-text text-center px-1">{{ category.name }}</span>
             </a>
             {% endfor %}
