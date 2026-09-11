@@ -173,11 +173,20 @@ STORAGES = {
 AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', '')
 if AWS_STORAGE_BUCKET_NAME:
     AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', '')
-    # 金鑰建議用 EB/EC2 的 IAM Role 提供，不必填；本機測試才用環境變數帶入。
-    AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', '')
-    AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
-    AWS_S3_CUSTOM_DOMAIN = os.environ.get('AWS_S3_CUSTOM_DOMAIN', '')
-    AWS_QUERYSTRING_AUTH = False
+    # 金鑰用 EB/EC2 的 IAM Role 提供（boto3 會自動取用），不必設；
+    # 只有本機測試連 S3 時才用環境變數帶入一組金鑰。
+    _ak = os.environ.get('AWS_ACCESS_KEY_ID', '')
+    _sk = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
+    if _ak and _sk:
+        AWS_ACCESS_KEY_ID = _ak
+        AWS_SECRET_ACCESS_KEY = _sk
+    # 東京區的新 bucket 需要 SigV4 + 區域端點，否則簽名網址會走全球端點被 307 轉址。
+    AWS_S3_SIGNATURE_VERSION = 's3v4'
+    if AWS_S3_REGION_NAME:
+        # 指定區域端點，讓簽章與網址主機一致、直達不轉址。
+        AWS_S3_ENDPOINT_URL = f'https://s3.{AWS_S3_REGION_NAME}.amazonaws.com'
+    # 私有 bucket + 簽名網址（AWS_QUERYSTRING_AUTH 預設 True）：
+    # 圖片網址帶簽章、每次算，不必把 bucket 設成公開存取。
     STORAGES['default'] = {
         'BACKEND': 'storages.backends.s3.S3Storage',
         'OPTIONS': {'location': 'media'},
