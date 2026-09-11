@@ -3,9 +3,52 @@
 {{ form.category_name.label_tag }} {{ form.category_name }} {{ form.category_name.errors }}
 {{ form.level.label_tag }} {{ form.level }}
 {{ form.description.label_tag }} {{ form.description }}
-{{ form.image.label_tag }} {{ form.image }}
-{{ form.intro_video_file.label_tag }} {{ form.intro_video_file }} {{ form.intro_video_file.errors }}
-{{ form.intro_video_url.label_tag }} {{ form.intro_video_url }} {{ form.intro_video_url.errors }}
+<label>課程封面圖</label>
+<div class="flex items-center gap-4 mb-2">
+  <div class="w-28 h-20 rounded-lg overflow-hidden bg-slate-100 ring-1 ring-slate-200 shrink-0">
+    {% if form.instance.image %}
+    <img id="coverImgPreview" src="{{ form.instance.image.url }}" class="w-full h-full object-cover">
+    {% else %}
+    <img id="coverImgPreview" src="" alt="" class="w-full h-full object-cover hidden">
+    <div id="coverImgPlaceholder" class="w-full h-full flex items-center justify-center text-slate-400"><i class="fas fa-image"></i></div>
+    {% endif %}
+  </div>
+  <div class="min-w-0">
+    <label class="cursor-pointer inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-4 py-2 rounded-lg transition" style="margin:0">
+      <i class="fas fa-image"></i> 選擇圖片
+      <input type="file" name="image" accept="image/*" class="hidden" data-preview="#coverImgPreview" data-hide="#coverImgPlaceholder">
+    </label>
+    <p class="text-xs text-slate-400 mt-1 truncate" data-filename>未選擇檔案</p>
+    {% if form.instance.image %}
+    <label class="inline-flex items-center gap-1.5 text-xs text-rose-500 mt-1.5 cursor-pointer" style="margin:0">
+      <input type="checkbox" name="image-clear"> 移除目前封面圖
+    </label>
+    {% endif %}
+  </div>
+</div>
+{{ form.image.errors }}
+
+<label>課程封面介紹影片</label>
+<div class="flex items-center gap-4 mb-1">
+  <span class="w-28 h-20 rounded-lg bg-slate-100 ring-1 ring-slate-200 flex items-center justify-center text-slate-400 shrink-0"><i class="fas fa-film text-xl"></i></span>
+  <div class="min-w-0">
+    <label class="cursor-pointer inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-4 py-2 rounded-lg transition" style="margin:0">
+      <i class="fas fa-video"></i> 選擇影片
+      <input type="file" name="intro_video_file" accept="video/*" class="hidden">
+    </label>
+    <p class="text-xs text-slate-400 mt-1 truncate" data-filename>{% if form.instance.intro_video_file %}目前：{{ form.instance.intro_video_file.name }}{% else %}未選擇檔案{% endif %}</p>
+    {% if form.instance.intro_video_file %}
+    <label class="inline-flex items-center gap-1.5 text-xs text-rose-500 mt-1.5 cursor-pointer" style="margin:0">
+      <input type="checkbox" name="intro_video_file-clear"> 移除介紹影片
+    </label>
+    {% endif %}
+  </div>
+</div>
+<p class="text-xs text-slate-400 mb-1">上傳 mp4，學員可於課程頁放大觀看。</p>
+{{ form.intro_video_file.errors }}
+
+<label>或貼介紹影片連結</label>
+{{ form.intro_video_url }} {{ form.intro_video_url.errors }}
 
 <h2 class="text-lg font-black text-slate-900 mt-6 mb-3 border-t border-slate-100 pt-5">定價與折扣</h2>
 {{ form.price.label_tag }} {{ form.price }} {{ form.price.errors }}
@@ -41,4 +84,21 @@
     cb.addEventListener('change', sync);
     sync();
   })();
+
+  // 檔案上傳：選檔後顯示檔名，圖片即時預覽
+  document.querySelectorAll('#courseForm input[type=file]').forEach(function (inp) {
+    inp.addEventListener('change', function () {
+      var file = inp.files && inp.files[0];
+      var wrap = inp.closest('div');
+      var nameEl = wrap ? wrap.querySelector('[data-filename]') : null;
+      if (nameEl) nameEl.textContent = file ? file.name : '未選擇檔案';
+      var preview = inp.dataset.preview ? document.querySelector(inp.dataset.preview) : null;
+      var hideEl = inp.dataset.hide ? document.querySelector(inp.dataset.hide) : null;
+      if (file && preview) {
+        preview.src = URL.createObjectURL(file);
+        preview.classList.remove('hidden');
+        if (hideEl) hideEl.classList.add('hidden');
+      }
+    });
+  });
 </script>
