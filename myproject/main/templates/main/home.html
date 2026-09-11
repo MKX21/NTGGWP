@@ -3,65 +3,86 @@
 
 {% block content %}
 <div class="bg-satdark-bg">
-<!-- ============ Hero ============ -->
-<header class="relative overflow-hidden bg-satdark-bg border-b border-satdark-border">
-    <div class="pointer-events-none absolute -top-24 -right-24 h-96 w-96 rounded-full bg-electric/10 blur-3xl"></div>
-    <div class="pointer-events-none absolute -bottom-32 -left-16 h-80 w-80 rounded-full bg-electric/10 blur-3xl"></div>
-
-    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32">
-        <div class="grid lg:grid-cols-2 gap-16 items-center">
-            <div class="animate-fade-up">
-                <span class="inline-flex items-center gap-2 bg-black/40 border border-satdark-border px-3 py-1 rounded-full text-sm font-medium mb-6 text-satdark-muted">
-                    <i class="fas fa-star text-electric"></i> 全台學員信賴的線上學習平台
-                </span>
-                <h1 class="text-3xl md:text-5xl font-bold tracking-wide leading-tight mb-6 text-satdark-text">
-                    學習不設限，<br>
-                    <span class="text-electric">開啟你的知識新篇章</span>
-                </h1>
-                <p class="text-lg text-satdark-muted mb-10 max-w-xl leading-relaxed">
-                    集結業界專家親授的精選課程，搭配數據分析與 AI 智慧推薦。現在就加入 EduFlow，投資最值得的自己。
-                </p>
-
-                <div class="flex flex-wrap gap-3 mb-10">
-                    <a href="{% url 'course_catalog' %}" class="bg-electric hover:bg-electric-hover text-white font-medium tracking-wide px-8 py-3.5 rounded-md transition">瀏覽課程</a>
-                    <a href="{% url 'register' %}" class="bg-transparent hover:bg-white/5 border border-satdark-border text-satdark-text font-medium tracking-wide px-8 py-3.5 rounded-md transition">免費註冊</a>
-                </div>
-
-                <div class="flex flex-wrap items-center gap-2 mb-10 text-sm text-satdark-muted">
-                    <span>熱門分類：</span>
-                    {% for category in categories|slice:":4" %}
-                    <a href="{% url 'course_catalog' %}?cat={{ category.name }}" class="bg-satdark-surface border border-satdark-border hover:border-electric hover:text-electric px-3 py-1 rounded-full transition">{{ category.name }}</a>
-                    {% endfor %}
-                </div>
-
-                <div class="flex flex-wrap gap-10">
-                    <div><div class="text-3xl font-bold text-satdark-text">{{ total_courses }}+</div><div class="text-sm text-satdark-muted">精選課程</div></div>
-                    <div><div class="text-3xl font-bold text-satdark-text">{{ total_students }}+</div><div class="text-sm text-satdark-muted">累積學員</div></div>
-                    <div><div class="text-3xl font-bold text-satdark-text">{{ avg_all }}<span class="text-lg">/5</span></div><div class="text-sm text-satdark-muted">平均評價</div></div>
+<!-- ============ Hero 推薦課程輪播 ============ -->
+{% if popular_courses %}
+<header class="relative overflow-hidden bg-black border-b border-satdark-border" data-hero-carousel>
+    <div class="relative h-[68vh] min-h-[420px] max-h-[720px]">
+        {% for course in popular_courses|slice:":6" %}
+        <a href="{% url 'course_detail' course.id %}" data-slide
+           class="absolute inset-0 transition-opacity duration-700 ease-out {% if not forloop.first %}opacity-0 pointer-events-none{% endif %}">
+            {% if course.image %}
+            <img src="{{ course.image.url }}" alt="{{ course.title }}" class="absolute inset-0 w-full h-full object-cover">
+            {% else %}
+            <div class="absolute inset-0 bg-gradient-to-br from-electric to-brand-700"></div>
+            {% endif %}
+            <div class="absolute inset-0 bg-gradient-to-r from-black/90 via-black/55 to-black/10"></div>
+            <div class="relative max-w-7xl mx-auto h-full px-6 sm:px-8 lg:px-12 flex flex-col justify-center">
+                <div class="max-w-xl text-white">
+                    <span class="inline-flex items-center gap-2 bg-white/10 backdrop-blur border border-white/20 px-3 py-1 rounded-full text-sm font-medium mb-4">
+                        <i class="fas fa-star text-electric"></i>{% if course.category %}{{ course.category.name }}{% else %}精選推薦{% endif %}
+                    </span>
+                    <p class="text-white/80 text-sm mb-2">{{ course.teacher.profile.display_name }} 老師</p>
+                    <h1 class="text-3xl md:text-5xl font-black tracking-wide leading-tight mb-4 drop-shadow">{{ course.title }}</h1>
+                    <p class="text-base md:text-lg text-white/80 mb-8 line-clamp-2">{{ course.description|truncatechars:60 }}</p>
+                    <span class="inline-flex items-center gap-2 bg-electric hover:bg-electric-hover text-white font-bold tracking-wide px-7 py-3 rounded-full transition">查看課程 <i class="fas fa-arrow-right"></i></span>
                 </div>
             </div>
+        </a>
+        {% endfor %}
 
-            <div class="hidden lg:block relative h-[460px]">
-                <div class="absolute top-0 right-8 w-64 bg-satdark-surface border border-satdark-border rounded-2xl shadow-xl p-4 animate-float">
-                    <div class="aspect-video rounded-xl bg-gradient-to-br from-electric to-brand-700 mb-3 flex items-center justify-center text-white text-3xl"><i class="fas fa-play"></i></div>
-                    <div class="h-3 w-3/4 bg-satdark-bg rounded mb-2"></div>
-                    <div class="h-3 w-1/2 bg-satdark-bg rounded"></div>
-                </div>
-                <div class="absolute top-40 left-0 w-52 bg-satdark-surface border border-satdark-border rounded-2xl shadow-xl p-4 animate-float" style="animation-delay:-2s">
-                    <div class="flex items-center gap-3 mb-2">
-                        <div class="h-10 w-10 rounded-full bg-electric flex items-center justify-center text-white"><i class="fas fa-trophy"></i></div>
-                        <div><div class="font-medium text-satdark-text text-sm">結業證書</div><div class="text-xs text-satdark-muted">完課即可領取</div></div>
-                    </div>
-                    <div class="h-2 w-full bg-satdark-bg rounded-full overflow-hidden"><div class="h-full w-4/5 bg-electric rounded-full"></div></div>
-                </div>
-                <div class="absolute bottom-4 right-16 w-56 bg-satdark-surface border border-satdark-border rounded-2xl shadow-xl p-4 animate-float" style="animation-delay:-4s">
-                    <div class="text-xs text-satdark-muted mb-1">累積學員</div>
-                    <div class="text-2xl font-bold text-electric">{{ total_students }}+ <span class="text-green-400 text-sm"><i class="fas fa-arrow-trend-up"></i></span></div>
-                </div>
-            </div>
+        <!-- 右下角切換按鈕（自動輪播，也可手動選擇） -->
+        <div class="absolute bottom-6 right-6 flex items-center gap-3 z-10">
+            <button type="button" data-hero-prev aria-label="上一張" class="w-11 h-11 rounded-full border border-white/50 text-white/90 hover:bg-white/15 flex items-center justify-center backdrop-blur transition"><i class="fas fa-chevron-left"></i></button>
+            <button type="button" data-hero-next aria-label="下一張" class="w-11 h-11 rounded-full border border-white/50 text-white/90 hover:bg-white/15 flex items-center justify-center backdrop-blur transition"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        <!-- 左下角頁標 -->
+        <div class="absolute bottom-7 left-6 sm:left-12 flex items-center gap-2 z-10" data-hero-dots>
+            {% for course in popular_courses|slice:":6" %}
+            <button type="button" data-hero-dot class="h-2 rounded-full transition-all {% if forloop.first %}w-6 bg-white{% else %}w-2 bg-white/40{% endif %}" aria-label="第 {{ forloop.counter }} 張"></button>
+            {% endfor %}
         </div>
     </div>
 </header>
+{% else %}
+<header class="relative overflow-hidden bg-satdark-bg border-b border-satdark-border">
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 text-center">
+        <h1 class="text-3xl md:text-5xl font-bold tracking-wide leading-tight mb-6 text-satdark-text">學習不設限，<span class="text-electric">開啟你的知識新篇章</span></h1>
+        <p class="text-lg text-satdark-muted mb-8 max-w-xl mx-auto">集結業界專家親授的精選課程，現在就加入 EduFlow。</p>
+        <a href="{% url 'course_catalog' %}" class="bg-electric hover:bg-electric-hover text-white font-medium px-8 py-3.5 rounded-md transition">瀏覽課程</a>
+    </div>
+</header>
+{% endif %}
+
+<script>
+(function () {
+    const root = document.querySelector('[data-hero-carousel]');
+    if (!root) return;
+    const slides = Array.prototype.slice.call(root.querySelectorAll('[data-slide]'));
+    const dots = Array.prototype.slice.call(root.querySelectorAll('[data-hero-dot]'));
+    if (slides.length === 0) return;
+    let idx = 0, timer;
+    function show(n) {
+        idx = (n + slides.length) % slides.length;
+        slides.forEach(function (s, i) {
+            const on = i === idx;
+            s.classList.toggle('opacity-0', !on);
+            s.classList.toggle('pointer-events-none', !on);
+        });
+        dots.forEach(function (d, i) {
+            const on = i === idx;
+            d.classList.toggle('w-6', on); d.classList.toggle('bg-white', on);
+            d.classList.toggle('w-2', !on); d.classList.toggle('bg-white/40', !on);
+        });
+    }
+    function restart() { clearInterval(timer); if (slides.length > 1) timer = setInterval(function () { show(idx + 1); }, 5000); }
+    const next = root.querySelector('[data-hero-next]');
+    const prev = root.querySelector('[data-hero-prev]');
+    if (next) next.addEventListener('click', function (e) { e.preventDefault(); show(idx + 1); restart(); });
+    if (prev) prev.addEventListener('click', function (e) { e.preventDefault(); show(idx - 1); restart(); });
+    dots.forEach(function (d, i) { d.addEventListener('click', function () { show(i); restart(); }); });
+    restart();
+})();
+</script>
 
 <!-- ============ 課程／講師 瀏覽入口 ============ -->
 <section class="bg-satdark-bg">
