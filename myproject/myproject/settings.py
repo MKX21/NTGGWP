@@ -35,6 +35,14 @@ SECRET_KEY = os.environ.get(
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+# 正式部署時把 EB／自訂網域填進 ALLOWED_HOSTS 環境變數（逗號分隔），本機不填照常跑。
+ALLOWED_HOSTS += [h.strip() for h in os.environ.get('ALLOWED_HOSTS', '').split(',') if h.strip()]
+
+# 表單 POST（登入、結帳等）在 https 網域需要信任來源，否則會 CSRF 失敗。
+# 例：CSRF_TRUSTED_ORIGINS=https://xxx.elasticbeanstalk.com,https://your-domain.com
+CSRF_TRUSTED_ORIGINS = [
+    o.strip() for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()
+]
 
 
 # Application definition
@@ -51,6 +59,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # WhiteNoise 讓 gunicorn 也能送靜態檔（本機 runserver 不受影響）。
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -142,8 +152,36 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+# collectstatic 會把靜態檔集中到這裡，供 WhiteNoise 在正式環境送出。
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# 儲存後端：靜態檔一律走 WhiteNoise（壓縮＋帶 hash 快取）。
+# 上傳檔（media）預設存本機磁碟；一旦設了 AWS_STORAGE_BUCKET_NAME 就改存 S3
+# —— 因為 EB／容器的磁碟是暫時的，重新部署後本機上傳的檔案會消失。
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
+
+AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', '')
+if AWS_STORAGE_BUCKET_NAME:
+    AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', '')
+    # 金鑰建議用 EB/EC2 的 IAM Role 提供，不必填；本機測試才用環境變數帶入。
+    AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', '')
+    AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
+    AWS_S3_CUSTOM_DOMAIN = os.environ.get('AWS_S3_CUSTOM_DOMAIN', '')
+    AWS_QUERYSTRING_AUTH = False
+    STORAGES['default'] = {
+        'BACKEND': 'storages.backends.s3.S3Storage',
+        'OPTIONS': {'location': 'media'},
+    }
 
 # Email（密碼重設信）
 # 設了 EMAIL_HOST_USER 就走真的 SMTP；沒設就把信印在終端機。

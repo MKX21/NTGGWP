@@ -24,3 +24,6 @@ Thumbs.db
 # 註：media/（課程圖片、上傳影片）目前保留在版控中，
 # 方便共同開發者直接取得課程封面與示範影片。
 # 若日後檔案量過大，可改用雲端儲存並在此加入： myproject/media/
+
+# collectstatic 產生的靜態檔集中目錄（部署時自動產生，不進版控）
+staticfiles/
