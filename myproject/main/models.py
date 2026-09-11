@@ -1020,6 +1020,8 @@ class WithdrawalRequest(models.Model):
         max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="狀態"
     )
     note = models.TextField(blank=True, null=True, verbose_name="處理備註")
+    # 申請當下的收款帳戶快照，之後帳戶異動不影響這筆歷史紀錄
+    bank_info_snapshot = models.TextField(blank=True, default='', verbose_name="銀行帳戶快照")
     requested_at = models.DateTimeField(auto_now_add=True, verbose_name="申請時間")
     processed_at = models.DateTimeField(blank=True, null=True, verbose_name="處理時間")
 
@@ -1211,3 +1213,35 @@ class ColumnSubscription(models.Model):
         verbose_name = "專欄訂閱"
         verbose_name_plural = "專欄訂閱"
         ordering = ['-started_at']
+
+
+class TeacherBankAccount(models.Model):
+    """教師收款銀行帳戶（一位教師一組）；提領申請時會存快照，不受後續修改影響。"""
+    teacher = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="bank_account", verbose_name="教師"
+    )
+    bank_name = models.CharField(max_length=100, verbose_name="銀行名稱")
+    bank_code = models.CharField(max_length=10, blank=True, null=True, verbose_name="銀行代碼")
+    branch_name = models.CharField(max_length=100, blank=True, null=True, verbose_name="分行名稱")
+    account_name = models.CharField(max_length=100, verbose_name="戶名")
+    account_number = models.CharField(max_length=50, verbose_name="帳號")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新時間")
+
+    def is_complete(self):
+        return bool(self.bank_name and self.account_name and self.account_number)
+
+    def snapshot_text(self):
+        """提領申請時記錄的帳戶快照文字。"""
+        parts = [self.bank_name]
+        if self.bank_code:
+            parts.append(f'（{self.bank_code}）')
+        if self.branch_name:
+            parts.append(self.branch_name)
+        return f"{''.join(parts)} / 戶名：{self.account_name} / 帳號：{self.account_number}"
+
+    def __str__(self):
+        return f"{self.teacher.username} - {self.bank_name} {self.account_number}"
+
+    class Meta:
+        verbose_name = "教師銀行帳戶"
+        verbose_name_plural = "教師銀行帳戶"

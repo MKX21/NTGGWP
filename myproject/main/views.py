@@ -59,6 +59,7 @@ from .models import (
     TeacherArticle,
     TeacherMaterial,
     ColumnSubscription,
+    TeacherBankAccount,
 )
 
 from .forms import (
@@ -76,6 +77,7 @@ from .forms import (
     ColumnForm,
     ArticleForm,
     MaterialForm,
+    TeacherBankAccountForm,
 )
 
 from .payments import gateway
@@ -2287,34 +2289,65 @@ def my_revenue(request):
 
 
 @login_required
+def edit_bank_account(request):
+    """講師設定收款銀行帳戶（提領前需先綁定）。"""
+    if not _require_teacher_profile(request):
+        return redirect('home')
+
+    bank_account, _ = TeacherBankAccount.objects.get_or_create(
+        teacher=request.user,
+        defaults={'bank_name': '', 'account_name': '', 'account_number': ''},
+    )
+
+    if request.method == 'POST':
+        form = TeacherBankAccountForm(request.POST, instance=bank_account)
+        if form.is_valid():
+            form.save()
+            return redirect('my_withdrawals')
+    else:
+        form = TeacherBankAccountForm(instance=bank_account)
+
+    return render(request, 'main/edit_bank_account.html', {'form': form})
+
+
+@login_required
 def my_withdrawals(request):
     """講師申請提領、查看自己的提領紀錄與目前可提領餘額。"""
     if not _require_teacher_profile(request):
         return redirect('home')
 
     error = None
+    bank_account = TeacherBankAccount.objects.filter(teacher=request.user).first()
+    has_bank_account = bool(bank_account and bank_account.is_complete())
 
     if request.method == 'POST':
-        amount_raw = request.POST.get('amount', '').strip()
-        try:
-            amount = int(amount_raw)
-            if amount <= 0:
-                raise ValueError
-        except ValueError:
-            error = '請輸入正確的提領金額（正整數）。'
+        if not has_bank_account:
+            error = '請先綁定收款銀行帳戶，才能申請提領。'
         else:
-            withdrawal = WithdrawalRequest(teacher=request.user, amount=amount)
+            amount_raw = request.POST.get('amount', '').strip()
             try:
-                withdrawal.save()
-            except ValidationError as e:
-                error = ' '.join(e.messages)
+                amount = int(amount_raw)
+                if amount <= 0:
+                    raise ValueError
+            except ValueError:
+                error = '請輸入正確的提領金額（正整數）。'
             else:
-                Notification.objects.create(
-                    user=request.user,
-                    title='提領申請已送出',
-                    content=f'你申請提領的 NT$ {amount} 已送出，等待處理。'
+                withdrawal = WithdrawalRequest(
+                    teacher=request.user,
+                    amount=amount,
+                    bank_info_snapshot=bank_account.snapshot_text(),
                 )
-                return redirect('my_withdrawals')
+                try:
+                    withdrawal.save()
+                except ValidationError as e:
+                    error = ' '.join(e.messages)
+                else:
+                    Notification.objects.create(
+                        user=request.user,
+                        title='提領申請已送出',
+                        content=f'你申請提領的 NT$ {amount} 已送出，等待處理。'
+                    )
+                    return redirect('my_withdrawals')
 
     withdrawals = WithdrawalRequest.objects.filter(
         teacher=request.user
@@ -2324,6 +2357,8 @@ def my_withdrawals(request):
         'withdrawals': withdrawals,
         'available_balance': WithdrawalRequest.available_balance(request.user),
         'error': error,
+        'bank_account': bank_account,
+        'has_bank_account': has_bank_account,
     })
 
 

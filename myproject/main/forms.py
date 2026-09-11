@@ -15,6 +15,7 @@ from .models import (
     TeacherColumn,
     TeacherArticle,
     TeacherMaterial,
+    TeacherBankAccount,
 )
 
 
@@ -401,6 +402,19 @@ class ArticleForm(forms.ModelForm):
         if teacher is not None:
             self.fields['column'].queryset = TeacherColumn.objects.filter(teacher=teacher)
         self.fields['column'].required = False
+
+
+class TeacherBankAccountForm(forms.ModelForm):
+    class Meta:
+        model = TeacherBankAccount
+        fields = ['bank_name', 'bank_code', 'branch_name', 'account_name', 'account_number']
+        labels = {
+            'bank_name': '銀行名稱',
+            'bank_code': '銀行代碼（選填）',
+            'branch_name': '分行名稱（選填）',
+            'account_name': '戶名',
+            'account_number': '帳號',
+        }
 
 
 class MaterialForm(forms.ModelForm):

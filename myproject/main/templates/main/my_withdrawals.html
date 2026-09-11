@@ -6,12 +6,28 @@
   <div class="flex items-center justify-between flex-wrap gap-3 mb-6">
     <h1 class="text-2xl font-black text-slate-900">提領申請</h1>
     <div class="flex items-center gap-4">
+      <a href="{% url 'edit_bank_account' %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-2.5 rounded-lg transition inline-flex items-center gap-2">
+        <i class="fas fa-building-columns"></i> 收款帳戶
+      </a>
       <a href="{% url 'export_my_withdrawals_csv' %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-2.5 rounded-lg transition inline-flex items-center gap-2">
         <i class="fas fa-file-csv"></i> 匯出 CSV
       </a>
       <a href="{% url 'my_revenue' %}" class="text-brand-600 hover:underline font-medium">查看收支明細 →</a>
     </div>
   </div>
+
+  <!-- 收款帳戶狀態 -->
+  {% if has_bank_account %}
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-5 mb-6 flex items-center justify-between gap-4 flex-wrap">
+    <div class="text-sm text-slate-600"><i class="fas fa-building-columns text-brand-600 mr-2"></i>收款帳戶：{{ bank_account.bank_name }} ・ 戶名 {{ bank_account.account_name }} ・ 帳號 {{ bank_account.account_number }}</div>
+    <a href="{% url 'edit_bank_account' %}" class="text-brand-600 hover:underline font-medium text-sm">變更</a>
+  </div>
+  {% else %}
+  <div class="bg-amber-50 ring-1 ring-amber-200 rounded-2xl p-5 mb-6 flex items-center justify-between gap-4 flex-wrap">
+    <div class="text-sm text-amber-700"><i class="fas fa-triangle-exclamation mr-2"></i>尚未綁定收款銀行帳戶，綁定後才能申請提領。</div>
+    <a href="{% url 'edit_bank_account' %}" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-4 py-2 rounded-lg text-sm transition">立即綁定</a>
+  </div>
+  {% endif %}
 
   <!-- 申請表單 -->
   <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8 mb-6">
@@ -28,10 +44,15 @@
       <div class="flex-1 min-w-[180px]">
         <label class="block font-bold text-slate-700 mb-2">提領金額</label>
         <input type="number" name="amount" min="1" max="{{ available_balance }}" required
+               {% if not has_bank_account %}disabled{% endif %}
                placeholder="最高 NT$ {{ available_balance }}"
-               class="w-full border border-slate-200 rounded-lg py-2.5 px-3 outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-200 transition">
+               class="w-full border border-slate-200 rounded-lg py-2.5 px-3 outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-200 transition disabled:bg-slate-50 disabled:cursor-not-allowed">
       </div>
+      {% if has_bank_account %}
       <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-6 py-2.5 rounded-lg transition">送出申請</button>
+      {% else %}
+      <a href="{% url 'edit_bank_account' %}" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-6 py-2.5 rounded-lg transition">先綁定帳戶</a>
+      {% endif %}
     </form>
     {% else %}
     <p class="text-slate-500">目前沒有可提領的餘額。</p>
@@ -50,6 +71,7 @@
           <div class="text-sm text-slate-500">
             申請於 {{ w.requested_at|date:"Y-m-d H:i" }}
             {% if w.processed_at %} ・ 處理於 {{ w.processed_at|date:"Y-m-d H:i" }}{% endif %}
+            {% if w.bank_info_snapshot %}<br>撥款帳戶：{{ w.bank_info_snapshot }}{% endif %}
             {% if w.note %}<br>備註：{{ w.note }}{% endif %}
           </div>
         </div>

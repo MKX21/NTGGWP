@@ -43,6 +43,7 @@ from .models import (
     TeacherMaterial,
     UserBadge,
     ColumnSubscription,
+    TeacherBankAccount,
 )
 
 # ===== 後台品牌 =====
@@ -495,6 +496,13 @@ class RevenueRecordAdmin(admin.ModelAdmin):
         return False
 
 
+@admin.register(TeacherBankAccount)
+class TeacherBankAccountAdmin(admin.ModelAdmin):
+    list_display = ('teacher', 'bank_name', 'bank_code', 'account_name', 'account_number', 'updated_at')
+    search_fields = ('teacher__username', 'bank_name', 'account_name', 'account_number')
+    autocomplete_fields = ('teacher',)
+
+
 @admin.register(WithdrawalRequest)
 class WithdrawalRequestAdmin(admin.ModelAdmin):
     list_display = ('teacher', 'amount', 'withdrawal_badge', 'requested_at', 'processed_at')
@@ -753,7 +761,7 @@ from django.urls import reverse as _reverse
 _CUSTOM_GROUPS = [
     ('📚 課程管理', ['Course', 'CourseCategory', 'CourseChapter', 'CourseLesson', 'CourseAudit', 'CourseBundle', 'CourseAnnouncement']),
     ('🧾 交易管理', ['Order', 'OrderItem', 'Payment', 'Refund', 'Enrollment']),
-    ('💰 分潤與提領', ['CourseSplitSetting', 'RevenueRecord', 'WithdrawalRequest']),
+    ('💰 分潤與提領', ['CourseSplitSetting', 'RevenueRecord', 'WithdrawalRequest', 'TeacherBankAccount']),
     ('🎯 行銷管理', ['Coupon', 'UserCoupon', 'CouponUsage', 'Promotion', 'Cart']),
     ('📝 講師內容', ['TeacherColumn', 'TeacherArticle', 'TeacherMaterial', 'ColumnSubscription']),
     ('👥 會員與互動', ['Profile', 'TeacherFollow', 'UserBadge', 'LearningRecord', 'LessonProgress', 'Favorite', 'Review', 'Notification', 'CourseQuestion', 'CourseAnswer', 'CourseComment']),

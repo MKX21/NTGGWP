@@ -136,6 +136,7 @@ urlpatterns = [
     # A9 分潤收支與提領
     path('revenue/', views.my_revenue, name='my_revenue'),
     path('revenue/export.csv', views.export_my_revenue_csv, name='export_my_revenue_csv'),
+    path('teacher/bank-account/', views.edit_bank_account, name='edit_bank_account'),
     path('withdrawals/', views.my_withdrawals, name='my_withdrawals'),
     path('withdrawals/export.csv', views.export_my_withdrawals_csv, name='export_my_withdrawals_csv'),
     path('withdrawals/manage/', views.manage_withdrawals, name='manage_withdrawals'),
