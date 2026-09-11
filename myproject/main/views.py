@@ -2146,17 +2146,17 @@ def mark_notifications_read(request):
 def add_question(request, course_id):
     course = get_object_or_404(Course, id=course_id)
 
-    purchased = Enrollment.objects.filter(
-        student=request.user, course=course
-    ).exists()
     is_teacher = course.teacher_id == request.user.id
 
-    if request.method == 'POST' and (purchased or is_teacher):
+    # 登入即可提問，不需購買
+    if request.method == 'POST':
         form = QuestionForm(request.POST)
         if form.is_valid():
             q = form.save(commit=False)
             q.user = request.user
             q.course = course
+            # 表單只收「問題內容」，標題自動取內容前段（供後台/通知顯示）
+            q.title = (q.content or '')[:50]
             q.save()
             if not is_teacher:
                 Notification.objects.create(

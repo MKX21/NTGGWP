@@ -2,31 +2,133 @@
 {% block title %}編輯個人資料 | EduFlow{% endblock %}
 
 {% block content %}
-<main class="max-w-2xl mx-auto px-4 py-10">
+<style>
+  .ef2 label.fld { display:block; font-weight:700; color:#334155; margin-bottom:.4rem; }
+  .ef2 input[type=text], .ef2 input[type=email], .ef2 input[type=url], .ef2 textarea {
+    width:100%; border:1px solid #e2e8f0; border-radius:.7rem; padding:.65rem .85rem;
+    font-size:.95rem; background:#fff; color:#0f172a; transition:border-color .15s, box-shadow .15s;
+  }
+  .ef2 input::placeholder, .ef2 textarea::placeholder { color:#94a3b8; }
+  .ef2 input:focus, .ef2 textarea:focus { outline:none; border-color:#a5b4fc; box-shadow:0 0 0 3px rgba(99,102,241,.16); }
+  .ef2 textarea { resize:vertical; min-height:6.5rem; }
+</style>
+
+<main class="max-w-2xl mx-auto px-4 py-10 ef2">
   <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8">
     <h1 class="text-2xl font-black text-slate-900 mb-1">編輯個人資料</h1>
-    <p class="text-slate-500 mb-6">身分不可修改，如需更改密碼請使用「忘記密碼」流程。</p>
+    <p class="text-slate-500 mb-8">身分不可修改，如需更改密碼請使用「忘記密碼」流程。</p>
 
-    <div class="flex items-center gap-5 mb-6">
-      {% if profile.avatar %}
-      <img src="{{ profile.avatar.url }}" alt="大頭貼" class="w-[72px] h-[72px] rounded-full object-cover">
-      {% else %}
-      <span class="w-[72px] h-[72px] rounded-full bg-gradient-to-br from-brand-500 to-violet-500 text-white flex items-center justify-center text-3xl font-black">{{ request.user.username|slice:":1"|upper }}</span>
-      {% endif %}
-      <div>
-        <div class="font-bold text-slate-800">{{ request.user.username }}</div>
-        <span class="inline-block mt-1 bg-brand-50 text-jp-primaryHover text-xs font-bold px-3 py-1 rounded-full">{{ profile.get_role_display }}</span>
-      </div>
-    </div>
-
-    <form method="post" enctype="multipart/form-data" class="ef-form">
+    <form method="post" enctype="multipart/form-data" class="space-y-6">
       {% csrf_token %}
-      {{ form.as_p }}
-      <div class="flex gap-3 mt-4">
+      {% if form.non_field_errors %}<div class="bg-rose-50 text-rose-600 text-sm rounded-lg px-4 py-2">{{ form.non_field_errors }}</div>{% endif %}
+
+      <!-- 帳號資訊 -->
+      <div>
+        <label class="fld">帳號名稱</label>
+        {{ form.username }}
+        {{ form.username.errors }}
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div><label class="fld">姓氏</label>{{ form.last_name }}</div>
+        <div><label class="fld">名字</label>{{ form.first_name }}</div>
+      </div>
+      <div>
+        <label class="fld">Email</label>
+        {{ form.email }}
+        {{ form.email.errors }}
+      </div>
+
+      <hr class="border-slate-100">
+
+      <!-- 大頭貼 -->
+      <div>
+        <label class="fld">大頭貼</label>
+        <div class="flex items-center gap-4">
+          {% if profile.avatar %}
+          <img id="avatarPreview" src="{{ profile.avatar.url }}" alt="大頭貼" class="w-20 h-20 rounded-full object-cover ring-1 ring-slate-200 bg-slate-100">
+          {% else %}
+          <img id="avatarPreview" src="" alt="" class="w-20 h-20 rounded-full object-cover ring-1 ring-slate-200 bg-slate-100 {% if not profile.avatar %}hidden{% endif %}">
+          <span id="avatarPlaceholder" class="w-20 h-20 rounded-full bg-gradient-to-br from-brand-500 to-violet-500 text-white flex items-center justify-center text-2xl font-black">{{ request.user.username|slice:":1"|upper }}</span>
+          {% endif %}
+          <div class="min-w-0">
+            <label class="cursor-pointer inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-4 py-2 rounded-lg transition">
+              <i class="fas fa-image"></i> 選擇圖片
+              <input type="file" name="avatar" accept="image/*" class="hidden" data-preview="#avatarPreview" data-hide="#avatarPlaceholder">
+            </label>
+            <p class="text-xs text-slate-400 mt-1 truncate" data-filename>未選擇檔案</p>
+            {% if profile.avatar %}
+            <label class="inline-flex items-center gap-1.5 text-xs text-rose-500 mt-2 cursor-pointer">
+              <input type="checkbox" name="avatar-clear" class="accent-rose-500"> 移除目前大頭貼
+            </label>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- 講師頁封面 -->
+      <div>
+        <label class="fld">講師頁封面</label>
+        <div class="w-full aspect-[16/6] rounded-xl overflow-hidden bg-slate-100 ring-1 ring-slate-200 mb-3">
+          {% if profile.cover_image %}
+          <img id="coverPreview" src="{{ profile.cover_image.url }}" alt="封面" class="w-full h-full object-cover">
+          {% else %}
+          <img id="coverPreview" src="" alt="" class="w-full h-full object-cover hidden">
+          <div id="coverPlaceholder" class="w-full h-full flex items-center justify-center text-slate-400 text-sm"><i class="fas fa-image mr-2"></i>尚未設定封面</div>
+          {% endif %}
+        </div>
+        <div class="flex items-center gap-4">
+          <label class="cursor-pointer inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-4 py-2 rounded-lg transition">
+            <i class="fas fa-image"></i> 選擇圖片
+            <input type="file" name="cover_image" accept="image/*" class="hidden" data-preview="#coverPreview" data-hide="#coverPlaceholder">
+          </label>
+          <p class="text-xs text-slate-400 truncate" data-filename>未選擇檔案</p>
+          {% if profile.cover_image %}
+          <label class="inline-flex items-center gap-1.5 text-xs text-rose-500 cursor-pointer">
+            <input type="checkbox" name="cover_image-clear" class="accent-rose-500"> 移除封面
+          </label>
+          {% endif %}
+        </div>
+      </div>
+
+      <hr class="border-slate-100">
+
+      <!-- 講師資訊 -->
+      <div>
+        <label class="fld">講師稱號</label>
+        {{ form.headline }}
+      </div>
+      <div>
+        <label class="fld">講師簡介</label>
+        {{ form.bio }}
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div><label class="fld">Facebook 連結</label>{{ form.facebook_url }}</div>
+        <div><label class="fld">YouTube 連結</label>{{ form.youtube_url }}</div>
+      </div>
+
+      <div class="flex gap-3 pt-2">
         <button type="submit" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-6 py-2.5 rounded-lg transition">儲存變更</button>
         <a href="{% url 'profile' %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-6 py-2.5 rounded-lg transition">取消</a>
       </div>
     </form>
   </div>
 </main>
+
+<script>
+  document.querySelectorAll('input[type=file][data-preview]').forEach(function (inp) {
+    inp.addEventListener('change', function () {
+      var file = inp.files && inp.files[0];
+      var wrap = inp.closest('div');
+      var nameEl = wrap ? wrap.querySelector('[data-filename]') : null;
+      var preview = document.querySelector(inp.dataset.preview);
+      var hideEl = inp.dataset.hide ? document.querySelector(inp.dataset.hide) : null;
+      if (nameEl) nameEl.textContent = file ? file.name : '未選擇檔案';
+      if (file && preview) {
+        preview.src = URL.createObjectURL(file);
+        preview.classList.remove('hidden');
+        if (hideEl) hideEl.classList.add('hidden');
+      }
+    });
+  });
+</script>
 {% endblock %}

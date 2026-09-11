@@ -43,6 +43,7 @@ class CourseForm(forms.ModelForm):
 
     field_order = [
         'title', 'category_name', 'level', 'description', 'image',
+        'intro_video_file', 'intro_video_url',
         'price', 'discount_price',
         'is_crowdfunding', 'funding_goal', 'funding_start_date', 'funding_end_date', 'early_bird_price',
     ]
@@ -51,6 +52,7 @@ class CourseForm(forms.ModelForm):
         model = Course
         fields = [
             'title', 'level', 'price', 'description', 'image',
+            'intro_video_file', 'intro_video_url',
             'discount_price',
             'is_crowdfunding', 'funding_goal', 'funding_start_date', 'funding_end_date', 'early_bird_price',
         ]
@@ -59,7 +61,9 @@ class CourseForm(forms.ModelForm):
             'level': '課程難度',
             'price': '原價',
             'description': '課程介紹',
-            'image': '課程封面',
+            'image': '課程封面圖',
+            'intro_video_file': '課程封面介紹影片（上傳 mp4，學員可於課程頁放大觀看）',
+            'intro_video_url': '或貼介紹影片連結',
             'discount_price': '折扣價（選填）',
             'is_crowdfunding': '這是一門募資課程',
             'funding_goal': '募資門檻人數',
@@ -79,6 +83,7 @@ class CourseForm(forms.ModelForm):
             'funding_end_date': forms.DateTimeInput(
                 attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M'
             ),
+            'intro_video_file': forms.ClearableFileInput(attrs={'accept': 'video/*'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -181,8 +186,8 @@ class LessonForm(forms.ModelForm):
 class QuestionForm(forms.ModelForm):
     class Meta:
         model = CourseQuestion
-        fields = ['title', 'content']
-        labels = {'title': '問題標題', 'content': '問題內容'}
+        fields = ['content']
+        labels = {'content': '問題內容'}
         widgets = {
             'content': forms.Textarea(attrs={'rows': 3, 'placeholder': '請描述你的問題'}),
         }
@@ -298,9 +303,9 @@ class ProfileEditForm(forms.ModelForm):
         fields = ['avatar', 'cover_image', 'headline', 'bio', 'facebook_url', 'youtube_url']
         labels = {
             'avatar': '大頭貼',
-            'cover_image': '講師頁封面（建議寬版橫幅）',
-            'headline': '講師稱號（例：臺灣經營管理大師）',
-            'bio': '講師簡介（若為教師身分，會顯示在你的課程頁面）',
+            'cover_image': '講師頁封面',
+            'headline': '講師稱號',
+            'bio': '講師簡介',
             'facebook_url': 'Facebook 連結',
             'youtube_url': 'YouTube 連結',
         }
