@@ -6,20 +6,20 @@
             {% else %}
             <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-brand-600 to-brand-400 text-white text-4xl font-bold">{{ course.title|slice:":1"|upper }}</div>
             {% endif %}
-            <span class="absolute top-3 left-3 bg-accent-100 text-accent-600 text-xs font-medium px-2.5 py-1 rounded-full">
-                <i class="fas fa-clock mr-1"></i>剩 {{ course.funding_days_left }} 天
+            <span class="absolute top-3 left-3 bg-rose-600 text-white text-sm font-black px-3 py-1.5 rounded-full shadow-lg shadow-rose-600/30">
+                <i class="fas fa-fire mr-1"></i>剩 {{ course.funding_days_left }} 天
             </span>
         </div>
         <div class="p-5">
             {% if course.category %}<p class="text-xs text-jp-primary font-medium mb-1">{{ course.category.name }}</p>{% endif %}
             <h3 class="font-medium text-jp-text leading-snug mb-3 line-clamp-2 h-11 group-hover:text-jp-primary transition">{{ course.title }}</h3>
 
-            <div class="mb-1 flex justify-between text-sm">
-                <span class="font-medium {% if course.funding_is_goal_met %}text-jp-accent{% else %}text-jp-text{% endif %}">{{ course.funding_progress_percent }}%</span>
-                <span class="text-jp-muted">{% if course.funding_is_goal_met %}已達標{% else %}募資中{% endif %}</span>
+            <div class="mb-1 flex justify-between items-baseline">
+                <span class="text-xl font-black {% if course.funding_is_goal_met %}text-jp-accent{% else %}text-rose-600{% endif %}">{{ course.funding_progress_percent }}% <span class="text-xs font-medium text-jp-muted">達成</span></span>
+                <span class="inline-flex items-center gap-1 bg-rose-50 text-rose-600 text-xs font-bold px-2 py-0.5 rounded-full">{% if course.funding_is_goal_met %}已達標{% else %}<i class="fas fa-fire"></i>募資中{% endif %}</span>
             </div>
-            <div class="h-2 w-full bg-jp-bg rounded-full overflow-hidden mb-3">
-                <div class="h-full bg-jp-accent rounded-full" style="width:{{ course.funding_progress_percent }}%"></div>
+            <div class="h-2.5 w-full bg-jp-bg rounded-full overflow-hidden mb-3">
+                <div class="h-full bg-gradient-to-r from-rose-500 to-amber-500 rounded-full" style="width:{{ course.funding_progress_percent }}%"></div>
             </div>
 
             <div class="flex justify-between items-center text-sm text-jp-muted">

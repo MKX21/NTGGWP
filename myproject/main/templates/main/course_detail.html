@@ -2,6 +2,10 @@
 {% block title %}{{ course.title }} | EduFlow{% endblock %}
 
 {% block content %}
+<style>
+  @keyframes cdPop { 0% { transform: scale(1); } 30% { transform: scale(1.28); color:#e11d48; } 100% { transform: scale(1); } }
+  .cd-pop { animation: cdPop 0.35s ease-out; }
+</style>
 <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
@@ -288,15 +292,27 @@
                 </div>
 
                 {% if course.is_crowdfunding and course.is_funding_active %}
-                <div class="bg-jp-bg rounded-xl p-4 mb-5">
-                    <div class="flex justify-between text-sm mb-1">
-                        <span class="font-bold {% if course.funding_is_goal_met %}text-jp-accent{% else %}text-jp-text{% endif %}">{{ course.funding_progress_percent }}% 達成</span>
-                        <span class="text-jp-muted">剩 {{ course.funding_days_left }} 天</span>
+                <div class="bg-gradient-to-br from-rose-50 to-amber-50 ring-1 ring-rose-100 rounded-2xl p-5 mb-5">
+                    <div class="flex justify-between items-center text-sm mb-2">
+                        <span class="text-lg font-black {% if course.funding_is_goal_met %}text-jp-accent{% else %}text-rose-600{% endif %}">{{ course.funding_progress_percent }}% 達成</span>
+                        <span class="inline-flex items-center gap-1 bg-rose-600 text-white text-xs font-bold px-2.5 py-1 rounded-full"><i class="fas fa-fire"></i> 募資中</span>
                     </div>
-                    <div class="h-2 w-full bg-jp-surface rounded-full overflow-hidden mb-2">
-                        <div class="h-full bg-jp-accent rounded-full" style="width:{{ course.funding_progress_percent }}%"></div>
+                    <div class="h-2.5 w-full bg-white rounded-full overflow-hidden mb-2 ring-1 ring-rose-100">
+                        <div class="h-full bg-gradient-to-r from-rose-500 to-amber-500 rounded-full transition-all" style="width:{{ course.funding_progress_percent }}%"></div>
                     </div>
-                    <div class="text-sm text-jp-muted"><i class="fas fa-user-group mr-1"></i>{{ course.funding_backers_count }} / {{ course.funding_goal }} 人已贊助</div>
+                    <div class="text-sm text-jp-muted mb-4"><i class="fas fa-user-group mr-1"></i>{{ course.funding_backers_count }} / {{ course.funding_goal }} 人已贊助</div>
+
+                    <!-- 募資倒數 -->
+                    <div data-funding-countdown data-end="{{ course.funding_end_date|date:'c' }}">
+                        <div class="flex items-center gap-1.5 text-rose-600 font-bold text-sm mb-2"><i class="fas fa-clock"></i> 募資倒數</div>
+                        <div class="grid grid-cols-4 gap-2 text-center">
+                            <div class="bg-white rounded-xl py-2 shadow-sm ring-1 ring-rose-100"><div data-cd="d" class="cd-num text-3xl font-black text-rose-600 tabular-nums leading-none">--</div><div class="text-[11px] text-jp-muted mt-1">天</div></div>
+                            <div class="bg-white rounded-xl py-2 shadow-sm ring-1 ring-rose-100"><div data-cd="h" class="cd-num text-3xl font-black text-rose-600 tabular-nums leading-none">--</div><div class="text-[11px] text-jp-muted mt-1">時</div></div>
+                            <div class="bg-white rounded-xl py-2 shadow-sm ring-1 ring-rose-100"><div data-cd="m" class="cd-num text-3xl font-black text-rose-600 tabular-nums leading-none">--</div><div class="text-[11px] text-jp-muted mt-1">分</div></div>
+                            <div class="bg-white rounded-xl py-2 shadow-sm ring-1 ring-rose-100"><div data-cd="s" class="cd-num text-3xl font-black text-rose-600 tabular-nums leading-none">--</div><div class="text-[11px] text-jp-muted mt-1">秒</div></div>
+                        </div>
+                        <div data-cd-ended class="hidden text-center text-rose-600 font-bold mt-2">募資已結束</div>
+                    </div>
                 </div>
                 {% endif %}
 
@@ -432,6 +448,44 @@ document.querySelectorAll('[data-accordion]').forEach((accordion) => {
         });
     });
 });
+
+// 募資倒數（天 時 分 秒，每秒更新，數字變動有跳動動畫）
+(function () {
+    const root = document.querySelector('[data-funding-countdown]');
+    if (!root) return;
+    const end = new Date(root.dataset.end);
+    if (isNaN(end)) return;
+    const cells = {
+        d: root.querySelector('[data-cd="d"]'),
+        h: root.querySelector('[data-cd="h"]'),
+        m: root.querySelector('[data-cd="m"]'),
+        s: root.querySelector('[data-cd="s"]'),
+    };
+    const endedEl = root.querySelector('[data-cd-ended]');
+    function set(cell, val) {
+        const str = String(val).padStart(2, '0');
+        if (cell.textContent === str) return;
+        cell.textContent = str;
+        cell.classList.remove('cd-pop');
+        void cell.offsetWidth;   // 重觸發動畫
+        cell.classList.add('cd-pop');
+    }
+    function tick() {
+        let diff = Math.floor((end - new Date()) / 1000);
+        if (diff <= 0) {
+            root.querySelectorAll('.cd-num').forEach((c) => (c.textContent = '00'));
+            if (endedEl) endedEl.classList.remove('hidden');
+            clearInterval(timer);
+            return;
+        }
+        const d = Math.floor(diff / 86400); diff -= d * 86400;
+        const h = Math.floor(diff / 3600); diff -= h * 3600;
+        const m = Math.floor(diff / 60); const s = diff - m * 60;
+        set(cells.d, d); set(cells.h, h); set(cells.m, m); set(cells.s, s);
+    }
+    tick();
+    const timer = setInterval(tick, 1000);
+})();
 
 // AI 課程助教
 (function () {
