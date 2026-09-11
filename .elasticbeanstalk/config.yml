@@ -1,0 +1,15 @@
+branch-defaults:
+  main:
+    environment: ntggwp-env
+    group_suffix: null
+global:
+  application_name: ntggwp
+  branch: null
+  default_platform: Python 3.12 running on 64bit Amazon Linux 2023
+  default_region: ap-northeast-1
+  instance_profile: null
+  platform_name: null
+  platform_version: null
+  profile: eb-cli
+  repository: null
+  workspace_type: Application
