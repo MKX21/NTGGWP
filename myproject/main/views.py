@@ -445,7 +445,8 @@ def login_view(request):
             error_message = '帳號 / Email 或密碼錯誤。'
 
     return render(request, 'main/login.html', {
-        'error_message': error_message
+        'error_message': error_message,
+        'force_home_nav': True,   # 登入頁用深色玻璃版面，導覽列也走深色
     })
 
 
