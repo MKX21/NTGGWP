@@ -1,0 +1,28 @@
+{% extends "admin/index.html" %}
+{% load admin_extras %}
+
+{% block content %}
+  {% platform_stats as stats %}
+  <div style="margin:0 0 24px;">
+    <h2 style="margin:0 0 14px;font-size:18px;color:#1f2937;">📊 營運數據總覽</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;">
+      {% for s in stats %}
+      <a href="{{ s.url }}" title="點擊查看清單"
+         style="text-decoration:none;background:#fff;border:1px solid #e5e7eb;border-left:5px solid {{ s.accent }};
+                border-radius:12px;padding:16px 18px;box-shadow:0 4px 14px rgba(15,23,42,.05);
+                display:block;transition:transform .12s,box-shadow .12s;{% if s.alert %}outline:2px solid #fecaca;{% endif %}"
+         onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 10px 24px rgba(15,23,42,.12)';"
+         onmouseout="this.style.transform='';this.style.boxShadow='0 4px 14px rgba(15,23,42,.05)';">
+        <div style="font-size:13px;color:#6b7280;font-weight:600;">
+          {{ s.icon }} {{ s.label }}
+          {% if s.alert %}<span style="color:#ef4444;font-weight:800;">・需處理</span>{% endif %}
+        </div>
+        <div style="font-size:26px;font-weight:800;color:{{ s.accent }};margin-top:6px;">{{ s.value }}</div>
+        <div style="font-size:12px;color:#9ca3af;margin-top:6px;">前往查看 →</div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  {{ block.super }}
+{% endblock %}

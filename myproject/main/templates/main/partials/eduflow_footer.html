@@ -1,0 +1,50 @@
+<footer class="bg-slate-900 text-slate-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+        <div class="grid gap-10 lg:grid-cols-5 md:grid-cols-2">
+            <div class="lg:col-span-2">
+                <div class="flex items-center gap-2 text-2xl font-black text-white mb-4">
+                    <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-600 to-violet-500"><i class="fas fa-graduation-cap"></i></span>
+                    EduFlow
+                </div>
+                <p class="text-sm text-slate-400 mb-5 max-w-sm">探索無限學習可能。訂閱電子報，搶先掌握新課上線與獨家優惠。</p>
+                <form class="flex gap-2 max-w-sm" onsubmit="return false;">
+                    <input type="email" placeholder="輸入你的 Email" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-brand-500">
+                    <button class="bg-brand-600 hover:bg-brand-700 text-white font-medium px-4 py-2.5 rounded-lg transition whitespace-nowrap">訂閱</button>
+                </form>
+            </div>
+            <div>
+                <h4 class="text-white font-bold mb-4">關於 EduFlow</h4>
+                <ul class="space-y-2.5 text-sm">
+                    <li><a href="{% url 'home' %}" class="hover:text-white transition">品牌故事</a></li>
+                    <li><a href="{% url 'home' %}#courses" class="hover:text-white transition">全部課程</a></li>
+                    <li><a href="{% url 'home' %}#latest" class="hover:text-white transition">最新課程</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-white font-bold mb-4">教學服務</h4>
+                <ul class="space-y-2.5 text-sm">
+                    <li><a href="{% url 'register' %}" class="hover:text-white transition">成為老師</a></li>
+                    <li><a href="{% url 'home' %}" class="hover:text-white transition">機構合作</a></li>
+                    <li><a href="{% url 'home' %}" class="hover:text-white transition">課程規範</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-white font-bold mb-4">協助與導覽</h4>
+                <ul class="space-y-2.5 text-sm">
+                    <li><a href="{% url 'home' %}" class="hover:text-white transition">常見問題</a></li>
+                    <li><a href="{% url 'home' %}" class="hover:text-white transition">使用條款</a></li>
+                    <li><a href="{% url 'home' %}" class="hover:text-white transition">隱私權政策</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="border-t border-slate-800 mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-400">
+            <p>&copy; 2026 EduFlow Online Learning. All Rights Reserved.</p>
+            <div class="flex gap-5 text-lg">
+                <a href="#" class="hover:text-white transition" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
+                <a href="#" class="hover:text-white transition" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                <a href="#" class="hover:text-white transition" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
+                <a href="#" class="hover:text-white transition" aria-label="Line"><i class="fab fa-line"></i></a>
+            </div>
+        </div>
+    </div>
+</footer>

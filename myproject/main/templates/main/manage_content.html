@@ -1,0 +1,76 @@
+{% extends 'main/base_eduflow.html' %}
+{% block title %}課程內容管理 - {{ course.title }}{% endblock %}
+
+{% block content %}
+<main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 ef-form">
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 mb-5">
+    <h1 class="text-2xl font-black text-slate-900 mb-1">課程內容管理：{{ course.title }}</h1>
+    <a href="{% url 'teacher_dashboard' %}" class="text-brand-600 hover:underline font-medium">← 回教師專區</a>
+  </div>
+
+  <!-- 新增章節 -->
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 mb-5">
+    <h2 class="text-lg font-black text-slate-900 mb-3">新增章節</h2>
+    <form method="post" action="{% url 'add_chapter' course.id %}">
+      {% csrf_token %}
+      <div class="flex gap-3 flex-wrap items-end">
+        <div class="flex-1 min-w-[180px]">{{ chapter_form.title.label }}{{ chapter_form.title }}</div>
+        <div class="w-24">{{ chapter_form.sort_order.label }}{{ chapter_form.sort_order }}</div>
+      </div>
+      <div>{{ chapter_form.description.label }}{{ chapter_form.description }}</div>
+      <button type="submit" class="mt-3 bg-brand-600 hover:bg-brand-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition">＋ 新增章節</button>
+    </form>
+  </div>
+
+  {% for chapter in chapters %}
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 mb-5">
+    <div class="flex items-center justify-between gap-3 flex-wrap mb-2">
+      <div class="font-black text-slate-900">第 {{ chapter.sort_order }} 章：{{ chapter.title }}</div>
+      <div class="flex gap-2">
+        <a href="{% url 'edit_chapter' chapter.id %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-lg text-sm transition">編輯</a>
+        <form method="post" action="{% url 'delete_chapter' chapter.id %}" class="inline" onsubmit="return confirm('確定刪除此章節與其單元？');">
+          {% csrf_token %}<button type="submit" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-3 py-1.5 rounded-lg text-sm transition">刪除</button>
+        </form>
+      </div>
+    </div>
+    {% if chapter.description %}<p class="text-sm text-slate-500 mb-2">{{ chapter.description }}</p>{% endif %}
+
+    {% for lesson in chapter.lessons.all %}
+    <div class="flex items-center justify-between gap-3 flex-wrap bg-slate-50 rounded-lg px-3 py-2.5 mt-2">
+      <div class="text-sm">
+        <strong class="text-slate-800">{{ chapter.sort_order }}-{{ lesson.sort_order }} {{ lesson.title }}</strong>
+        <span class="text-slate-400">（{{ lesson.duration_minutes }} 分{% if lesson.is_free_preview %}・免費試看{% endif %}）</span>
+        {% if lesson.video_file %}<span class="text-green-600 font-bold text-xs ml-1">🎬 已上傳影片</span>{% elif lesson.video_url %}<span class="text-brand-600 font-bold text-xs ml-1">🔗 影片連結</span>{% endif %}
+      </div>
+      <div class="flex gap-2">
+        <a href="{% url 'edit_lesson' lesson.id %}" class="bg-white ring-1 ring-slate-200 hover:ring-brand-300 text-slate-700 font-bold px-3 py-1.5 rounded-lg text-sm transition">編輯</a>
+        <form method="post" action="{% url 'delete_lesson' lesson.id %}" class="inline" onsubmit="return confirm('確定刪除此單元？');">
+          {% csrf_token %}<button type="submit" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-3 py-1.5 rounded-lg text-sm transition">刪除</button>
+        </form>
+      </div>
+    </div>
+    {% empty %}
+    <p class="text-sm text-slate-400 mt-2">此章節尚無單元。</p>
+    {% endfor %}
+
+    <div class="border-t border-dashed border-slate-200 mt-4 pt-4">
+      <form method="post" action="{% url 'add_lesson' chapter.id %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="flex gap-3 flex-wrap items-end">
+          <div class="flex-1 min-w-[180px]">單元名稱{{ lesson_form.title }}</div>
+          <div class="w-24">順序{{ lesson_form.sort_order }}</div>
+        </div>
+        <div class="flex gap-3 flex-wrap items-end mt-2">
+          <div class="flex-1 min-w-[220px]">🎬 上傳影片檔（mp4，時長自動偵測）{{ lesson_form.video_file }}</div>
+          <div class="w-32">試看{{ lesson_form.is_free_preview }}</div>
+        </div>
+        <div class="mt-2">或貼影片連結{{ lesson_form.video_url }}</div>
+        <button type="submit" class="mt-3 bg-brand-600 hover:bg-brand-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition">＋ 新增單元</button>
+      </form>
+    </div>
+  </div>
+  {% empty %}
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8 text-center text-slate-500">尚未建立任何章節，請先於上方新增。</div>
+  {% endfor %}
+</main>
+{% endblock %}

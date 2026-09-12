@@ -1,107 +1,19 @@
-<!doctype html>
-<html lang="zh-Hant">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>註冊帳號</title>
-    <style>
-      * {
-        box-sizing: border-box;
-      }
+{% extends 'main/base_eduflow.html' %}
+{% block title %}註冊帳號 | EduFlow{% endblock %}
 
-      body {
-        font-family: "Microsoft JhengHei", sans-serif;
-        background: #f7f8fb;
-        margin: 0;
-        color: #1f2937;
-      }
-
-      .container {
-        max-width: 520px;
-        margin: 60px auto;
-        padding: 20px;
-      }
-
-      .card {
-        background: white;
-        border-radius: 20px;
-        padding: 32px;
-        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
-      }
-
-      h1 {
-        margin-top: 0;
-        margin-bottom: 20px;
-        font-size: 32px;
-      }
-
-      p.desc {
-        color: #6b7280;
-        margin-bottom: 24px;
-        line-height: 1.8;
-      }
-
-      form p {
-        margin-bottom: 16px;
-      }
-
-      label {
-        display: block;
-        margin-bottom: 8px;
-        font-weight: bold;
-      }
-
-      input,
-      select {
-        width: 100%;
-        padding: 12px 14px;
-        border: 1px solid #d1d5db;
-        border-radius: 10px;
-        font-size: 16px;
-      }
-
-      .errorlist {
-        color: #dc2626;
-        padding-left: 18px;
-        margin-top: 8px;
-        margin-bottom: 8px;
-      }
-
-      .btn {
-        width: 100%;
-        border: none;
-        background: #2563eb;
-        color: white;
-        padding: 14px;
-        border-radius: 12px;
-        font-size: 16px;
-        font-weight: bold;
-        cursor: pointer;
-        margin-top: 10px;
-      }
-
-      .back {
-        display: inline-block;
-        margin-top: 18px;
-        color: #2563eb;
-        text-decoration: none;
-      }
-    </style>
-  </head>
-  <body>
-    {% include 'main/partials/navbar.html' %}
-    <div class="container">
-      <div class="card">
-        <h1>註冊帳號</h1>
-        <p class="desc">請填寫帳號資訊，並選擇你的身分是學生或老師。</p>
-
-        <form method="post">
-          {% csrf_token %} {{ form.as_p }}
-          <button type="submit" class="btn">註冊</button>
-        </form>
-
-        <a href="/" class="back">回首頁</a>
-      </div>
+{% block content %}
+<main class="max-w-md mx-auto px-4 py-14">
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8">
+    <h1 class="text-2xl font-black text-slate-900 mb-1">註冊帳號</h1>
+    <p class="text-slate-500 mb-6">填寫帳號資訊，並選擇你的身分是學生或老師。</p>
+    <div class="ef-form">
+      <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-lg transition mt-2">註冊</button>
+      </form>
     </div>
-  </body>
-</html>
+    <p class="text-sm text-slate-500 mt-4 text-center">已經有帳號了？<a href="{% url 'login' %}" class="text-brand-600 hover:underline">前往登入</a></p>
+  </div>
+</main>
+{% endblock %}

@@ -1,87 +1,38 @@
-<!doctype html>
-<html lang="zh-Hant">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>我的個人資料</title>
-    <style>
-      body {
-        font-family: "Microsoft JhengHei", sans-serif;
-        background: #f7f8fb;
-        margin: 0;
-        color: #1f2937;
-      }
+{% extends 'main/base_eduflow.html' %}
+{% block title %}個人資料 | EduFlow{% endblock %}
 
-      .container {
-        max-width: 900px;
-        margin: 50px auto;
-        padding: 20px;
-      }
-
-      .card {
-        background: white;
-        border-radius: 20px;
-        padding: 32px;
-        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
-      }
-
-      h1 {
-        margin-top: 0;
-        font-size: 34px;
-        margin-bottom: 20px;
-      }
-
-      .info {
-        font-size: 18px;
-        margin-bottom: 14px;
-        color: #374151;
-      }
-
-      .btn-group {
-        margin-top: 28px;
-        display: flex;
-        gap: 14px;
-        flex-wrap: wrap;
-      }
-
-      .btn {
-        display: inline-block;
-        background: #2563eb;
-        color: white;
-        padding: 12px 22px;
-        border-radius: 12px;
-        text-decoration: none;
-        font-weight: bold;
-      }
-
-      .btn-dark {
-        background: #1f2937;
-      }
-    </style>
-  </head>
-  <body>
-    {% include 'main/partials/navbar.html' %}
-    <div class="container">
-      <div class="card">
-        <h1>我的個人資料</h1>
-
-        <div class="info">
-          <strong>帳號：</strong>{{ request.user.username }}
-        </div>
-        <div class="info"><strong>Email：</strong>{{ request.user.email }}</div>
-        <div class="info">
-          <strong>身分：</strong>{{ profile.get_role_display }}
-        </div>
-
-        <div class="btn-group">
-          <a href="/" class="btn btn-dark">回首頁</a>
-          <a href="{% url 'my_courses' %}" class="btn">我的課程</a>
-
-          {% if profile.role == 'teacher' %}
-          <a href="{% url 'teacher_dashboard' %}" class="btn">教師專區</a>
-          {% endif %}
-        </div>
+{% block content %}
+<main class="max-w-2xl mx-auto px-4 py-10">
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8">
+    <div class="flex items-center gap-5 mb-6">
+      {% if profile.avatar %}
+      <img src="{{ profile.avatar.url }}" alt="大頭貼" class="w-[72px] h-[72px] rounded-full object-cover">
+      {% else %}
+      <span class="w-[72px] h-[72px] rounded-full bg-gradient-to-br from-brand-500 to-violet-500 text-white flex items-center justify-center text-3xl font-black">{{ request.user.username|slice:":1"|upper }}</span>
+      {% endif %}
+      <div>
+        <h1 class="text-2xl font-black text-slate-900">{{ request.user.first_name|default:request.user.username }}{% if request.user.last_name %} {{ request.user.last_name }}{% endif %}</h1>
+        <span class="inline-block mt-1 bg-brand-50 text-brand-700 text-xs font-bold px-3 py-1 rounded-full">{{ profile.get_role_display }}</span>
       </div>
     </div>
-  </body>
-</html>
+
+    <div class="divide-y divide-slate-100 mb-6">
+      <div class="flex justify-between py-3"><span class="text-slate-500">帳號</span><span class="font-bold text-slate-800">{{ request.user.username }}</span></div>
+      <div class="flex justify-between py-3"><span class="text-slate-500">姓名</span><span class="font-bold text-slate-800">{% if request.user.first_name or request.user.last_name %}{{ request.user.first_name }} {{ request.user.last_name }}{% else %}未設定{% endif %}</span></div>
+      <div class="flex justify-between py-3"><span class="text-slate-500">Email</span><span class="font-bold text-slate-800">{{ request.user.email }}</span></div>
+      <div class="flex justify-between py-3"><span class="text-slate-500">身分</span><span class="font-bold text-slate-800">{{ profile.get_role_display }}</span></div>
+    </div>
+
+    <div class="flex gap-3 flex-wrap">
+      <a href="{% url 'edit_profile' %}" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-5 py-2.5 rounded-lg transition">編輯個人資料</a>
+      <a href="{% url 'my_courses' %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-2.5 rounded-lg transition">我的課程</a>
+      {% if profile.role == 'teacher' %}
+      <a href="{% url 'teacher_dashboard' %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-2.5 rounded-lg transition">教師專區</a>
+      {% else %}
+      <a href="{% url 'student_dashboard' %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-2.5 rounded-lg transition">學生專區</a>
+      {% endif %}
+      <a href="{% url 'home' %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-2.5 rounded-lg transition">回首頁</a>
+    </div>
+  </div>
+</main>
+{% endblock %}

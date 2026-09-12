@@ -1,0 +1,41 @@
+{% extends 'main/base_eduflow.html' %}
+{% block title %}課程審核 | EduFlow{% endblock %}
+
+{% block content %}
+<main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-7">
+    <h1 class="text-2xl font-black text-slate-900 mb-5">課程審核</h1>
+    {% if audits %}
+    <div class="divide-y divide-slate-100">
+      {% for a in audits %}
+      <div class="py-4">
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <div class="font-bold text-slate-800">{{ a.course.title }}</div>
+            <div class="text-sm text-slate-500">講師：{{ a.course.teacher.username }} ・ 送審：{{ a.created_at|date:"Y-m-d H:i" }}{% if a.comment %} ・ 意見：{{ a.comment }}{% endif %}</div>
+            <a href="{% url 'course_detail' a.course.id %}" target="_blank" rel="noopener"
+               class="inline-flex items-center gap-1.5 mt-1.5 text-sm font-bold text-brand-600 hover:text-brand-700 hover:underline">
+              <i class="fas fa-up-right-from-square"></i> 查看課程內容
+            </a>
+          </div>
+          <span class="px-3 py-1 rounded-full text-sm font-bold
+            {% if a.status == 'pending' %}bg-amber-100 text-amber-700
+            {% elif a.status == 'rejected' %}bg-red-50 text-red-600
+            {% else %}bg-green-100 text-green-700{% endif %}">{{ a.get_status_display }}</span>
+        </div>
+        {% if a.status == 'pending' %}
+        <form method="post" action="{% url 'process_audit' a.id %}" class="flex items-center gap-2 flex-wrap mt-3">
+          {% csrf_token %}
+          <input type="text" name="comment" placeholder="審核意見（退回時建議填寫）"
+                 class="flex-1 min-w-[180px] border border-slate-200 rounded-lg py-2 px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-200">
+          <button type="submit" name="action" value="approve" class="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition">通過並上架</button>
+          <button type="submit" name="action" value="reject" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-4 py-2 rounded-lg text-sm transition">退回</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}<p class="text-slate-500">目前沒有待審核的課程。</p>{% endif %}
+  </div>
+</main>
+{% endblock %}

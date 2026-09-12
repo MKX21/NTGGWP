@@ -8,9 +8,15 @@ urlpatterns = [
     path('course/<int:course_id>/', views.course_detail, name='course_detail'),
     path('course/<int:course_id>/buy/', views.buy_course, name='buy_course'),
     path('course/<int:course_id>/checkout/', views.checkout, name='checkout'),
+    path('order/<int:order_id>/payment/', views.payment, name='payment'),
     path('order/<int:order_id>/success/', views.order_success, name='order_success'),
     path('course/<int:course_id>/purchase-success/', views.purchase_success, name='purchase_success'),
     path('course/<int:course_id>/watch/', views.watch_course, name='watch_course'),
+    path('lesson/<int:lesson_id>/watch/', views.watch_lesson, name='watch_lesson'),
+    path('lesson/<int:lesson_id>/progress/', views.save_progress, name='save_progress'),
+    path('lesson/<int:lesson_id>/video/', views.stream_lesson_video, name='stream_lesson_video'),
+    path('course/<int:course_id>/certificate/', views.certificate, name='certificate'),
+    path('teacher/<int:teacher_id>/profile/', views.teacher_profile, name='teacher_profile'),
     path('course/<int:course_id>/edit/', views.edit_course, name='edit_course'),
     path('course/<int:course_id>/delete/', views.delete_course, name='delete_course'),
 
@@ -21,6 +27,7 @@ urlpatterns = [
     path('teacher/analytics/', views.teacher_analytics, name='teacher_analytics'),
 
     path('export-data/', views.export_data_page, name='export_data_page'),
+    path('analytics/', views.platform_analytics, name='platform_analytics'),
     path('export/courses.csv', views.export_courses_csv, name='export_courses_csv'),
     path('export/enrollments.csv', views.export_enrollments_csv, name='export_enrollments_csv'),
     path('export/learning-records.csv', views.export_learning_records_csv, name='export_learning_records_csv'),
@@ -39,9 +46,62 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
 
     path('profile/', views.profile_view, name='profile'),
+    path('profile/edit/', views.edit_profile, name='edit_profile'),
     path('my-courses/', views.my_courses, name='my_courses'),
 
     path('create-course/', views.create_course, name='create_course'),
+
+    # 購物車
+    path('cart/', views.view_cart, name='view_cart'),
+    path('cart/add/<int:course_id>/', views.add_to_cart, name='add_to_cart'),
+    path('cart/remove/<int:item_id>/', views.remove_from_cart, name='remove_from_cart'),
+    path('cart/checkout/', views.cart_checkout, name='cart_checkout'),
+
+    # 收藏
+    path('favorites/', views.my_favorites, name='my_favorites'),
+    path('favorites/toggle/<int:course_id>/', views.toggle_favorite, name='toggle_favorite'),
+
+    # 退款
+    path('refunds/', views.my_refunds, name='my_refunds'),
+    path('refunds/request/<int:order_id>/', views.request_refund, name='request_refund'),
+
+    # 優惠券領取
+    path('coupons/', views.coupon_list, name='coupon_list'),
+    path('coupons/claim/<int:coupon_id>/', views.claim_coupon, name='claim_coupon'),
+    path('my-coupons/', views.my_coupons, name='my_coupons'),
+
+    # A2 章節/單元管理
+    path('course/<int:course_id>/content/', views.manage_content, name='manage_content'),
+    path('content/chapter/add/<int:course_id>/', views.add_chapter, name='add_chapter'),
+    path('content/chapter/<int:chapter_id>/edit/', views.edit_chapter, name='edit_chapter'),
+    path('content/chapter/<int:chapter_id>/delete/', views.delete_chapter, name='delete_chapter'),
+    path('content/lesson/add/<int:chapter_id>/', views.add_lesson, name='add_lesson'),
+    path('content/lesson/<int:lesson_id>/edit/', views.edit_lesson, name='edit_lesson'),
+    path('content/lesson/<int:lesson_id>/delete/', views.delete_lesson, name='delete_lesson'),
+
+    # A3 退款審核
+    path('refunds/manage/', views.manage_refunds, name='manage_refunds'),
+    path('refunds/<int:refund_id>/process/', views.process_refund, name='process_refund'),
+
+    # A6 通知中心
+    path('notifications/', views.notifications, name='notifications'),
+    path('notifications/read/', views.mark_notifications_read, name='mark_notifications_read'),
+
+    # A7 課程問答
+    path('course/<int:course_id>/question/add/', views.add_question, name='add_question'),
+    path('question/<int:question_id>/answer/', views.add_answer, name='add_answer'),
+
+    # A8 課程審核
+    path('audits/manage/', views.manage_audits, name='manage_audits'),
+    path('audits/<int:audit_id>/process/', views.process_audit, name='process_audit'),
+
+    # A9 分潤收支與提領
+    path('revenue/', views.my_revenue, name='my_revenue'),
+    path('revenue/export.csv', views.export_my_revenue_csv, name='export_my_revenue_csv'),
+    path('withdrawals/', views.my_withdrawals, name='my_withdrawals'),
+    path('withdrawals/export.csv', views.export_my_withdrawals_csv, name='export_my_withdrawals_csv'),
+    path('withdrawals/manage/', views.manage_withdrawals, name='manage_withdrawals'),
+    path('withdrawals/<int:withdrawal_id>/process/', views.process_withdrawal, name='process_withdrawal'),
 
     path('password-reset/', auth_views.PasswordResetView.as_view(
         template_name='main/password_reset.html'
@@ -50,4 +110,14 @@ urlpatterns = [
     path('password-reset/done/', auth_views.PasswordResetDoneView.as_view(
         template_name='main/password_reset_done.html'
     ), name='password_reset_done'),
+
+    # 少了這兩個，PasswordResetView 在產生信件內容時 reverse
+    # 'password_reset_confirm' 會 NoReverseMatch，整個流程一送出就 500。
+    path('password-reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(
+        template_name='main/password_reset_confirm.html'
+    ), name='password_reset_confirm'),
+
+    path('password-reset/complete/', auth_views.PasswordResetCompleteView.as_view(
+        template_name='main/password_reset_complete.html'
+    ), name='password_reset_complete'),
 ]

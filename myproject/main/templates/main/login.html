@@ -1,164 +1,35 @@
-<!doctype html>
-<html lang="zh-Hant">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>登入</title>
-    <style>
-      * {
-        box-sizing: border-box;
-      }
+{% extends 'main/base_eduflow.html' %}
+{% block title %}登入 | EduFlow{% endblock %}
 
-      body {
-        font-family: "Microsoft JhengHei", sans-serif;
-        background: #f7f8fb;
-        margin: 0;
-        color: #1f2937;
-      }
+{% block content %}
+<main class="max-w-md mx-auto px-4 py-14">
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8">
+    <h1 class="text-2xl font-black text-slate-900 mb-1">登入</h1>
+    <p class="text-slate-500 mb-6">輸入帳號名稱或 Gmail 與密碼登入平台。</p>
 
-      .container {
-        max-width: 520px;
-        margin: 60px auto;
-        padding: 20px;
-      }
+    {% if error_message %}
+    <div class="bg-red-50 text-red-600 font-medium px-4 py-3 rounded-lg mb-5 text-sm">{{ error_message }}</div>
+    {% endif %}
 
-      .card {
-        background: white;
-        border-radius: 20px;
-        padding: 32px;
-        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
-      }
-
-      h1 {
-        margin-top: 0;
-        margin-bottom: 20px;
-        font-size: 32px;
-      }
-
-      p.desc {
-        color: #6b7280;
-        margin-bottom: 24px;
-        line-height: 1.8;
-      }
-
-      .form-group {
-        margin-bottom: 18px;
-      }
-
-      label {
-        display: block;
-        margin-bottom: 8px;
-        font-weight: bold;
-      }
-
-      input {
-        width: 100%;
-        padding: 12px 14px;
-        border: 1px solid #d1d5db;
-        border-radius: 10px;
-        font-size: 16px;
-      }
-
-      .error {
-        background: #fef2f2;
-        color: #dc2626;
-        padding: 12px 14px;
-        border-radius: 10px;
-        margin-bottom: 16px;
-      }
-
-      .btn {
-        width: 100%;
-        border: none;
-        background: #2563eb;
-        color: white;
-        padding: 14px;
-        border-radius: 12px;
-        font-size: 16px;
-        font-weight: bold;
-        cursor: pointer;
-        margin-top: 10px;
-      }
-
-      .back {
-        display: inline-block;
-        margin-top: 18px;
-        color: #2563eb;
-        text-decoration: none;
-      }
-
-      .quick-login {
-        margin-top: 24px;
-        padding-top: 20px;
-        border-top: 1px solid #e5e7eb;
-      }
-
-      .quick-login h3 {
-        font-size: 18px;
-        margin-bottom: 12px;
-      }
-
-      .fake-btns {
-        display: grid;
-        gap: 10px;
-      }
-
-      .fake-btn {
-        display: block;
-        text-align: center;
-        padding: 12px;
-        border: 1px solid #d1d5db;
-        border-radius: 10px;
-        color: #374151;
-        background: #f9fafb;
-      }
-    </style>
-  </head>
-  <body>
-    {% include 'main/partials/navbar.html' %}
-    <div class="container">
-      <div class="card">
-        <h1>登入</h1>
-        <p class="desc">請輸入你的帳號名稱或 Gmail，以及密碼登入平台。</p>
-
-        {% if error_message %}
-        <div class="error">{{ error_message }}</div>
-        {% endif %}
-
-        <form method="post">
-          {% csrf_token %}
-
-          <div class="form-group">
-            <label for="username">帳號名稱或 Gmail</label>
-            <input
-              type="text"
-              id="username"
-              name="username"
-              placeholder="請輸入帳號名稱或 Gmail"
-              required
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="password">密碼</label>
-            <input type="password" id="password" name="password" required />
-          </div>
-
-          <button type="submit" class="btn">登入</button>
-          <a href="{% url 'password_reset' %}" class="back">忘記密碼？</a>
-        </form>
-
-        <div class="quick-login">
-          <h3>快速登入（預留）</h3>
-          <div class="fake-btns">
-            <a href="#" class="fake-btn">使用 Google 登入</a>
-            <a href="#" class="fake-btn">使用 Facebook 登入</a>
-            <a href="#" class="fake-btn">使用 GitHub 登入</a>
-          </div>
-        </div>
-
-        <a href="/" class="back">回首頁</a>
+    <form method="post" class="space-y-4">
+      {% csrf_token %}
+      <div>
+        <label class="block font-semibold text-slate-700 mb-1.5" for="username">帳號名稱或 Gmail</label>
+        <input type="text" id="username" name="username" placeholder="請輸入帳號名稱或 Gmail" required
+               class="w-full border border-slate-200 rounded-lg py-2.5 px-3 outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-200 transition">
       </div>
+      <div>
+        <label class="block font-semibold text-slate-700 mb-1.5" for="password">密碼</label>
+        <input type="password" id="password" name="password" required
+               class="w-full border border-slate-200 rounded-lg py-2.5 px-3 outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-200 transition">
+      </div>
+      <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-lg transition">登入</button>
+    </form>
+
+    <div class="flex items-center justify-between mt-4 text-sm">
+      <a href="{% url 'password_reset' %}" class="text-brand-600 hover:underline">忘記密碼？</a>
+      <a href="{% url 'register' %}" class="text-slate-500 hover:text-brand-600">還沒有帳號？免費註冊</a>
     </div>
-  </body>
-</html>
+  </div>
+</main>
+{% endblock %}

@@ -1,495 +1,259 @@
-<!doctype html>
-<html lang="zh-Hant">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Course Platform ｜ 找到適合你的線上課程</title>
-    <style>
-      /* ===== 設計變數（改色只需動這裡） ===== */
-      :root {
-        --brand: #4f46e5;
-        --brand-2: #7c3aed;
-        --brand-soft: #eef2ff;
-        --ink: #0f172a;
-        --ink-soft: #475569;
-        --muted: #94a3b8;
-        --line: #e2e8f0;
-        --bg: #f8fafc;
-        --card: #ffffff;
-        --radius: 20px;
-        --shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
-        --shadow-hover: 0 20px 44px rgba(79, 70, 229, 0.18);
-      }
+{% extends 'main/base_eduflow.html' %}
+{% block title %}EduFlow | 探索無限學習可能 — 頂尖線上購課平台{% endblock %}
 
-      * { box-sizing: border-box; margin: 0; padding: 0; }
+{% block content %}
+<!-- ============ Hero ============ -->
+<header class="relative overflow-hidden bg-gradient-to-br from-brand-700 via-brand-600 to-violet-600 text-white">
+    <div class="pointer-events-none absolute -top-24 -right-24 h-96 w-96 rounded-full bg-white/10 blur-3xl"></div>
+    <div class="pointer-events-none absolute -bottom-32 -left-16 h-80 w-80 rounded-full bg-violet-400/20 blur-3xl"></div>
 
-      body {
-        font-family: "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif;
-        background: var(--bg);
-        color: var(--ink);
-        -webkit-font-smoothing: antialiased;
-      }
-      a { text-decoration: none; color: inherit; }
-      img { display: block; max-width: 100%; }
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
+        <div class="grid lg:grid-cols-2 gap-12 items-center">
+            <div class="animate-fade-up">
+                <span class="inline-flex items-center gap-2 bg-white/15 backdrop-blur px-3 py-1 rounded-full text-sm font-medium mb-6">
+                    <i class="fas fa-star text-accent-300"></i> 全台學員信賴的線上學習平台
+                </span>
+                <h1 class="text-4xl md:text-5xl lg:text-6xl font-black leading-tight mb-6">
+                    學習不設限，<br>
+                    <span class="bg-gradient-to-r from-accent-300 to-amber-200 bg-clip-text text-transparent">開啟你的知識新篇章</span>
+                </h1>
+                <p class="text-lg text-brand-100 mb-8 max-w-xl">
+                    集結業界專家親授的精選課程，搭配數據分析與 AI 智慧推薦。現在就加入 EduFlow，投資最值得的自己。
+                </p>
 
-      .wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+                <form action="{% url 'home' %}#courses" method="get" class="bg-white rounded-2xl p-2 flex flex-col sm:flex-row gap-2 shadow-2xl shadow-brand-900/30 max-w-xl">
+                    <div class="relative flex-1">
+                        <i class="fas fa-search absolute left-4 top-3.5 text-slate-400"></i>
+                        <input type="text" name="q" value="{{ q }}" placeholder="想學什麼？例如：Python、UI 設計…"
+                               class="w-full py-3 pl-11 pr-4 text-slate-800 rounded-xl outline-none placeholder:text-slate-400">
+                    </div>
+                    <button class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-8 py-3 rounded-xl transition whitespace-nowrap">搜尋</button>
+                </form>
 
-      /* ===== Hero ===== */
-      .hero {
-        position: relative;
-        overflow: hidden;
-        background: radial-gradient(circle at 15% 20%, #6d28d9, transparent 45%),
-                    radial-gradient(circle at 85% 15%, #4338ca, transparent 40%),
-                    linear-gradient(135deg, #1e1b4b, #312e81);
-        color: #fff;
-      }
-      .hero-inner { padding: 96px 24px 88px; text-align: center; }
-      .hero-badge {
-        display: inline-block;
-        background: rgba(255, 255, 255, 0.12);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        padding: 8px 18px;
-        border-radius: 999px;
-        font-size: 14px;
-        letter-spacing: 0.5px;
-        margin-bottom: 24px;
-      }
-      .hero h1 {
-        font-size: 52px;
-        line-height: 1.2;
-        font-weight: 800;
-        margin-bottom: 20px;
-        letter-spacing: -1px;
-      }
-      .hero h1 .grad {
-        background: linear-gradient(90deg, #a5b4fc, #f0abfc);
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
-      }
-      .hero p {
-        font-size: 19px;
-        color: #c7d2fe;
-        max-width: 620px;
-        margin: 0 auto 36px;
-        line-height: 1.8;
-      }
-      /* 搜尋列：即時前端篩選課程卡 */
-      .search-bar {
-        display: flex;
-        gap: 10px;
-        max-width: 560px;
-        margin: 0 auto;
-        background: #fff;
-        padding: 8px;
-        border-radius: 999px;
-        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25);
-      }
-      .search-bar input {
-        flex: 1;
-        border: none;
-        outline: none;
-        padding: 0 18px;
-        font-size: 16px;
-        color: var(--ink);
-        background: transparent;
-      }
-      .search-bar button {
-        border: none;
-        cursor: pointer;
-        background: linear-gradient(135deg, var(--brand), var(--brand-2));
-        color: #fff;
-        font-weight: 700;
-        font-size: 16px;
-        padding: 12px 26px;
-        border-radius: 999px;
-      }
-      .hero-stats {
-        display: flex;
-        justify-content: center;
-        gap: 44px;
-        margin-top: 44px;
-        flex-wrap: wrap;
-      }
-      .hero-stats .num { font-size: 30px; font-weight: 800; }
-      .hero-stats .lbl { font-size: 14px; color: #a5b4fc; margin-top: 4px; }
+                <div class="flex flex-wrap items-center gap-2 mt-4 text-sm text-brand-100">
+                    <span class="opacity-80">熱門分類：</span>
+                    {% for category in categories|slice:":4" %}
+                    <a href="{% url 'home' %}?cat={{ category.name }}#courses" class="bg-white/10 hover:bg-white/20 px-3 py-1 rounded-full transition">{{ category.name }}</a>
+                    {% endfor %}
+                </div>
 
-      /* ===== 區塊通用 ===== */
-      .section { padding: 68px 0 8px; }
-      .section-head { margin-bottom: 32px; }
-      .section-head .eyebrow {
-        color: var(--brand);
-        font-weight: 700;
-        font-size: 14px;
-        letter-spacing: 1px;
-      }
-      .section-head h2 {
-        font-size: 34px;
-        font-weight: 800;
-        margin: 8px 0 10px;
-        letter-spacing: -0.5px;
-      }
-      .section-head p { color: var(--ink-soft); font-size: 16px; line-height: 1.8; max-width: 640px; }
-
-      /* ===== 特色卡 ===== */
-      .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
-      .feature {
-        background: var(--card);
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        padding: 28px;
-        transition: transform 0.2s, box-shadow 0.2s;
-      }
-      .feature:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
-      .feature .ico {
-        width: 52px; height: 52px;
-        display: grid; place-items: center;
-        border-radius: 14px;
-        background: var(--brand-soft);
-        font-size: 26px;
-        margin-bottom: 16px;
-      }
-      .feature h3 { font-size: 20px; margin-bottom: 10px; }
-      .feature p { color: var(--ink-soft); line-height: 1.8; font-size: 15px; }
-
-      /* ===== 分類 chips ===== */
-      .chips { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 28px; }
-      .chip {
-        border: 1px solid var(--line);
-        background: #fff;
-        color: var(--ink-soft);
-        padding: 8px 18px;
-        border-radius: 999px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 600;
-        transition: all 0.15s;
-      }
-      .chip:hover { border-color: var(--brand); color: var(--brand); }
-      .chip.active { background: var(--brand); border-color: var(--brand); color: #fff; }
-
-      /* ===== 課程卡 ===== */
-      .courses { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
-      .course-card {
-        background: var(--card);
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        overflow: hidden;
-        transition: transform 0.2s, box-shadow 0.2s;
-        display: flex;
-        flex-direction: column;
-      }
-      .course-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-hover); }
-      .course-thumb {
-        position: relative;
-        aspect-ratio: 16 / 9;
-        background: linear-gradient(135deg, var(--brand-soft), #f3e8ff);
-        overflow: hidden;
-      }
-      .course-thumb img { width: 100%; height: 100%; object-fit: cover; }
-      .course-thumb .ph {
-        position: absolute; inset: 0;
-        display: grid; place-items: center;
-        color: var(--brand);
-        font-size: 40px;
-        font-weight: 800;
-        opacity: 0.4;
-      }
-      .badge {
-        position: absolute;
-        top: 12px; left: 12px;
-        background: rgba(255, 255, 255, 0.92);
-        color: var(--brand);
-        font-size: 12px;
-        font-weight: 700;
-        padding: 5px 12px;
-        border-radius: 999px;
-        backdrop-filter: blur(4px);
-      }
-      .course-body { padding: 20px; display: flex; flex-direction: column; flex: 1; }
-      .course-cat { color: var(--brand); font-size: 13px; font-weight: 700; margin-bottom: 8px; }
-      .course-body h3 { font-size: 18px; line-height: 1.5; margin-bottom: 10px; }
-      .course-body .desc {
-        color: var(--ink-soft);
-        font-size: 14px;
-        line-height: 1.7;
-        margin-bottom: 14px;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-      }
-      .course-teacher { display: flex; align-items: center; gap: 8px; color: var(--ink-soft); font-size: 14px; margin-bottom: 14px; }
-      .avatar {
-        width: 28px; height: 28px; border-radius: 50%;
-        background: linear-gradient(135deg, var(--brand), var(--brand-2));
-        color: #fff; display: grid; place-items: center; font-size: 13px; font-weight: 700;
-      }
-      .course-foot {
-        margin-top: auto;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding-top: 14px;
-        border-top: 1px solid var(--line);
-      }
-      .price { font-size: 22px; font-weight: 800; color: var(--ink); }
-      .price small { font-size: 13px; color: var(--muted); font-weight: 600; }
-      .go { color: var(--brand); font-weight: 700; font-size: 14px; }
-      .empty-state {
-        grid-column: 1 / -1;
-        text-align: center;
-        padding: 60px 20px;
-        color: var(--muted);
-        border: 2px dashed var(--line);
-        border-radius: var(--radius);
-      }
-
-      /* ===== 佔位區（Power BI / AI） ===== */
-      .placeholders { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-      .ph-card {
-        background: var(--card);
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        padding: 28px;
-      }
-      .ph-card h3 { font-size: 20px; margin-bottom: 8px; }
-      .ph-card > p { color: var(--ink-soft); font-size: 15px; line-height: 1.8; margin-bottom: 18px; }
-      .ph-box {
-        border: 2px dashed var(--line);
-        border-radius: 14px;
-        min-height: 180px;
-        display: grid;
-        place-items: center;
-        text-align: center;
-        color: var(--muted);
-        background: var(--bg);
-        padding: 20px;
-        line-height: 1.9;
-      }
-
-      /* ===== CTA ===== */
-      .cta {
-        margin: 72px 0 0;
-        background: linear-gradient(135deg, var(--brand), var(--brand-2));
-        border-radius: 28px;
-        padding: 56px 40px;
-        text-align: center;
-        color: #fff;
-      }
-      .cta h2 { font-size: 32px; font-weight: 800; margin-bottom: 12px; }
-      .cta p { color: #e0e7ff; font-size: 17px; margin-bottom: 28px; }
-      .cta a {
-        display: inline-block;
-        background: #fff;
-        color: var(--brand);
-        font-weight: 800;
-        padding: 15px 34px;
-        border-radius: 999px;
-      }
-
-      /* ===== Footer ===== */
-      .footer { margin-top: 72px; background: var(--ink); color: #cbd5e1; }
-      .footer-inner { padding: 44px 24px 32px; display: flex; justify-content: space-between; gap: 32px; flex-wrap: wrap; }
-      .footer-title { color: #fff; font-weight: 700; margin-bottom: 12px; }
-      .footer a { display: block; color: #94a3b8; font-size: 14px; line-height: 2.2; }
-      .footer a:hover { color: #fff; }
-      .footer-bottom { border-top: 1px solid #1e293b; padding: 18px 24px; text-align: center; font-size: 13px; color: #64748b; }
-
-      /* ===== RWD ===== */
-      @media (max-width: 768px) {
-        .hero-inner { padding: 68px 24px 60px; }
-        .hero h1 { font-size: 36px; }
-        .hero p { font-size: 16px; }
-        .section-head h2 { font-size: 28px; }
-        .placeholders { grid-template-columns: 1fr; }
-        .search-bar button { padding: 12px 18px; }
-      }
-      @media (max-width: 480px) {
-        .hero h1 { font-size: 30px; }
-        .hero-stats { gap: 28px; }
-        .cta { padding: 40px 24px; }
-      }
-    </style>
-  </head>
-  <body>
-    {% include 'main/partials/navbar.html' %}
-
-    <!-- ===== Hero + 即時搜尋 ===== -->
-    <header class="hero">
-      <div class="hero-inner">
-        <span class="hero-badge">🚀 新一代線上學習平台</span>
-        <h1>找到適合你的<br /><span class="grad">線上課程與學習方式</span></h1>
-        <p>結合課程平台、數據分析與 AI 智慧推薦，打造比 Hahow 更直覺、更流暢的學習體驗。</p>
-        <div class="search-bar">
-          <input id="searchInput" type="text" placeholder="搜尋課程、講師或關鍵字…" />
-          <button type="button" onclick="document.getElementById('course-section').scrollIntoView()">搜尋</button>
-        </div>
-        <div class="hero-stats">
-          <div><div class="num">{{ courses|length }}+</div><div class="lbl">上架課程</div></div>
-          <div><div class="num">100%</div><div class="lbl">後台動態管理</div></div>
-          <div><div class="num">24/7</div><div class="lbl">隨時開始學習</div></div>
-        </div>
-      </div>
-    </header>
-
-    <!-- ===== 平台特色 ===== -->
-    <section class="section wrap">
-      <div class="section-head">
-        <div class="eyebrow">WHY CHOOSE US</div>
-        <h2>為什麼選擇我們</h2>
-        <p>以清楚的資訊區塊與容易理解的操作流程，讓使用者更快找到需要的課程與服務。</p>
-      </div>
-      <div class="features">
-        <div class="feature"><div class="ico">📚</div><h3>豐富課程管理</h3><p>課程名稱、講師、價格、封面與難度分級，皆可透過後台快速維護與同步。</p></div>
-        <div class="feature"><div class="ico">👤</div><h3>完整會員系統</h3><p>註冊、登入、個人中心、購課紀錄與我的課程，建立完整學習流程。</p></div>
-        <div class="feature"><div class="ico">📊</div><h3>數據分析專區</h3><p>課程熱度、購課趨勢與學習行為，預留 Power BI 儀表板整合位置。</p></div>
-        <div class="feature"><div class="ico">🤖</div><h3>AI 智慧擴充</h3><p>預留 AI 推薦、學習建議與問答助理模組，未來可無痛接入模型與 API。</p></div>
-      </div>
-    </section>
-
-    <!-- ===== 精選課程（分類篩選 + 搜尋） ===== -->
-    <section class="section wrap" id="course-section">
-      <div class="section-head">
-        <div class="eyebrow">EXPLORE COURSES</div>
-        <h2>精選課程</h2>
-        <p>課程內容由後台動態管理，可用上方搜尋列或下方分類即時篩選。</p>
-      </div>
-
-      <!-- 分類 chips：由課程資料動態去重產生 -->
-      <div class="chips" id="chips">
-        <button class="chip active" data-cat="all">全部</button>
-        {% for course in courses %}{% if course.category %}
-        <button class="chip" data-cat="{{ course.category.name }}" data-once="{{ course.category.name }}">{{ course.category.name }}</button>
-        {% endif %}{% endfor %}
-      </div>
-
-      <div class="courses" id="courseGrid">
-        {% for course in courses %}
-        <!-- 課程卡：data-* 供前端搜尋/篩選使用 -->
-        <a href="{% url 'course_detail' course.id %}" class="course-card"
-           data-title="{{ course.title|lower }}"
-           data-teacher="{{ course.teacher|lower }}"
-           data-cat="{% if course.category %}{{ course.category.name }}{% else %}未分類{% endif %}">
-          <div class="course-thumb">
-            {% if course.image %}
-            <img src="{{ course.image.url }}" alt="{{ course.title }}" loading="lazy" />
-            {% else %}
-            <div class="ph">{{ course.title|slice:":1" }}</div>
-            {% endif %}
-            <span class="badge">{{ course.get_level_display }}</span>
-          </div>
-          <div class="course-body">
-            {% if course.category %}<div class="course-cat">{{ course.category.name }}</div>{% endif %}
-            <h3>{{ course.title }}</h3>
-            <p class="desc">{{ course.description }}</p>
-            <div class="course-teacher">
-              <span class="avatar">{{ course.teacher.username|slice:":1"|upper }}</span>
-              {{ course.teacher.username }}
+                <div class="flex flex-wrap gap-8 mt-10">
+                    <div><div class="text-3xl font-black">{{ total_courses }}+</div><div class="text-sm text-brand-200">精選課程</div></div>
+                    <div><div class="text-3xl font-black">{{ total_students }}+</div><div class="text-sm text-brand-200">累積學員</div></div>
+                    <div><div class="text-3xl font-black">{{ avg_all }}<span class="text-lg">/5</span></div><div class="text-sm text-brand-200">平均評價</div></div>
+                </div>
             </div>
-            <div class="course-foot">
-              <div class="price"><small>NT$</small> {{ course.price }}</div>
-              <span class="go">查看課程 →</span>
+
+            <div class="hidden lg:block relative h-[460px]">
+                <div class="absolute top-0 right-8 w-64 bg-white rounded-2xl shadow-2xl p-4 animate-float">
+                    <div class="aspect-video rounded-xl bg-gradient-to-br from-brand-400 to-violet-400 mb-3 flex items-center justify-center text-white text-3xl"><i class="fas fa-play"></i></div>
+                    <div class="h-3 w-3/4 bg-slate-200 rounded mb-2"></div>
+                    <div class="h-3 w-1/2 bg-slate-100 rounded"></div>
+                </div>
+                <div class="absolute top-40 left-0 w-52 bg-white rounded-2xl shadow-2xl p-4 animate-float" style="animation-delay:-2s">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="h-10 w-10 rounded-full bg-accent-400 flex items-center justify-center text-white"><i class="fas fa-trophy"></i></div>
+                        <div><div class="font-bold text-slate-800 text-sm">結業證書</div><div class="text-xs text-slate-400">完課即可領取</div></div>
+                    </div>
+                    <div class="h-2 w-full bg-slate-100 rounded-full overflow-hidden"><div class="h-full w-4/5 bg-accent-400 rounded-full"></div></div>
+                </div>
+                <div class="absolute bottom-4 right-16 w-56 bg-white rounded-2xl shadow-2xl p-4 animate-float" style="animation-delay:-4s">
+                    <div class="text-xs text-slate-400 mb-1">累積學員</div>
+                    <div class="text-2xl font-black text-brand-700">{{ total_students }}+ <span class="text-green-500 text-sm"><i class="fas fa-arrow-trend-up"></i></span></div>
+                </div>
             </div>
-          </div>
+        </div>
+    </div>
+    <svg class="block w-full text-slate-50" viewBox="0 0 1440 60" fill="currentColor" preserveAspectRatio="none"><path d="M0,32L1440,0L1440,60L0,60Z"></path></svg>
+</header>
+
+<!-- ============ 熱門分類 ============ -->
+{% if categories %}
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-2 mb-4">
+    <div class="grid grid-cols-3 md:grid-cols-6 gap-3">
+        {% for category in categories|slice:":6" %}
+        <a href="{% url 'home' %}?cat={{ category.name }}#courses" class="group flex flex-col items-center gap-2 bg-white rounded-2xl py-5 shadow-sm hover:shadow-md hover:-translate-y-1 transition">
+            <span class="h-12 w-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center text-xl group-hover:bg-brand-600 group-hover:text-white transition"><i class="fas fa-folder-open"></i></span>
+            <span class="text-sm font-medium text-center px-1">{{ category.name }}</span>
         </a>
-        {% empty %}
-        <div class="empty-state"><h3>目前還沒有課程</h3><p>請先到後台新增課程資料。</p></div>
         {% endfor %}
-        <!-- 無搜尋結果時由 JS 顯示 -->
-        <div class="empty-state" id="noResult" style="display:none;">找不到符合的課程，換個關鍵字試試 🔍</div>
-      </div>
-    </section>
+    </div>
+</section>
+{% endif %}
 
-    <!-- ===== Power BI / AI 佔位區 ===== -->
-    <section class="section wrap" id="powerbi-section">
-      <div class="section-head">
-        <div class="eyebrow">ANALYTICS &amp; AI</div>
-        <h2>數據分析 × AI 智慧專區</h2>
-        <p>預留資料視覺化與 AI 功能位置，後續可依專題需求整合報表與模型。</p>
-      </div>
-      <div class="placeholders">
-        <div class="ph-card">
-          <h3>📊 Power BI Dashboard</h3>
-          <p>預留課程熱度、購課趨勢、學習行為分析等視覺化內容。</p>
-          <div class="ph-box">這裡預留給 Power BI 內容<br />可放 iframe、嵌入報表或統計摘要卡片</div>
-        </div>
-        <div class="ph-card" id="ai-section">
-          <h3>🤖 AI 智慧助理</h3>
-          <p>預留 AI 課程推薦、學習建議與問答互動功能。</p>
-          <div class="ph-box">這裡預留給 AI 功能<br />可放聊天視窗、推薦結果或 AI 問答區</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===== CTA ===== -->
-    <section class="wrap">
-      <div class="cta">
-        <h2>準備好開始你的學習旅程了嗎？</h2>
-        <p>立即註冊，探索由後台動態管理的精選課程。</p>
-        <a href="{% url 'register' %}">免費註冊 →</a>
-      </div>
-    </section>
-
-    <!-- ===== Footer ===== -->
-    <footer class="footer">
-      <div class="footer-inner">
+<!-- ============ 募資中課程 ============ -->
+{% if funding_courses %}
+<section id="funding" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
-          <div class="footer-title">Course Platform</div>
-          <div style="color:#94a3b8;font-size:14px;max-width:260px;line-height:1.9;">新一代線上課程平台專題，整合會員、購課、數據分析與 AI。</div>
+            <span class="inline-flex items-center gap-2 text-accent-600 font-bold text-sm mb-2"><i class="fas fa-fire"></i> 集資倒數中</span>
+            <h2 class="text-2xl md:text-3xl font-black text-slate-900">募資中課程</h2>
+            <p class="text-slate-500 mt-1">搶先支持新課，享最優惠早鳥價</p>
         </div>
+        <div class="flex gap-2">
+            <button data-carousel-prev="funding" class="h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-brand-600 hover:text-white hover:border-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed" aria-label="上一個"><i class="fas fa-chevron-left"></i></button>
+            <button data-carousel-next="funding" class="h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-brand-600 hover:text-white hover:border-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed" aria-label="下一個"><i class="fas fa-chevron-right"></i></button>
+        </div>
+    </div>
+    <div data-carousel="funding" class="flex gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-4 -mx-1 px-1 no-scrollbar">
+        {% for course in funding_courses %}
+        {% include 'main/partials/funding_card.html' with card_extra="snap-start shrink-0 w-[300px]" %}
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- ============ 熱門課程 ============ -->
+{% if popular_courses %}
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
-          <div class="footer-title">課程</div>
-          <a href="{% url 'home' %}#course-section">課程總覽</a>
-          <a href="{% url 'home' %}#powerbi-section">數據分析</a>
-          <a href="{% url 'home' %}#ai-section">AI 助理</a>
+            <span class="inline-flex items-center gap-2 text-accent-600 font-bold text-sm mb-2"><i class="fas fa-fire"></i> 學員熱選</span>
+            <h2 class="text-2xl md:text-3xl font-black text-slate-900">熱門課程</h2>
+            <p class="text-slate-500 mt-1">最多人購買的精選課程</p>
         </div>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'home' %}?sort=popular#courses" class="text-brand-600 hover:underline font-medium text-sm">查看全部</a>
+            <div class="flex gap-2">
+                <button data-carousel-prev="popular" class="h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-brand-600 hover:text-white hover:border-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed" aria-label="上一個"><i class="fas fa-chevron-left"></i></button>
+                <button data-carousel-next="popular" class="h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-brand-600 hover:text-white hover:border-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed" aria-label="下一個"><i class="fas fa-chevron-right"></i></button>
+            </div>
+        </div>
+    </div>
+    <div data-carousel="popular" class="flex gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-4 -mx-1 px-1 no-scrollbar">
+        {% for course in popular_courses %}
+        {% include 'main/partials/course_card.html' with card_extra="snap-start shrink-0 w-[300px]" %}
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- ============ 最新課程 ============ -->
+{% if latest_courses %}
+<section id="latest" class="bg-white border-y border-slate-100">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
+            <div>
+                <span class="inline-flex items-center gap-2 text-brand-600 font-bold text-sm mb-2"><i class="fas fa-sparkles"></i> 新鮮上架</span>
+                <h2 class="text-2xl md:text-3xl font-black text-slate-900">最新課程</h2>
+                <p class="text-slate-500 mt-1">跟上最新趨勢，第一時間開始學習</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="{% url 'home' %}?sort=newest#courses" class="text-brand-600 hover:underline font-medium text-sm">查看全部</a>
+                <div class="flex gap-2">
+                    <button data-carousel-prev="latest" class="h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-brand-600 hover:text-white hover:border-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed" aria-label="上一個"><i class="fas fa-chevron-left"></i></button>
+                    <button data-carousel-next="latest" class="h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-brand-600 hover:text-white hover:border-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed" aria-label="下一個"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </div>
+        <div data-carousel="latest" class="flex gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-4 -mx-1 px-1 no-scrollbar">
+            {% for course in latest_courses %}
+            {% include 'main/partials/course_card.html' with card_extra="snap-start shrink-0 w-[300px]" %}
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- ============ 課程總覽（可搜尋/排序/分頁） ============ -->
+<section id="courses" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+    <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
-          <div class="footer-title">帳戶</div>
-          <a href="{% url 'login' %}">登入</a>
-          <a href="{% url 'register' %}">註冊</a>
+            <span class="inline-flex items-center gap-2 text-brand-600 font-bold text-sm mb-2"><i class="fas fa-compass"></i> 探索課程</span>
+            <h2 class="text-2xl md:text-3xl font-black text-slate-900">課程總覽</h2>
+            {% if q %}<p class="text-slate-500 mt-1">「{{ q }}」的搜尋結果，共 {{ page_obj.paginator.count }} 門</p>
+            {% else %}<p class="text-slate-500 mt-1">依熱門、最新或價格排序，並可用分類篩選</p>{% endif %}
         </div>
-      </div>
-      <div class="footer-bottom">© 2026 Course Platform. 線上課程平台專題展示。</div>
-    </footer>
+        <!-- 排序 -->
+        <div class="flex flex-wrap gap-2">
+            {% for key, label in sort_options %}
+            <a href="?sort={{ key }}{% if q %}&q={{ q }}{% endif %}{% if cat %}&cat={{ cat }}{% endif %}#courses"
+               class="px-4 py-2 rounded-full text-sm font-medium transition {% if sort == key %}bg-brand-600 text-white{% else %}bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-brand-300{% endif %}">{{ label }}</a>
+            {% endfor %}
+        </div>
+    </div>
 
-    <script>
-      // ===== 前端即時搜尋 + 分類篩選（不動後端） =====
-      const input = document.getElementById("searchInput");
-      const cards = [...document.querySelectorAll(".course-card")];
-      const noResult = document.getElementById("noResult");
-      const chips = document.getElementById("chips");
-      let activeCat = "all";
+    <!-- 分類 chips -->
+    <div class="flex flex-wrap gap-2 mb-8">
+        <a href="?sort={{ sort }}{% if q %}&q={{ q }}{% endif %}#courses" class="px-4 py-1.5 rounded-full text-sm font-medium {% if not cat %}bg-brand-600 text-white{% else %}bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-brand-300{% endif %}">全部</a>
+        {% for category in categories %}
+        <a href="?sort={{ sort }}&cat={{ category.name }}{% if q %}&q={{ q }}{% endif %}#courses" class="px-4 py-1.5 rounded-full text-sm font-medium {% if cat == category.name %}bg-brand-600 text-white{% else %}bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-brand-300{% endif %}">{{ category.name }}</a>
+        {% endfor %}
+    </div>
 
-      // 移除重複的分類 chip（同名只留一個）
-      const seen = new Set();
-      chips.querySelectorAll("[data-once]").forEach((b) => {
-        if (seen.has(b.dataset.once)) b.remove();
-        else seen.add(b.dataset.once);
-      });
+    {% if page_obj %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {% for course in page_obj %}
+        {% include 'main/partials/course_card.html' with card_extra="" %}
+        {% endfor %}
+    </div>
 
-      function applyFilter() {
-        const kw = (input.value || "").trim().toLowerCase();
-        let shown = 0;
-        cards.forEach((c) => {
-          const matchKw = !kw || c.dataset.title.includes(kw) || c.dataset.teacher.includes(kw);
-          const matchCat = activeCat === "all" || c.dataset.cat === activeCat;
-          const ok = matchKw && matchCat;
-          c.style.display = ok ? "flex" : "none";
-          if (ok) shown++;
-        });
-        noResult.style.display = shown === 0 ? "block" : "none";
-      }
+    <!-- 分頁 -->
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="flex justify-center items-center gap-2 mt-10 flex-wrap">
+        {% if page_obj.has_previous %}
+        <a href="?sort={{ sort }}{% if q %}&q={{ q }}{% endif %}{% if cat %}&cat={{ cat }}{% endif %}&page={{ page_obj.previous_page_number }}#courses" class="px-4 py-2 rounded-lg bg-white ring-1 ring-slate-200 text-slate-600 hover:ring-brand-300 font-medium">← 上一頁</a>
+        {% else %}<span class="px-4 py-2 rounded-lg bg-slate-100 text-slate-400 font-medium">← 上一頁</span>{% endif %}
+        {% for num in page_obj.paginator.page_range %}
+        <a href="?sort={{ sort }}{% if q %}&q={{ q }}{% endif %}{% if cat %}&cat={{ cat }}{% endif %}&page={{ num }}#courses" class="px-4 py-2 rounded-lg font-bold {% if num == page_obj.number %}bg-brand-600 text-white{% else %}bg-white ring-1 ring-slate-200 text-slate-600 hover:ring-brand-300{% endif %}">{{ num }}</a>
+        {% endfor %}
+        {% if page_obj.has_next %}
+        <a href="?sort={{ sort }}{% if q %}&q={{ q }}{% endif %}{% if cat %}&cat={{ cat }}{% endif %}&page={{ page_obj.next_page_number }}#courses" class="px-4 py-2 rounded-lg bg-white ring-1 ring-slate-200 text-slate-600 hover:ring-brand-300 font-medium">下一頁 →</a>
+        {% else %}<span class="px-4 py-2 rounded-lg bg-slate-100 text-slate-400 font-medium">下一頁 →</span>{% endif %}
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="text-center py-16 text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl">
+        <p class="text-lg font-bold mb-1">找不到符合的課程</p>
+        <p>換個關鍵字或分類試試 🔍</p>
+    </div>
+    {% endif %}
+</section>
 
-      input.addEventListener("input", applyFilter);
-      chips.addEventListener("click", (e) => {
-        const btn = e.target.closest(".chip");
-        if (!btn) return;
-        chips.querySelectorAll(".chip").forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        activeCat = btn.dataset.cat;
-        applyFilter();
-      });
-    </script>
-  </body>
-</html>
+<!-- ============ 為什麼選擇 EduFlow ============ -->
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <div class="text-center max-w-2xl mx-auto mb-12">
+        <h2 class="text-2xl md:text-3xl font-black text-slate-900 mb-3">為什麼選擇 EduFlow？</h2>
+        <p class="text-slate-500">我們用更好的體驗與制度，陪你把學習變成真正的成長。</p>
+    </div>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition">
+            <div class="h-12 w-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center text-xl mb-4"><i class="fas fa-user-check"></i></div>
+            <h3 class="font-bold text-slate-900 mb-2">業界專家親授</h3>
+            <p class="text-sm text-slate-500">每位講師皆通過審核，內容緊貼實務現場。</p>
+        </div>
+        <div class="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition">
+            <div class="h-12 w-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center text-xl mb-4"><i class="fas fa-infinity"></i></div>
+            <h3 class="font-bold text-slate-900 mb-2">永久觀看權限</h3>
+            <p class="text-sm text-slate-500">一次購買終身回看，隨時複習不受限制。</p>
+        </div>
+        <div class="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition">
+            <div class="h-12 w-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center text-xl mb-4"><i class="fas fa-comments"></i></div>
+            <h3 class="font-bold text-slate-900 mb-2">互動問答社群</h3>
+            <p class="text-sm text-slate-500">課程討論區與同學交流，遇到問題不卡關。</p>
+        </div>
+        <div class="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition">
+            <div class="h-12 w-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center text-xl mb-4"><i class="fas fa-shield-halved"></i></div>
+            <h3 class="font-bold text-slate-900 mb-2">安心退款保障</h3>
+            <p class="text-sm text-slate-500">開課後 7 天內不滿意，可申請退費。</p>
+        </div>
+    </div>
+</section>
+
+<!-- ============ 成為講師 CTA ============ -->
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-700 to-violet-600 text-white px-8 py-12 md:p-14">
+        <div class="pointer-events-none absolute -top-16 -right-10 h-64 w-64 rounded-full bg-white/10 blur-2xl"></div>
+        <div class="relative flex flex-col md:flex-row items-center justify-between gap-8">
+            <div class="max-w-xl">
+                <h2 class="text-2xl md:text-3xl font-black mb-3">把你的專業，變成影響力</h2>
+                <p class="text-brand-100">加入 EduFlow 講師行列，打造屬於你的線上課程，觸及成千上萬名學員。</p>
+            </div>
+            <div class="flex gap-3 shrink-0">
+                <a href="{% url 'register' %}" class="bg-white text-brand-700 font-bold px-6 py-3 rounded-xl hover:bg-brand-50 transition">立即開課</a>
+                <a href="{% url 'home' %}#courses" class="bg-white/10 backdrop-blur border border-white/30 text-white font-bold px-6 py-3 rounded-xl hover:bg-white/20 transition">了解更多</a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

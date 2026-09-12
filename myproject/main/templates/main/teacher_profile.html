@@ -1,0 +1,51 @@
+{% extends 'main/base_eduflow.html' %}
+{% block title %}{{ teacher.username }} ｜ 講師頁 | EduFlow{% endblock %}
+
+{% block content %}
+<main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+  <!-- 講師資訊 -->
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8 mb-6 flex items-center gap-6 flex-wrap">
+    <span class="w-[92px] h-[92px] rounded-full bg-gradient-to-br from-brand-500 to-violet-500 text-white flex items-center justify-center text-4xl font-black shrink-0">{{ teacher.username|slice:":1"|upper }}</span>
+    <div class="flex-1">
+      <h1 class="text-2xl font-black text-slate-900">{{ teacher.username }}</h1>
+      {% if role_display %}<span class="inline-block mt-1 bg-brand-50 text-brand-700 text-xs font-bold px-3 py-1 rounded-full">{{ role_display }}</span>{% endif %}
+      <div class="flex gap-8 flex-wrap mt-4">
+        <div><div class="text-2xl font-black text-brand-700">{{ course_count }}</div><div class="text-sm text-slate-500">開設課程</div></div>
+        <div><div class="text-2xl font-black text-brand-700">{{ total_students }}</div><div class="text-sm text-slate-500">學生人次</div></div>
+        <div><div class="text-2xl font-black text-brand-700">{% if avg_rating %}★ {{ avg_rating }}{% else %}—{% endif %}</div><div class="text-sm text-slate-500">平均評分（{{ review_count }} 則）</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 開設的課程 -->
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-7 mb-6">
+    <h2 class="text-xl font-black text-slate-900 mb-5">開設的課程</h2>
+    {% if courses %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {% for course in courses %}
+      {% include 'main/partials/course_card.html' with card_extra="" %}
+      {% endfor %}
+    </div>
+    {% else %}<p class="text-slate-500">這位講師目前沒有已上架的課程。</p>{% endif %}
+  </div>
+
+  <!-- 學生評價 -->
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-7">
+    <h2 class="text-xl font-black text-slate-900 mb-4">學生評價</h2>
+    {% if recent_reviews %}
+    <div class="divide-y divide-slate-100">
+      {% for r in recent_reviews %}
+      <div class="py-4">
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <span class="font-bold text-slate-800">{{ r.user.username }}</span>
+          <span class="text-amber-400 text-sm">{% for i in "12345"|make_list %}{% if forloop.counter <= r.rating %}<i class="fas fa-star"></i>{% else %}<i class="far fa-star"></i>{% endif %}{% endfor %}</span>
+        </div>
+        <div class="text-sm text-slate-400">課程：{{ r.course.title }} ・ {{ r.created_at|date:"Y-m-d" }}</div>
+        {% if r.comment %}<p class="text-slate-600 mt-1">{{ r.comment }}</p>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}<p class="text-slate-500">目前尚無評價。</p>{% endif %}
+  </div>
+</main>
+{% endblock %}

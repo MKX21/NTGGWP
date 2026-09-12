@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}EduFlow 線上購課平台{% endblock %}</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc',
+                            400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca',
+                            800: '#3730a3', 900: '#312e81',
+                        },
+                        accent: {
+                            50: '#fff7ed', 100: '#ffedd5', 300: '#fdba74',
+                            400: '#fb923c', 500: '#f97316', 600: '#ea580c',
+                        },
+                    },
+                    fontFamily: { sans: ['"Noto Sans TC"', '"Inter"', 'system-ui', 'sans-serif'] },
+                    keyframes: {
+                        'float': { '0%,100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-12px)' } },
+                        'fade-up': { '0%': { opacity: 0, transform: 'translateY(16px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
+                    },
+                    animation: { 'float': 'float 6s ease-in-out infinite', 'fade-up': 'fade-up 0.6s ease-out both' },
+                },
+            },
+        };
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        html { scroll-behavior: smooth; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .group:hover img.zoom { transform: scale(1.05); }
+        img.zoom { transition: transform 0.4s ease-in-out; }
+        [data-dropdown-menu]:not(.hidden) { animation: dropdown-in 0.18s ease-out both; }
+        @keyframes dropdown-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+        @media (prefers-reduced-motion: reduce) {
+            html { scroll-behavior: auto; }
+            *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+        }
+        /* Django 表單控制項在 EduFlow 版型的基礎樣式（Tailwind preflight 會 reset） */
+        .ef-form input:not([type=checkbox]):not([type=radio]):not([type=file]),
+        .ef-form select, .ef-form textarea {
+            width: 100%; border: 1px solid #e2e8f0; border-radius: 0.6rem;
+            padding: 0.625rem 0.75rem; font-size: 0.95rem; background: #fff; color: #0f172a;
+        }
+        .ef-form input:focus, .ef-form select:focus, .ef-form textarea:focus {
+            outline: none; border-color: #818cf8; box-shadow: 0 0 0 3px rgba(129,140,248,.25);
+        }
+        .ef-form label { font-weight: 600; color: #334155; display: block; margin: 0.6rem 0 0.25rem; }
+        .ef-form p { margin-bottom: 0.6rem; }
+        .ef-form ul.errorlist { color: #dc2626; font-size: 0.85rem; list-style: none; padding: 0; margin: 0.25rem 0; }
+        .ef-form .helptext { color: #94a3b8; font-size: 0.8rem; }
+        .ef-form input[type=file] { font-size: 0.9rem; }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 antialiased">
+
+    {% include 'main/partials/eduflow_navbar.html' %}
+
+    {% block content %}{% endblock %}
+
+    {% include 'main/partials/eduflow_footer.html' %}
+
+    <!-- 回到頂部按鈕 -->
+    <button data-back-to-top class="fixed bottom-6 right-6 z-40 h-12 w-12 rounded-full bg-brand-600 text-white shadow-lg shadow-brand-600/30 hover:bg-brand-700 transition opacity-0 invisible" aria-label="回到頂部">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // 可關閉元素（公告列）
+        document.querySelectorAll('[data-close]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const t = document.querySelector(btn.dataset.close);
+                if (t) t.remove();
+            });
+        });
+
+        // Mega Menu 下拉
+        document.querySelectorAll('[data-dropdown]').forEach((wrap) => {
+            const toggle = wrap.querySelector('[data-dropdown-toggle]');
+            const menu = wrap.querySelector('[data-dropdown-menu]');
+            const arrow = wrap.querySelector('[data-dropdown-arrow]');
+            if (!toggle || !menu) return;
+            const close = () => { menu.classList.add('hidden'); if (arrow) arrow.classList.remove('rotate-180'); };
+            toggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const willOpen = menu.classList.contains('hidden');
+                menu.classList.toggle('hidden', !willOpen);
+                if (arrow) arrow.classList.toggle('rotate-180', willOpen);
+            });
+            menu.addEventListener('click', (e) => e.stopPropagation());
+            document.addEventListener('click', close);
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+        });
+
+        // 手機側邊選單
+        const mobileMenu = document.querySelector('[data-mobile-menu]');
+        const openMobile = () => mobileMenu && mobileMenu.classList.remove('hidden');
+        const closeMobile = () => mobileMenu && mobileMenu.classList.add('hidden');
+        document.querySelectorAll('[data-mobile-toggle]').forEach((b) => b.addEventListener('click', openMobile));
+        document.querySelectorAll('[data-mobile-close]').forEach((b) => b.addEventListener('click', closeMobile));
+        mobileMenu && mobileMenu.querySelectorAll('a').forEach((a) => a.addEventListener('click', closeMobile));
+
+        // 橫向輪播
+        document.querySelectorAll('[data-carousel]').forEach((track) => {
+            const name = track.dataset.carousel;
+            const prevBtn = document.querySelector(`[data-carousel-prev="${name}"]`);
+            const nextBtn = document.querySelector(`[data-carousel-next="${name}"]`);
+            const step = () => Math.max(track.clientWidth * 0.8, 300);
+            const updateButtons = () => {
+                const EDGE = 4;
+                const maxScroll = track.scrollWidth - track.clientWidth - EDGE;
+                if (prevBtn) prevBtn.disabled = track.scrollLeft <= EDGE;
+                if (nextBtn) nextBtn.disabled = track.scrollLeft >= maxScroll;
+            };
+            prevBtn && prevBtn.addEventListener('click', () => track.scrollBy({ left: -step(), behavior: 'smooth' }));
+            nextBtn && nextBtn.addEventListener('click', () => track.scrollBy({ left: step(), behavior: 'smooth' }));
+            track.addEventListener('scroll', updateButtons, { passive: true });
+            window.addEventListener('resize', updateButtons);
+            updateButtons();
+        });
+
+        // 捲動：Navbar 陰影 + 回到頂部顯隱
+        const navbar = document.getElementById('navbar');
+        const backToTop = document.querySelector('[data-back-to-top]');
+        const onScroll = () => {
+            const y = window.scrollY;
+            navbar && navbar.classList.toggle('shadow-md', y > 8);
+            if (backToTop) {
+                const show = y > 400;
+                backToTop.classList.toggle('opacity-0', !show);
+                backToTop.classList.toggle('invisible', !show);
+            }
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+        backToTop && backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

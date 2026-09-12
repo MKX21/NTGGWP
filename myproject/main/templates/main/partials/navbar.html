@@ -1,9 +1,15 @@
 <style>
   .cp-navbar {
-    background: #ffffff;
-    border-bottom: 1px solid #e5e7eb;
-    padding: 16px 32px;
-    font-family: "Microsoft JhengHei", sans-serif;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(255, 255, 255, 0.45);
+    backdrop-filter: blur(16px) saturate(170%);
+    -webkit-backdrop-filter: blur(16px) saturate(170%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.55);
+    box-shadow: 0 4px 24px rgba(31, 38, 135, 0.1);
+    padding: 14px 32px;
+    font-family: "Microsoft JhengHei", "Noto Sans TC", sans-serif;
   }
 
   .cp-nav-inner {
@@ -15,44 +21,61 @@
   }
 
   .cp-logo {
-    font-size: 24px;
-    font-weight: bold;
-    color: #111827;
+    font-size: 23px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
     text-decoration: none;
   }
 
   .cp-menu {
     display: flex;
-    gap: 18px;
+    gap: 16px;
     align-items: center;
     flex-wrap: wrap;
   }
 
   .cp-menu a {
-    color: #374151;
+    color: #334155;
     text-decoration: none;
     font-size: 15px;
+    font-weight: 600;
+    transition: color 0.15s;
   }
 
-  .cp-menu a:hover {
-    color: #2563eb;
-  }
+  .cp-menu a:hover { color: #6d28d9; }
 
   .cp-btn {
-    background: #2563eb;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
     color: white !important;
-    padding: 9px 16px;
+    padding: 9px 18px;
     border-radius: 999px;
-    font-weight: bold;
+    font-weight: 700;
+    box-shadow: 0 6px 16px rgba(79, 70, 229, 0.3);
   }
 
   .cp-btn-dark {
-    background: #1f2937;
+    background: rgba(15, 23, 42, 0.85);
     color: white !important;
-    padding: 9px 16px;
+    padding: 9px 18px;
     border-radius: 999px;
-    font-weight: bold;
+    font-weight: 700;
+    backdrop-filter: blur(6px);
   }
+
+  /* AI 助理獨立欄位 */
+  .cp-ai {
+    border: 1px solid #7c3aed;
+    color: #6d28d9 !important;
+    padding: 7px 15px;
+    border-radius: 999px;
+    font-weight: 700;
+    background: rgba(124, 58, 237, 0.08);
+  }
+  .cp-ai:hover { background: rgba(124, 58, 237, 0.16); }
 </style>
 
 <div class="cp-navbar">
@@ -62,29 +85,47 @@
     <div class="cp-menu">
       <a href="{% url 'home' %}">首頁</a>
       <a href="{% url 'home' %}#course-section">課程總覽</a>
-      <a href="{% url 'home' %}#powerbi-section">數據分析</a>
-      <a href="{% url 'home' %}#ai-section">AI 助理</a>
 
       {% if user.is_authenticated %}
-      <a href="{% url 'profile' %}">個人資料</a>
+        {% if user.is_superuser %}
+        <a href="/admin/" class="cp-btn-dark">管理後台</a>
+        <a href="{% url 'manage_audits' %}">課程審核</a>
+        <a href="{% url 'manage_refunds' %}">退款審核</a>
+        <a href="{% url 'export_data_page' %}">資料匯出</a>
+        <a href="{% url 'home' %}#powerbi-section">數據分析</a>
+        <a href="{% url 'profile' %}">個人資料</a>
+        <a href="{% url 'notifications' %}">通知</a>
+        <a href="{% url 'home' %}#ai-section" class="cp-ai">AI 助理</a>
+        <a href="{% url 'logout' %}">登出</a>
 
-      {% if user.is_superuser %}
-      <a href="/admin/" class="cp-btn-dark">管理後台</a>
-      <a href="{% url 'export_data_page' %}">資料匯出</a>
+        {% elif user.profile.role == 'teacher' %}
+        <a href="{% url 'teacher_dashboard' %}">教師專區</a>
+        <a href="{% url 'my_favorites' %}">收藏</a>
+        <a href="{% url 'home' %}#powerbi-section">數據分析</a>
+        <a href="{% url 'profile' %}">個人資料</a>
+        <a href="{% url 'notifications' %}">通知</a>
+        <a href="{% url 'view_cart' %}">購物車</a>
+        <a href="{% url 'manage_refunds' %}">退款審核</a>
+        <a href="{% url 'teacher_analytics' %}" class="cp-btn">課程分析</a>
+        <a href="{% url 'home' %}#ai-section" class="cp-ai">AI 助理</a>
+        <a href="{% url 'logout' %}">登出</a>
 
-      {% elif user.profile.role == 'student' %}
-      <a href="{% url 'student_dashboard' %}">學生專區</a>
-      <a href="{% url 'my_courses' %}">我的課程</a>
-      <a href="{% url 'student_analytics' %}" class="cp-btn">學習分析</a>
-
-      {% elif user.profile.role == 'teacher' %}
-      <a href="{% url 'teacher_dashboard' %}">教師專區</a>
-      <a href="{% url 'teacher_analytics' %}" class="cp-btn">課程分析</a>
-      {% endif %}
-
-      <a href="{% url 'logout' %}">登出</a>
+        {% else %}
+        <a href="{% url 'student_dashboard' %}">學生專區</a>
+        <a href="{% url 'my_courses' %}">我的課程</a>
+        <a href="{% url 'my_favorites' %}">收藏</a>
+        <a href="{% url 'home' %}#powerbi-section">數據分析</a>
+        <a href="{% url 'profile' %}">個人資料</a>
+        <a href="{% url 'notifications' %}">通知</a>
+        <a href="{% url 'view_cart' %}">購物車</a>
+        <a href="{% url 'student_analytics' %}" class="cp-btn">學習分析</a>
+        <a href="{% url 'home' %}#ai-section" class="cp-ai">AI 助理</a>
+        <a href="{% url 'logout' %}">登出</a>
+        {% endif %}
 
       {% else %}
+      <a href="{% url 'home' %}#powerbi-section">數據分析</a>
+      <a href="{% url 'home' %}#ai-section" class="cp-ai">AI 助理</a>
       <a href="{% url 'login' %}">登入</a>
       <a href="{% url 'register' %}" class="cp-btn">註冊</a>
       {% endif %}

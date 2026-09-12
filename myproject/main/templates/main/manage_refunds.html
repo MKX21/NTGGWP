@@ -1,0 +1,38 @@
+{% extends 'main/base_eduflow.html' %}
+{% block title %}退款審核 | EduFlow{% endblock %}
+
+{% block content %}
+<main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-7">
+    <h1 class="text-2xl font-black text-slate-900 mb-5">退款審核</h1>
+    {% if refunds %}
+    <div class="divide-y divide-slate-100">
+      {% for r in refunds %}
+      <div class="flex items-center justify-between gap-4 flex-wrap py-4">
+        <div>
+          <div class="font-bold text-slate-800">{{ r.order.course.title|default:"多課程訂單" }}</div>
+          <div class="text-sm text-slate-500">申請人：{{ r.user.username }} ・ 訂單 #{{ r.order.id }} ・ 退款 NT$ {{ r.amount }}<br>原因：{{ r.reason }} ・ {{ r.created_at|date:"Y-m-d H:i" }}</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="px-3 py-1 rounded-full text-sm font-bold
+            {% if r.status == 'pending' %}bg-amber-100 text-amber-700
+            {% elif r.status == 'rejected' %}bg-red-50 text-red-600
+            {% else %}bg-green-100 text-green-700{% endif %}">{{ r.get_status_display }}</span>
+          {% if r.status == 'pending' %}
+          <form method="post" action="{% url 'process_refund' r.id %}" class="inline">
+            {% csrf_token %}<input type="hidden" name="action" value="approve">
+            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold px-3 py-1.5 rounded-lg text-sm transition">通過</button>
+          </form>
+          <form method="post" action="{% url 'process_refund' r.id %}" class="inline">
+            {% csrf_token %}<input type="hidden" name="action" value="reject">
+            <button type="submit" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-3 py-1.5 rounded-lg text-sm transition">拒絕</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}<p class="text-slate-500">目前沒有退款申請。</p>{% endif %}
+  </div>
+</main>
+{% endblock %}

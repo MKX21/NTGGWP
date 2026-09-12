@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# 環境變數（資料庫密碼等機密）
+.env
+
+# 資料庫傾印（含 auth_user 的 email/password hash 與 django_session，
+# 不應該進版控）。要備份請放在專案目錄外。
+*.sql
+
+# 編輯器 / 系統
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 註：media/（課程圖片、上傳影片）目前保留在版控中，
+# 方便共同開發者直接取得課程封面與示範影片。
+# 若日後檔案量過大，可改用雲端儲存並在此加入： myproject/media/

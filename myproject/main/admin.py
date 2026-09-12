@@ -1,4 +1,9 @@
 from django.contrib import admin
+from django.utils.html import format_html
+
+# 狀態轉換一律走 transitions —— 後台的批次動作與前台審核頁呼叫同一份，
+# 因此不會出現「從後台核准的退款沒有撤銷課程」這類分歧。
+from . import transitions
 from .models import (
     Profile,
     CourseCategory,
@@ -7,6 +12,7 @@ from .models import (
     CourseLesson,
     Enrollment,
     LearningRecord,
+    LessonProgress,
     Coupon,
     UserCoupon,
     Promotion,
@@ -23,120 +29,380 @@ from .models import (
     CourseQuestion,
     CourseAnswer,
     CourseAudit,
+    CourseSplitSetting,
+    RevenueRecord,
+    WithdrawalRequest,
 )
 
+# ===== 後台品牌 =====
+admin.site.site_header = "購課平台・營運管理後台"
+admin.site.site_title = "課程平台後台"
+admin.site.index_title = "營運管理總覽"
+admin.site.index_template = "admin/custom_index.html"
 
+
+# ===== 共用彩色標籤 =====
+def _badge(text, fg, bg):
+    return format_html(
+        '<span style="padding:3px 10px;border-radius:999px;font-size:12px;'
+        'font-weight:700;color:{};background:{};white-space:nowrap;">{}</span>',
+        fg, bg, text,
+    )
+
+
+STATUS_COLORS = {
+    # 訂單
+    'pending': ('#92400e', '#fef3c7'),
+    'paid': ('#166534', '#dcfce7'),
+    'cancelled': ('#475569', '#e2e8f0'),
+    'refunded': ('#991b1b', '#fee2e2'),
+    # 付款
+    'failed': ('#991b1b', '#fee2e2'),
+    # 退款 / 審核
+    'approved': ('#166534', '#dcfce7'),
+    'rejected': ('#991b1b', '#fee2e2'),
+    'completed': ('#166534', '#dcfce7'),
+    # 券
+    'unused': ('#166534', '#dcfce7'),
+    'used': ('#475569', '#e2e8f0'),
+    'expired': ('#991b1b', '#fee2e2'),
+    # 分潤 / 提領
+    'confirmed': ('#166534', '#dcfce7'),
+    'reversed': ('#991b1b', '#fee2e2'),
+    '已過期': ('#991b1b', '#fee2e2'),
+    '使用中': ('#166534', '#dcfce7'),
+    '未開始': ('#92400e', '#fef3c7'),
+    '已停用': ('#475569', '#e2e8f0'),
+    '已用完': ('#475569', '#e2e8f0'),
+}
+
+
+def status_badge(value, label=None):
+    fg, bg = STATUS_COLORS.get(value, ('#334155', '#e2e8f0'))
+    return _badge(label or value, fg, bg)
+
+
+# ===== Inlines =====
+class CourseChapterInline(admin.TabularInline):
+    model = CourseChapter
+    extra = 1
+    fields = ('sort_order', 'title', 'description')
+    ordering = ('sort_order',)
+
+
+class CourseLessonInline(admin.TabularInline):
+    model = CourseLesson
+    extra = 1
+    fields = ('sort_order', 'title', 'duration_minutes', 'is_free_preview', 'video_file', 'video_url')
+    ordering = ('sort_order',)
+
+
+class CourseSplitSettingInline(admin.StackedInline):
+    model = CourseSplitSetting
+    extra = 0
+    max_num = 1
+    can_delete = False
+    fields = (
+        ('teacher_split_percent', 'company_split_percent'),
+        ('teacher_marketing_share_percent', 'company_marketing_share_percent'),
+    )
+
+
+class OrderItemInline(admin.TabularInline):
+    model = OrderItem
+    extra = 0
+    autocomplete_fields = ('course',)
+
+
+class PaymentInline(admin.TabularInline):
+    model = Payment
+    extra = 0
+    fields = ('method', 'amount', 'status', 'transaction_no', 'paid_at')
+    readonly_fields = ('transaction_no',)
+
+
+class CartItemInline(admin.TabularInline):
+    model = CartItem
+    extra = 0
+    autocomplete_fields = ('course',)
+
+
+class CourseAnswerInline(admin.StackedInline):
+    model = CourseAnswer
+    extra = 1
+    autocomplete_fields = ('user',)
+
+
+# ===== 會員 =====
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'role')
-    search_fields = ('user__username',)
+    list_display = ('user', 'role_badge')
+    search_fields = ('user__username', 'user__email')
     list_filter = ('role',)
 
+    @admin.display(description='角色')
+    def role_badge(self, obj):
+        fg, bg = ('#3730a3', '#eef2ff') if obj.role == 'teacher' else ('#166534', '#dcfce7')
+        return _badge(obj.get_role_display(), fg, bg)
 
+
+# ===== 課程 =====
 @admin.register(CourseCategory)
 class CourseCategoryAdmin(admin.ModelAdmin):
-    list_display = ('name', 'created_at')
+    list_display = ('name', 'course_count', 'created_at')
     search_fields = ('name',)
+
+    @admin.display(description='課程數')
+    def course_count(self, obj):
+        return obj.course_set.count()
 
 
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
-    list_display = ('title', 'teacher', 'category', 'price', 'level', 'is_published', 'created_at')
+    list_display = ('title', 'teacher', 'category', 'level', 'price', 'published_badge', 'created_at')
+    list_editable = ('price',)
+    list_display_links = ('title',)
     search_fields = ('title', 'teacher__username', 'category__name')
-    list_filter = ('teacher', 'category', 'level', 'is_published')
+    list_filter = ('is_published', 'level', 'category', 'teacher')
+    autocomplete_fields = ('teacher', 'category')
+    list_per_page = 25
+    inlines = [CourseChapterInline, CourseSplitSettingInline]
+    actions = ['make_published', 'make_unpublished']
+
+    @admin.display(description='上架狀態')
+    def published_badge(self, obj):
+        return status_badge('paid' if obj.is_published else 'pending',
+                            '已上架' if obj.is_published else '未上架')
+
+    @admin.action(description='✅ 審核通過並上架選取的課程')
+    def make_published(self, request, queryset):
+        courses = list(queryset.select_related('teacher'))
+        for course in courses:
+            transitions.approve_course(course, request.user, comment='後台批次核准')
+        self.message_user(
+            request,
+            f'已審核通過並上架 {len(courses)} 門課程，審核紀錄與講師通知都已產生。'
+        )
+
+    @admin.action(description='⛔ 退回並下架選取的課程')
+    def make_unpublished(self, request, queryset):
+        courses = list(queryset.select_related('teacher'))
+        for course in courses:
+            transitions.reject_course(course, request.user, comment='後台批次退回')
+        self.message_user(request, f'已退回並下架 {len(courses)} 門課程。')
 
 
 @admin.register(CourseChapter)
 class CourseChapterAdmin(admin.ModelAdmin):
-    list_display = ('course', 'title', 'sort_order', 'created_at')
+    list_display = ('course', 'sort_order', 'title', 'lesson_count')
     search_fields = ('course__title', 'title')
     list_filter = ('course',)
+    autocomplete_fields = ('course',)
+    ordering = ('course', 'sort_order')
+    inlines = [CourseLessonInline]
+
+    @admin.display(description='單元數')
+    def lesson_count(self, obj):
+        return obj.lessons.count()
 
 
 @admin.register(CourseLesson)
 class CourseLessonAdmin(admin.ModelAdmin):
-    list_display = ('chapter', 'title', 'duration_minutes', 'sort_order', 'is_free_preview', 'created_at')
+    list_display = ('chapter', 'sort_order', 'title', 'duration_minutes', 'has_video', 'free_badge')
     search_fields = ('chapter__course__title', 'chapter__title', 'title')
     list_filter = ('chapter__course', 'is_free_preview')
+    ordering = ('chapter', 'sort_order')
+
+    @admin.display(description='影片')
+    def has_video(self, obj):
+        if obj.video_file:
+            return _badge('已上傳', '#166534', '#dcfce7')
+        if obj.video_url:
+            return _badge('連結', '#3730a3', '#eef2ff')
+        return _badge('無', '#991b1b', '#fee2e2')
+
+    @admin.display(description='試看')
+    def free_badge(self, obj):
+        return '免費' if obj.is_free_preview else '—'
 
 
-@admin.register(Enrollment)
-class EnrollmentAdmin(admin.ModelAdmin):
-    list_display = ('student', 'course', 'purchased_at')
-    search_fields = ('student__username', 'course__title')
-    list_filter = ('purchased_at',)
+@admin.register(CourseAudit)
+class CourseAuditAdmin(admin.ModelAdmin):
+    list_display = ('course', 'teacher_name', 'audit_badge', 'created_at', 'reviewed_at')
+    search_fields = ('course__title', 'reviewer__username', 'comment')
+    list_filter = ('status', 'created_at')
+    autocomplete_fields = ('course', 'reviewer')
+
+    @admin.display(description='講師')
+    def teacher_name(self, obj):
+        return obj.course.teacher.username
+
+    @admin.display(description='審核狀態')
+    def audit_badge(self, obj):
+        return status_badge(obj.status, obj.get_status_display())
 
 
-@admin.register(LearningRecord)
-class LearningRecordAdmin(admin.ModelAdmin):
-    list_display = ('user', 'course', 'lesson', 'minutes', 'watched_at')
-    search_fields = ('user__username', 'course__title', 'lesson__title')
-    list_filter = ('course', 'watched_at')
-
-
-@admin.register(Coupon)
-class CouponAdmin(admin.ModelAdmin):
-    list_display = (
-        'code',
-        'name',
-        'discount_type',
-        'discount_value',
-        'min_spend',
-        'start_date',
-        'end_date',
-        'usage_limit',
-        'is_active',
-    )
-    search_fields = ('code', 'name')
-    list_filter = ('discount_type', 'is_active')
-
-
-@admin.register(UserCoupon)
-class UserCouponAdmin(admin.ModelAdmin):
-    list_display = ('user', 'coupon', 'status', 'received_at', 'used_at')
-    search_fields = ('user__username', 'coupon__code')
-    list_filter = ('status', 'received_at')
-
-
-@admin.register(Promotion)
-class PromotionAdmin(admin.ModelAdmin):
-    list_display = ('name', 'discount_type', 'discount_value', 'start_date', 'end_date', 'is_active')
-    search_fields = ('name',)
-    list_filter = ('discount_type', 'is_active')
-
-
-@admin.register(Cart)
-class CartAdmin(admin.ModelAdmin):
-    list_display = ('user', 'created_at', 'updated_at')
-    search_fields = ('user__username',)
-
-
-@admin.register(CartItem)
-class CartItemAdmin(admin.ModelAdmin):
-    list_display = ('cart', 'course', 'added_at')
-    search_fields = ('cart__user__username', 'course__title')
-    list_filter = ('added_at',)
-
-
+# ===== 交易 =====
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = (
-        'user',
-        'course',
-        'original_price',
-        'discount_amount',
-        'final_price',
-        'status',
-        'created_at',
-    )
+    list_display = ('id', 'user', 'course', 'original_price', 'discount_amount', 'final_price', 'order_badge', 'created_at')
+    list_display_links = ('id', 'user')
     search_fields = ('user__username', 'course__title')
     list_filter = ('status', 'created_at')
+    autocomplete_fields = ('user', 'course', 'coupon')
+    list_per_page = 25
+    inlines = [OrderItemInline, PaymentInline]
+    readonly_fields = ('created_at',)
+
+    @admin.display(description='訂單狀態')
+    def order_badge(self, obj):
+        return status_badge(obj.status, obj.get_status_display())
 
 
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
     list_display = ('order', 'course', 'price')
     search_fields = ('order__user__username', 'course__title')
+    autocomplete_fields = ('order', 'course')
+
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = ('order', 'method', 'amount', 'payment_badge', 'transaction_no', 'paid_at')
+    search_fields = ('order__user__username', 'transaction_no')
+    list_filter = ('method', 'status', 'created_at')
+
+    @admin.display(description='付款狀態')
+    def payment_badge(self, obj):
+        return status_badge(obj.status, obj.get_status_display())
+
+
+@admin.register(Refund)
+class RefundAdmin(admin.ModelAdmin):
+    list_display = ('order', 'user', 'amount', 'refund_badge', 'created_at', 'processed_at')
+    search_fields = ('user__username', 'order__id')
+    list_filter = ('status', 'created_at')
+    autocomplete_fields = ('order', 'user')
+    actions = ['approve_refund', 'reject_refund']
+
+    @admin.display(description='退款狀態')
+    def refund_badge(self, obj):
+        return status_badge(obj.status, obj.get_status_display())
+
+    @admin.action(description='✅ 核准退款')
+    def approve_refund(self, request, queryset):
+        pending = list(queryset.filter(status='pending').select_related('order', 'user'))
+        for refund in pending:
+            transitions.approve_refund(refund)
+        self.message_user(
+            request,
+            f'已核准 {len(pending)} 筆退款，對應的課程存取權已收回、付款已回沖。'
+        )
+
+    @admin.action(description='⛔ 拒絕退款')
+    def reject_refund(self, request, queryset):
+        pending = list(queryset.filter(status='pending').select_related('order', 'user'))
+        for refund in pending:
+            transitions.reject_refund(refund)
+        self.message_user(request, f'已拒絕 {len(pending)} 筆退款。')
+
+
+@admin.register(Enrollment)
+class EnrollmentAdmin(admin.ModelAdmin):
+    list_display = ('student', 'course', 'purchased_at')
+    search_fields = ('student__username', 'course__title')
+    list_filter = ('purchased_at', 'course')
+    autocomplete_fields = ('student', 'course')
+
+
+# ===== 分潤與提領 =====
+@admin.register(CourseSplitSetting)
+class CourseSplitSettingAdmin(admin.ModelAdmin):
+    list_display = (
+        'course', 'teacher_split_percent', 'company_split_percent',
+        'teacher_marketing_share_percent', 'company_marketing_share_percent', 'updated_at',
+    )
+    search_fields = ('course__title', 'course__teacher__username')
+    autocomplete_fields = ('course',)
+
+
+@admin.register(RevenueRecord)
+class RevenueRecordAdmin(admin.ModelAdmin):
+    list_display = (
+        'course', 'teacher', 'order', 'gross_amount', 'marketing_cost',
+        'teacher_amount', 'company_amount', 'revenue_badge', 'created_at',
+    )
+    search_fields = ('course__title', 'teacher__username', 'order__id')
+    list_filter = ('status', 'created_at')
+    autocomplete_fields = ('order', 'order_item', 'course', 'teacher')
+    # gross_amount / 各比例 / 計算結果都是付款當下拍照存檔，只開放 marketing_cost
+    # 讓後台事後填入實際廣告花費；儲存時 model.save() 會自動重算 teacher/company_amount。
+    readonly_fields = (
+        'order_item', 'order', 'course', 'teacher', 'gross_amount',
+        'teacher_split_percent', 'company_split_percent',
+        'teacher_marketing_share_percent', 'company_marketing_share_percent',
+        'teacher_amount', 'company_amount', 'created_at', 'reversed_at',
+    )
+
+    @admin.display(description='狀態')
+    def revenue_badge(self, obj):
+        return status_badge(obj.status, obj.get_status_display())
+
+    def has_add_permission(self, request):
+        # 只能由訂單付款成功（fulfill_order）自動產生，後台不開放手動新增。
+        return False
+
+
+@admin.register(WithdrawalRequest)
+class WithdrawalRequestAdmin(admin.ModelAdmin):
+    list_display = ('teacher', 'amount', 'withdrawal_badge', 'requested_at', 'processed_at')
+    search_fields = ('teacher__username',)
+    list_filter = ('status', 'requested_at')
+    autocomplete_fields = ('teacher',)
+    actions = ['mark_completed', 'mark_rejected']
+
+    @admin.display(description='狀態')
+    def withdrawal_badge(self, obj):
+        return status_badge(obj.status, obj.get_status_display())
+
+    @admin.action(description='✅ 標記為已完成')
+    def mark_completed(self, request, queryset):
+        pending = list(queryset.filter(status='pending').select_related('teacher'))
+        for withdrawal in pending:
+            transitions.complete_withdrawal(withdrawal)
+        self.message_user(request, f'已標記 {len(pending)} 筆提領為已完成。')
+
+    @admin.action(description='⛔ 拒絕提領')
+    def mark_rejected(self, request, queryset):
+        pending = list(queryset.filter(status='pending').select_related('teacher'))
+        for withdrawal in pending:
+            transitions.reject_withdrawal(withdrawal)
+        self.message_user(request, f'已拒絕 {len(pending)} 筆提領申請。')
+
+
+# ===== 行銷 =====
+@admin.register(Coupon)
+class CouponAdmin(admin.ModelAdmin):
+    list_display = ('code', 'name', 'discount_type', 'discount_value', 'min_spend', 'end_date', 'is_active', 'current_status')
+    list_editable = ('is_active',)
+    search_fields = ('code', 'name')
+    list_filter = ('discount_type', 'is_active')
+
+    @admin.display(description='目前狀態')
+    def current_status(self, obj):
+        return status_badge(obj.status_label(), obj.status_label())
+
+
+@admin.register(UserCoupon)
+class UserCouponAdmin(admin.ModelAdmin):
+    list_display = ('user', 'coupon', 'status', 'current_status', 'received_at', 'used_at')
+    search_fields = ('user__username', 'coupon__code')
+    list_filter = ('status', 'received_at')
+    autocomplete_fields = ('user', 'coupon')
+
+    @admin.display(description='實際狀態')
+    def current_status(self, obj):
+        return status_badge(obj.effective_status(), obj.effective_status())
 
 
 @admin.register(CouponUsage)
@@ -144,20 +410,49 @@ class CouponUsageAdmin(admin.ModelAdmin):
     list_display = ('user', 'coupon', 'order', 'discount_amount', 'used_at')
     search_fields = ('user__username', 'coupon__code', 'order__course__title')
     list_filter = ('used_at',)
+    autocomplete_fields = ('user', 'coupon', 'order')
 
 
-@admin.register(Payment)
-class PaymentAdmin(admin.ModelAdmin):
-    list_display = ('order', 'method', 'amount', 'status', 'transaction_no', 'paid_at', 'created_at')
-    search_fields = ('order__user__username', 'transaction_no')
-    list_filter = ('method', 'status', 'created_at')
+@admin.register(Promotion)
+class PromotionAdmin(admin.ModelAdmin):
+    list_display = ('name', 'discount_type', 'discount_value', 'start_date', 'end_date', 'is_active')
+    list_editable = ('is_active',)
+    search_fields = ('name',)
+    list_filter = ('discount_type', 'is_active')
+    filter_horizontal = ('courses',)
 
 
-@admin.register(Refund)
-class RefundAdmin(admin.ModelAdmin):
-    list_display = ('order', 'user', 'amount', 'status', 'created_at', 'processed_at')
-    search_fields = ('user__username', 'order__id')
-    list_filter = ('status', 'created_at')
+# ===== 購物車 =====
+@admin.register(Cart)
+class CartAdmin(admin.ModelAdmin):
+    list_display = ('user', 'item_count', 'updated_at')
+    search_fields = ('user__username',)
+    inlines = [CartItemInline]
+
+    @admin.display(description='商品數')
+    def item_count(self, obj):
+        return obj.items.count()
+
+
+# ===== 學習 / 互動 =====
+@admin.register(LearningRecord)
+class LearningRecordAdmin(admin.ModelAdmin):
+    list_display = ('user', 'course', 'lesson', 'minutes', 'watched_at')
+    search_fields = ('user__username', 'course__title', 'lesson__title')
+    list_filter = ('course', 'watched_at')
+    autocomplete_fields = ('user', 'course', 'lesson')
+
+
+@admin.register(LessonProgress)
+class LessonProgressAdmin(admin.ModelAdmin):
+    list_display = ('user', 'lesson', 'percent_display', 'last_position', 'duration', 'is_completed', 'updated_at')
+    search_fields = ('user__username', 'lesson__title', 'course__title')
+    list_filter = ('is_completed', 'updated_at')
+    autocomplete_fields = ('user', 'course', 'lesson')
+
+    @admin.display(description='觀看進度')
+    def percent_display(self, obj):
+        return f'{obj.percent()}%'
 
 
 @admin.register(Favorite)
@@ -165,27 +460,56 @@ class FavoriteAdmin(admin.ModelAdmin):
     list_display = ('user', 'course', 'created_at')
     search_fields = ('user__username', 'course__title')
     list_filter = ('created_at',)
+    autocomplete_fields = ('user', 'course')
 
 
 @admin.register(Review)
 class ReviewAdmin(admin.ModelAdmin):
-    list_display = ('user', 'course', 'rating', 'created_at', 'updated_at')
+    list_display = ('user', 'course', 'star_display', 'short_comment', 'created_at')
     search_fields = ('user__username', 'course__title', 'comment')
     list_filter = ('rating', 'created_at')
+    autocomplete_fields = ('user', 'course')
+
+    @admin.display(description='評分')
+    def star_display(self, obj):
+        return format_html('<span style="color:#f59e0b;font-weight:700;">{}</span>', '★' * obj.rating)
+
+    @admin.display(description='評論')
+    def short_comment(self, obj):
+        if not obj.comment:
+            return '—'
+        return (obj.comment[:20] + '…') if len(obj.comment) > 20 else obj.comment
 
 
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
-    list_display = ('user', 'title', 'is_read', 'created_at')
+    list_display = ('user', 'title', 'read_badge', 'created_at')
     search_fields = ('user__username', 'title', 'content')
     list_filter = ('is_read', 'created_at')
+    autocomplete_fields = ('user',)
+    actions = ['mark_read']
+
+    @admin.display(description='狀態')
+    def read_badge(self, obj):
+        return _badge('已讀', '#475569', '#e2e8f0') if obj.is_read else _badge('未讀', '#92400e', '#fef3c7')
+
+    @admin.action(description='標記為已讀')
+    def mark_read(self, request, queryset):
+        n = queryset.update(is_read=True)
+        self.message_user(request, f'已標記 {n} 則通知為已讀。')
 
 
 @admin.register(CourseQuestion)
 class CourseQuestionAdmin(admin.ModelAdmin):
-    list_display = ('user', 'course', 'lesson', 'title', 'created_at')
-    search_fields = ('user__username', 'course__title', 'title', 'content')
+    list_display = ('title', 'course', 'user', 'answer_count', 'created_at')
+    search_fields = ('title', 'content', 'course__title', 'user__username')
     list_filter = ('course', 'created_at')
+    autocomplete_fields = ('user', 'course', 'lesson')
+    inlines = [CourseAnswerInline]
+
+    @admin.display(description='回答數')
+    def answer_count(self, obj):
+        return obj.answers.count()
 
 
 @admin.register(CourseAnswer)
@@ -193,10 +517,82 @@ class CourseAnswerAdmin(admin.ModelAdmin):
     list_display = ('question', 'user', 'created_at')
     search_fields = ('question__title', 'user__username', 'content')
     list_filter = ('created_at',)
+    autocomplete_fields = ('question', 'user')
 
 
-@admin.register(CourseAudit)
-class CourseAuditAdmin(admin.ModelAdmin):
-    list_display = ('course', 'reviewer', 'status', 'created_at', 'reviewed_at')
-    search_fields = ('course__title', 'reviewer__username', 'comment')
-    list_filter = ('status', 'created_at')
+# ===== 後台側邊選單自訂分組（課程 / 交易 / 行銷 / 會員） =====
+from django.urls import reverse as _reverse
+
+_CUSTOM_GROUPS = [
+    ('📚 課程管理', ['Course', 'CourseCategory', 'CourseChapter', 'CourseLesson', 'CourseAudit']),
+    ('🧾 交易管理', ['Order', 'OrderItem', 'Payment', 'Refund', 'Enrollment']),
+    ('💰 分潤與提領', ['CourseSplitSetting', 'RevenueRecord', 'WithdrawalRequest']),
+    ('🎯 行銷管理', ['Coupon', 'UserCoupon', 'CouponUsage', 'Promotion', 'Cart']),
+    ('👥 會員與互動', ['Profile', 'LearningRecord', 'LessonProgress', 'Favorite', 'Review', 'Notification', 'CourseQuestion', 'CourseAnswer']),
+]
+
+_ORDER_INDEX = {
+    name: (gi, mi)
+    for gi, (_, names) in enumerate(_CUSTOM_GROUPS)
+    for mi, name in enumerate(names)
+}
+
+_original_get_app_list = admin.AdminSite.get_app_list
+
+
+def _grouped_get_app_list(self, request, app_label=None):
+    # 單一 app 頁面維持預設行為
+    if app_label:
+        return _original_get_app_list(self, request, app_label)
+
+    app_dict = self._build_app_dict(request)
+    models_by_name = {}
+    for app in app_dict.values():
+        for m in app['models']:
+            models_by_name[m['object_name']] = m
+
+    main_url = _reverse('admin:app_list', kwargs={'app_label': 'main'})
+    result = []
+    used = set()
+
+    for gi, (group_name, names) in enumerate(_CUSTOM_GROUPS):
+        models = []
+        for n in names:
+            m = models_by_name.get(n)
+            if m:
+                models.append(m)
+                used.add(n)
+        # 組內依指定順序排序
+        models.sort(key=lambda md: _ORDER_INDEX.get(md['object_name'], (99, 99))[1])
+        if models:
+            result.append({
+                'name': group_name,
+                'app_label': f'group_{gi}',
+                'app_url': main_url,
+                'has_module_perms': True,
+                'models': models,
+            })
+
+    # 其餘未分組（如帳號 User/Group）
+    leftover = []
+    for app in app_dict.values():
+        for m in app['models']:
+            if m['object_name'] not in used:
+                leftover.append(m)
+    if leftover:
+        try:
+            auth_url = _reverse('admin:app_list', kwargs={'app_label': 'auth'})
+        except Exception:
+            auth_url = main_url
+        result.append({
+            'name': '⚙️ 系統與帳號',
+            'app_label': 'group_sys',
+            'app_url': auth_url,
+            'has_module_perms': True,
+            'models': leftover,
+        })
+
+    return result
+
+
+admin.AdminSite.get_app_list = _grouped_get_app_list

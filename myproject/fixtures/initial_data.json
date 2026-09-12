@@ -1,0 +1,2713 @@
+[
+{
+  "model": "auth.user",
+  "pk": 1,
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$KCU4VhduBzaUls0kwd658Y$RKavBqNbN2dBDHjvIx7iDUR9bD5VmLWFYS14fqn12vE=",
+    "last_login": null,
+    "is_superuser": true,
+    "username": "admin_demo",
+    "first_name": "",
+    "last_name": "",
+    "email": "admin@example.com",
+    "is_staff": true,
+    "is_active": true,
+    "date_joined": "2026-07-19T16:04:42.812Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "auth.user",
+  "pk": 2,
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$5tYE26XzAtjR84jGsUtj9f$kFa1o+KkqY58XKpKiNzQzKKyddtlDWA+UrCCHPdRcEA=",
+    "last_login": "2026-07-21T09:35:03.710Z",
+    "is_superuser": false,
+    "username": "teacher_python",
+    "first_name": "",
+    "last_name": "",
+    "email": "teacher_python@example.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-07-19T16:04:42.816Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "auth.user",
+  "pk": 3,
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$edrSt0zA9NGHqrsah36jMd$dkD6ad//JTsTnl8XfBUA0k3xwe+CnsnrJPUueyeQycc=",
+    "last_login": "2026-07-19T16:47:36.070Z",
+    "is_superuser": false,
+    "username": "teacher_design",
+    "first_name": "",
+    "last_name": "",
+    "email": "teacher_design@example.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-07-19T16:04:42.819Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "auth.user",
+  "pk": 4,
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$4MXOyOBL1ESJgcHasRsch2$cyb3b1BuGnpVIMvCZ/0C3AsYNwmvlmng3k1c2dRUqZM=",
+    "last_login": "2026-07-21T09:39:06.985Z",
+    "is_superuser": false,
+    "username": "student_amy",
+    "first_name": "",
+    "last_name": "",
+    "email": "amy@example.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-07-19T16:04:42.822Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "auth.user",
+  "pk": 5,
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$luZx6Breexoqy6eK6zw6tC$6yzRDR5Xcj1al+QVYl7+m3cPZ2LO9NFRzw8rSYjKW04=",
+    "last_login": "2026-07-20T14:58:04.393Z",
+    "is_superuser": false,
+    "username": "student_ben",
+    "first_name": "",
+    "last_name": "",
+    "email": "ben@example.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-07-19T16:04:42.825Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "auth.user",
+  "pk": 6,
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$jFjmFYSBHSaktql4V75BCZ$6+SrBihpKo8kdF0H4bIVWNSkW0rbhPROPRiUKLHNqnA=",
+    "last_login": "2026-07-20T14:58:35.048Z",
+    "is_superuser": false,
+    "username": "student_cindy",
+    "first_name": "",
+    "last_name": "",
+    "email": "cindy@example.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-07-19T16:04:42.827Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "auth.user",
+  "pk": 7,
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$NAjKnKUrLg8MEPQpllii2T$d1RrIwtlfvnPBpMr68w2aA5yrdEHKHLu2LbcsewIn4A=",
+    "last_login": "2026-07-20T18:29:35.525Z",
+    "is_superuser": true,
+    "username": "admin",
+    "first_name": "",
+    "last_name": "",
+    "email": "admin@local",
+    "is_staff": true,
+    "is_active": true,
+    "date_joined": "2026-07-19T16:12:05.187Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "auth.user",
+  "pk": 8,
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$K7HLVl92f5n0RxlsdzDiCp$K5vVU+JOe4/tfVWZO0p7/tMp/qpXLXkRE1tEgNb8Onw=",
+    "last_login": "2026-07-20T18:29:01.398Z",
+    "is_superuser": false,
+    "username": "justin",
+    "first_name": "",
+    "last_name": "",
+    "email": "test123@gmail.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-07-20T09:01:17.312Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "auth.user",
+  "pk": 9,
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$5NSOpxphgR4Mr6sJ4WC1R3$fWIru+K9AO8evA6ls8x4jOMfGyhf9nVcgJ1v6MNKsIw=",
+    "last_login": "2026-07-20T15:44:43.173Z",
+    "is_superuser": false,
+    "username": "max",
+    "first_name": "",
+    "last_name": "",
+    "email": "max@gmail.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-07-20T15:40:46.520Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "main.profile",
+  "pk": 1,
+  "fields": {
+    "user": 2,
+    "role": "teacher"
+  }
+},
+{
+  "model": "main.profile",
+  "pk": 2,
+  "fields": {
+    "user": 3,
+    "role": "teacher"
+  }
+},
+{
+  "model": "main.profile",
+  "pk": 3,
+  "fields": {
+    "user": 4,
+    "role": "student"
+  }
+},
+{
+  "model": "main.profile",
+  "pk": 4,
+  "fields": {
+    "user": 5,
+    "role": "student"
+  }
+},
+{
+  "model": "main.profile",
+  "pk": 5,
+  "fields": {
+    "user": 6,
+    "role": "student"
+  }
+},
+{
+  "model": "main.profile",
+  "pk": 6,
+  "fields": {
+    "user": 8,
+    "role": "student"
+  }
+},
+{
+  "model": "main.profile",
+  "pk": 7,
+  "fields": {
+    "user": 9,
+    "role": "teacher"
+  }
+},
+{
+  "model": "main.coursecategory",
+  "pk": 1,
+  "fields": {
+    "name": "程式設計",
+    "description": "Python、Django、網頁開發與資料庫相關課程",
+    "created_at": "2026-07-19T16:04:55.931Z"
+  }
+},
+{
+  "model": "main.coursecategory",
+  "pk": 2,
+  "fields": {
+    "name": "設計與行銷",
+    "description": "UI/UX、品牌設計、社群行銷與內容經營",
+    "created_at": "2026-07-19T16:04:55.933Z"
+  }
+},
+{
+  "model": "main.coursecategory",
+  "pk": 3,
+  "fields": {
+    "name": "商業管理",
+    "description": "創業、營運、資料分析與商業決策",
+    "created_at": "2026-07-19T16:04:55.935Z"
+  }
+},
+{
+  "model": "main.coursecategory",
+  "pk": 6,
+  "fields": {
+    "name": "67冠軍",
+    "description": null,
+    "created_at": "2026-07-19T17:07:14.741Z"
+  }
+},
+{
+  "model": "main.coursecategory",
+  "pk": 7,
+  "fields": {
+    "name": "語言學習",
+    "description": "",
+    "created_at": "2026-07-19T17:17:10.587Z"
+  }
+},
+{
+  "model": "main.coursecategory",
+  "pk": 8,
+  "fields": {
+    "name": "影視製作",
+    "description": "",
+    "created_at": "2026-07-19T17:17:32.769Z"
+  }
+},
+{
+  "model": "main.coursecategory",
+  "pk": 9,
+  "fields": {
+    "name": "123",
+    "description": null,
+    "created_at": "2026-07-20T16:13:27.461Z"
+  }
+},
+{
+  "model": "main.course",
+  "pk": 1,
+  "fields": {
+    "title": "Python Django 線上課程平台實作",
+    "teacher": 2,
+    "category": 1,
+    "price": 1800,
+    "description": "從 Django 基礎開始，實作會員登入、課程管理、購課流程與 MySQL 資料庫串接。",
+    "image": "",
+    "level": "intermediate",
+    "is_published": true,
+    "created_at": "2026-07-19T16:04:55.938Z"
+  }
+},
+{
+  "model": "main.course",
+  "pk": 2,
+  "fields": {
+    "title": "MySQL 資料庫設計與 ERD 實戰",
+    "teacher": 2,
+    "category": 1,
+    "price": 1500,
+    "description": "學習資料表設計、主外鍵關聯、訂單與優惠券資料庫架構，並建立完整 ERD。",
+    "image": "",
+    "level": "beginner",
+    "is_published": true,
+    "created_at": "2026-07-19T16:04:55.941Z"
+  }
+},
+{
+  "model": "main.course",
+  "pk": 3,
+  "fields": {
+    "title": "Power BI 商業數據分析入門",
+    "teacher": 3,
+    "category": 3,
+    "price": 2000,
+    "description": "使用 Power BI 分析課程平台資料，製作營收、購課、學習時數與優惠券儀表板。",
+    "image": "",
+    "level": "beginner",
+    "is_published": true,
+    "created_at": "2026-07-19T16:04:55.943Z"
+  }
+},
+{
+  "model": "main.course",
+  "pk": 4,
+  "fields": {
+    "title": "UI/UX 介面設計與平台首頁規劃",
+    "teacher": 3,
+    "category": 2,
+    "price": 1200,
+    "description": "學習網站首頁、課程卡片、使用者流程與平台視覺設計，提升系統展示完整度。",
+    "image": "",
+    "level": "beginner",
+    "is_published": true,
+    "created_at": "2026-07-19T16:04:55.946Z"
+  }
+},
+{
+  "model": "main.course",
+  "pk": 6,
+  "fields": {
+    "title": "67大賽",
+    "teacher": 2,
+    "category": 1,
+    "price": 676,
+    "description": "Six Seven!!!!!!!!!!!!!!!!",
+    "image": "",
+    "level": "advanced",
+    "is_published": true,
+    "created_at": "2026-07-19T16:50:25.328Z"
+  }
+},
+{
+  "model": "main.course",
+  "pk": 10,
+  "fields": {
+    "title": "課程分類改進",
+    "teacher": 2,
+    "category": 6,
+    "price": 1234,
+    "description": "輸的人給我跪下",
+    "image": "course_images/67-meme-angry-birds-listening.png",
+    "level": "advanced",
+    "is_published": true,
+    "created_at": "2026-07-19T17:07:14.745Z"
+  }
+},
+{
+  "model": "main.course",
+  "pk": 11,
+  "fields": {
+    "title": "67",
+    "teacher": 2,
+    "category": 8,
+    "price": 111,
+    "description": "111",
+    "image": "",
+    "level": "intermediate",
+    "is_published": true,
+    "created_at": "2026-07-20T08:17:04.216Z"
+  }
+},
+{
+  "model": "main.course",
+  "pk": 12,
+  "fields": {
+    "title": "test video",
+    "teacher": 2,
+    "category": 8,
+    "price": 2000,
+    "description": "測試影片上傳功能",
+    "image": "course_images/le-sserafim-2025-3840x2160-21951.jpg",
+    "level": "beginner",
+    "is_published": true,
+    "created_at": "2026-07-20T09:29:44.384Z"
+  }
+},
+{
+  "model": "main.course",
+  "pk": 13,
+  "fields": {
+    "title": "奶蛙吐舌頭",
+    "teacher": 2,
+    "category": 6,
+    "price": 2000,
+    "description": "123",
+    "image": "",
+    "level": "advanced",
+    "is_published": true,
+    "created_at": "2026-07-20T15:35:27.735Z"
+  }
+},
+{
+  "model": "main.course",
+  "pk": 14,
+  "fields": {
+    "title": "teach",
+    "teacher": 2,
+    "category": 9,
+    "price": 12333,
+    "description": "123",
+    "image": "",
+    "level": "advanced",
+    "is_published": true,
+    "created_at": "2026-07-20T16:13:27.463Z"
+  }
+},
+{
+  "model": "main.coursechapter",
+  "pk": 1,
+  "fields": {
+    "course": 1,
+    "title": "第一章：課程導入",
+    "description": "介紹課程目標、學習方式與基礎概念。",
+    "sort_order": 1,
+    "created_at": "2026-07-19T16:04:55.949Z"
+  }
+},
+{
+  "model": "main.coursechapter",
+  "pk": 2,
+  "fields": {
+    "course": 1,
+    "title": "第二章：核心實作",
+    "description": "進入主要功能實作與案例操作。",
+    "sort_order": 2,
+    "created_at": "2026-07-19T16:04:55.951Z"
+  }
+},
+{
+  "model": "main.coursechapter",
+  "pk": 3,
+  "fields": {
+    "course": 2,
+    "title": "第一章：課程導入",
+    "description": "介紹課程目標、學習方式與基礎概念。",
+    "sort_order": 1,
+    "created_at": "2026-07-19T16:04:55.966Z"
+  }
+},
+{
+  "model": "main.coursechapter",
+  "pk": 4,
+  "fields": {
+    "course": 2,
+    "title": "第二章：核心實作",
+    "description": "進入主要功能實作與案例操作。",
+    "sort_order": 2,
+    "created_at": "2026-07-19T16:04:55.969Z"
+  }
+},
+{
+  "model": "main.coursechapter",
+  "pk": 5,
+  "fields": {
+    "course": 3,
+    "title": "第一章：課程導入",
+    "description": "介紹課程目標、學習方式與基礎概念。",
+    "sort_order": 1,
+    "created_at": "2026-07-19T16:04:55.982Z"
+  }
+},
+{
+  "model": "main.coursechapter",
+  "pk": 6,
+  "fields": {
+    "course": 3,
+    "title": "第二章：核心實作",
+    "description": "進入主要功能實作與案例操作。",
+    "sort_order": 2,
+    "created_at": "2026-07-19T16:04:55.985Z"
+  }
+},
+{
+  "model": "main.coursechapter",
+  "pk": 7,
+  "fields": {
+    "course": 4,
+    "title": "第一章：課程導入",
+    "description": "介紹課程目標、學習方式與基礎概念。",
+    "sort_order": 1,
+    "created_at": "2026-07-19T16:04:55.998Z"
+  }
+},
+{
+  "model": "main.coursechapter",
+  "pk": 8,
+  "fields": {
+    "course": 4,
+    "title": "第二章：核心實作",
+    "description": "進入主要功能實作與案例操作。",
+    "sort_order": 2,
+    "created_at": "2026-07-19T16:04:56.000Z"
+  }
+},
+{
+  "model": "main.coursechapter",
+  "pk": 10,
+  "fields": {
+    "course": 12,
+    "title": "第一章測試",
+    "description": "",
+    "sort_order": 1,
+    "created_at": "2026-07-20T09:31:52.116Z"
+  }
+},
+{
+  "model": "main.coursechapter",
+  "pk": 11,
+  "fields": {
+    "course": 12,
+    "title": "2",
+    "description": "222",
+    "sort_order": 1,
+    "created_at": "2026-07-20T15:32:40.010Z"
+  }
+},
+{
+  "model": "main.coursechapter",
+  "pk": 12,
+  "fields": {
+    "course": 13,
+    "title": "123",
+    "description": "123",
+    "sort_order": 1,
+    "created_at": "2026-07-20T15:36:57.114Z"
+  }
+},
+{
+  "model": "main.coursechapter",
+  "pk": 13,
+  "fields": {
+    "course": 14,
+    "title": "1",
+    "description": "123",
+    "sort_order": 1,
+    "created_at": "2026-07-20T16:14:22.698Z"
+  }
+},
+{
+  "model": "main.courselesson",
+  "pk": 1,
+  "fields": {
+    "chapter": 1,
+    "title": "1-1 課程介紹與學習目標",
+    "content": "本單元說明課程內容、平台功能與學習成果。",
+    "video_url": "https://example.com/video/intro",
+    "video_file": "",
+    "duration_minutes": 15,
+    "sort_order": 1,
+    "is_free_preview": true,
+    "created_at": "2026-07-19T16:04:55.954Z"
+  }
+},
+{
+  "model": "main.courselesson",
+  "pk": 2,
+  "fields": {
+    "chapter": 1,
+    "title": "1-2 開發環境與工具介紹",
+    "content": "介紹 VS Code、MySQL、Django、Power BI 等工具。",
+    "video_url": "https://example.com/video/setup",
+    "video_file": "",
+    "duration_minutes": 20,
+    "sort_order": 2,
+    "is_free_preview": false,
+    "created_at": "2026-07-19T16:04:55.957Z"
+  }
+},
+{
+  "model": "main.courselesson",
+  "pk": 3,
+  "fields": {
+    "chapter": 2,
+    "title": "2-1 核心功能設計",
+    "content": "說明會員、課程、訂單、優惠券與學習紀錄的設計。",
+    "video_url": "https://example.com/video/core",
+    "video_file": "",
+    "duration_minutes": 35,
+    "sort_order": 1,
+    "is_free_preview": false,
+    "created_at": "2026-07-19T16:04:55.960Z"
+  }
+},
+{
+  "model": "main.courselesson",
+  "pk": 4,
+  "fields": {
+    "chapter": 2,
+    "title": "2-2 資料庫與報表分析",
+    "content": "說明 MySQL 資料表與 Power BI 報表的串接方式。",
+    "video_url": "https://example.com/video/database",
+    "video_file": "",
+    "duration_minutes": 40,
+    "sort_order": 2,
+    "is_free_preview": false,
+    "created_at": "2026-07-19T16:04:55.963Z"
+  }
+},
+{
+  "model": "main.courselesson",
+  "pk": 5,
+  "fields": {
+    "chapter": 3,
+    "title": "1-1 課程介紹與學習目標",
+    "content": "本單元說明課程內容、平台功能與學習成果。",
+    "video_url": "https://example.com/video/intro",
+    "video_file": "",
+    "duration_minutes": 15,
+    "sort_order": 1,
+    "is_free_preview": true,
+    "created_at": "2026-07-19T16:04:55.972Z"
+  }
+},
+{
+  "model": "main.courselesson",
+  "pk": 6,
+  "fields": {
+    "chapter": 3,
+    "title": "1-2 開發環境與工具介紹",
+    "content": "介紹 VS Code、MySQL、Django、Power BI 等工具。",
+    "video_url": "https://example.com/video/setup",
+    "video_file": "",
+    "duration_minutes": 20,
+    "sort_order": 2,
+    "is_free_preview": false,
+    "created_at": "2026-07-19T16:04:55.974Z"
+  }
+},
+{
+  "model": "main.courselesson",
+  "pk": 7,
+  "fields": {
+    "chapter": 4,
+    "title": "2-1 核心功能設計",
+    "content": "說明會員、課程、訂單、優惠券與學習紀錄的設計。",
+    "video_url": "https://example.com/video/core",
+    "video_file": "",
+    "duration_minutes": 35,
+    "sort_order": 1,
+    "is_free_preview": false,
+    "created_at": "2026-07-19T16:04:55.977Z"
+  }
+},
+{
+  "model": "main.courselesson",
+  "pk": 8,
+  "fields": {
+    "chapter": 4,
+    "title": "2-2 資料庫與報表分析",
+    "content": "說明 MySQL 資料表與 Power BI 報表的串接方式。",
+    "video_url": "https://example.com/video/database",
+    "video_file": "",
+    "duration_minutes": 40,
+    "sort_order": 2,
+    "is_free_preview": false,
+    "created_at": "2026-07-19T16:04:55.980Z"
+  }
+},
+{
+  "model": "main.courselesson",
+  "pk": 9,
+  "fields": {
+    "chapter": 5,
+    "title": "1-1 課程介紹與學習目標",
+    "content": "本單元說明課程內容、平台功能與學習成果。",
+    "video_url": "https://example.com/video/intro",
+    "video_file": "",
+    "duration_minutes": 15,
+    "sort_order": 1,
+    "is_free_preview": true,
+    "created_at": "2026-07-19T16:04:55.987Z"
+  }
+},
+{
+  "model": "main.courselesson",
+  "pk": 10,
+  "fields": {
+    "chapter": 5,
+    "title": "1-2 開發環境與工具介紹",
+    "content": "介紹 VS Code、MySQL、Django、Power BI 等工具。",
+    "video_url": "https://example.com/video/setup",
+    "video_file": "",
+    "duration_minutes": 20,
+    "sort_order": 2,
+    "is_free_preview": false,
+    "created_at": "2026-07-19T16:04:55.990Z"
+  }
+},
+{
+  "model": "main.courselesson",
+  "pk": 11,
+  "fields": {
+    "chapter": 6,
+    "title": "2-1 核心功能設計",
+    "content": "說明會員、課程、訂單、優惠券與學習紀錄的設計。",
+    "video_url": "https://example.com/video/core",
+    "video_file": "",
+    "duration_minutes": 35,
+    "sort_order": 1,
+    "is_free_preview": false,
+    "created_at": "2026-07-19T16:04:55.992Z"
+  }
+},
+{
+  "model": "main.courselesson",
+  "pk": 12,
+  "fields": {
+    "chapter": 6,
+    "title": "2-2 資料庫與報表分析",
+    "content": "說明 MySQL 資料表與 Power BI 報表的串接方式。",
+    "video_url": "https://example.com/video/database",
+    "video_file": "",
+    "duration_minutes": 40,
+    "sort_order": 2,
+    "is_free_preview": false,
+    "created_at": "2026-07-19T16:04:55.995Z"
+  }
+},
+{
+  "model": "main.courselesson",
+  "pk": 13,
+  "fields": {
+    "chapter": 7,
+    "title": "1-1 課程介紹與學習目標",
+    "content": "本單元說明課程內容、平台功能與學習成果。",
+    "video_url": "https://example.com/video/intro",
+    "video_file": "",
+    "duration_minutes": 15,
+    "sort_order": 1,
+    "is_free_preview": true,
+    "created_at": "2026-07-19T16:04:56.002Z"
+  }
+},
+{
+  "model": "main.courselesson",
+  "pk": 14,
+  "fields": {
+    "chapter": 7,
+    "title": "1-2 開發環境與工具介紹",
+    "content": "介紹 VS Code、MySQL、Django、Power BI 等工具。",
+    "video_url": "https://example.com/video/setup",
+    "video_file": "",
+    "duration_minutes": 20,
+    "sort_order": 2,
+    "is_free_preview": false,
+    "created_at": "2026-07-19T16:04:56.005Z"
+  }
+},
+{
+  "model": "main.courselesson",
+  "pk": 15,
+  "fields": {
+    "chapter": 8,
+    "title": "2-1 核心功能設計",
+    "content": "說明會員、課程、訂單、優惠券與學習紀錄的設計。",
+    "video_url": "https://example.com/video/core",
+    "video_file": "",
+    "duration_minutes": 35,
+    "sort_order": 1,
+    "is_free_preview": false,
+    "created_at": "2026-07-19T16:04:56.007Z"
+  }
+},
+{
+  "model": "main.courselesson",
+  "pk": 16,
+  "fields": {
+    "chapter": 8,
+    "title": "2-2 資料庫與報表分析",
+    "content": "說明 MySQL 資料表與 Power BI 報表的串接方式。",
+    "video_url": "https://example.com/video/database",
+    "video_file": "",
+    "duration_minutes": 40,
+    "sort_order": 2,
+    "is_free_preview": false,
+    "created_at": "2026-07-19T16:04:56.009Z"
+  }
+},
+{
+  "model": "main.courselesson",
+  "pk": 19,
+  "fields": {
+    "chapter": 10,
+    "title": "test",
+    "content": "",
+    "video_url": null,
+    "video_file": "course_videos/videoplayback.mp4",
+    "duration_minutes": 3,
+    "sort_order": 1,
+    "is_free_preview": true,
+    "created_at": "2026-07-20T09:32:24.155Z"
+  }
+},
+{
+  "model": "main.enrollment",
+  "pk": 1,
+  "fields": {
+    "student": 4,
+    "course": 1,
+    "purchased_at": "2026-07-19T16:04:56.055Z"
+  }
+},
+{
+  "model": "main.enrollment",
+  "pk": 2,
+  "fields": {
+    "student": 4,
+    "course": 3,
+    "purchased_at": "2026-07-19T16:04:56.065Z"
+  }
+},
+{
+  "model": "main.enrollment",
+  "pk": 4,
+  "fields": {
+    "student": 5,
+    "course": 2,
+    "purchased_at": "2026-07-19T16:04:56.087Z"
+  }
+},
+{
+  "model": "main.enrollment",
+  "pk": 5,
+  "fields": {
+    "student": 6,
+    "course": 4,
+    "purchased_at": "2026-07-19T16:04:56.101Z"
+  }
+},
+{
+  "model": "main.enrollment",
+  "pk": 6,
+  "fields": {
+    "student": 4,
+    "course": 2,
+    "purchased_at": "2026-07-19T16:22:44.228Z"
+  }
+},
+{
+  "model": "main.enrollment",
+  "pk": 7,
+  "fields": {
+    "student": 6,
+    "course": 1,
+    "purchased_at": "2026-07-19T16:47:33.687Z"
+  }
+},
+{
+  "model": "main.enrollment",
+  "pk": 8,
+  "fields": {
+    "student": 5,
+    "course": 3,
+    "purchased_at": "2026-07-19T16:47:34.489Z"
+  }
+},
+{
+  "model": "main.enrollment",
+  "pk": 9,
+  "fields": {
+    "student": 5,
+    "course": 4,
+    "purchased_at": "2026-07-19T16:47:34.501Z"
+  }
+},
+{
+  "model": "main.enrollment",
+  "pk": 11,
+  "fields": {
+    "student": 4,
+    "course": 10,
+    "purchased_at": "2026-07-19T17:14:13.277Z"
+  }
+},
+{
+  "model": "main.enrollment",
+  "pk": 13,
+  "fields": {
+    "student": 4,
+    "course": 6,
+    "purchased_at": "2026-07-20T08:19:23.272Z"
+  }
+},
+{
+  "model": "main.enrollment",
+  "pk": 14,
+  "fields": {
+    "student": 4,
+    "course": 11,
+    "purchased_at": "2026-07-20T08:37:33.788Z"
+  }
+},
+{
+  "model": "main.enrollment",
+  "pk": 15,
+  "fields": {
+    "student": 8,
+    "course": 1,
+    "purchased_at": "2026-07-20T09:02:05.629Z"
+  }
+},
+{
+  "model": "main.enrollment",
+  "pk": 16,
+  "fields": {
+    "student": 8,
+    "course": 12,
+    "purchased_at": "2026-07-20T09:34:52.547Z"
+  }
+},
+{
+  "model": "main.learningrecord",
+  "pk": 3,
+  "fields": {
+    "user": 4,
+    "course": 3,
+    "lesson": 9,
+    "minutes": 15,
+    "watched_at": "2026-07-19T16:04:56.115Z"
+  }
+},
+{
+  "model": "main.learningrecord",
+  "pk": 4,
+  "fields": {
+    "user": 4,
+    "course": 3,
+    "lesson": 10,
+    "minutes": 20,
+    "watched_at": "2026-07-19T16:04:56.117Z"
+  }
+},
+{
+  "model": "main.learningrecord",
+  "pk": 7,
+  "fields": {
+    "user": 5,
+    "course": 2,
+    "lesson": 5,
+    "minutes": 15,
+    "watched_at": "2026-07-19T16:04:56.130Z"
+  }
+},
+{
+  "model": "main.learningrecord",
+  "pk": 8,
+  "fields": {
+    "user": 5,
+    "course": 2,
+    "lesson": 6,
+    "minutes": 20,
+    "watched_at": "2026-07-19T16:04:56.133Z"
+  }
+},
+{
+  "model": "main.learningrecord",
+  "pk": 9,
+  "fields": {
+    "user": 6,
+    "course": 4,
+    "lesson": 13,
+    "minutes": 15,
+    "watched_at": "2026-07-19T16:04:56.140Z"
+  }
+},
+{
+  "model": "main.learningrecord",
+  "pk": 10,
+  "fields": {
+    "user": 6,
+    "course": 4,
+    "lesson": 14,
+    "minutes": 20,
+    "watched_at": "2026-07-19T16:04:56.142Z"
+  }
+},
+{
+  "model": "main.learningrecord",
+  "pk": 11,
+  "fields": {
+    "user": 6,
+    "course": 1,
+    "lesson": null,
+    "minutes": 30,
+    "watched_at": "2026-07-19T16:47:36.106Z"
+  }
+},
+{
+  "model": "main.learningrecord",
+  "pk": 23,
+  "fields": {
+    "user": 8,
+    "course": 12,
+    "lesson": 19,
+    "minutes": 3,
+    "watched_at": "2026-07-20T15:05:36.121Z"
+  }
+},
+{
+  "model": "main.coupon",
+  "pk": 1,
+  "fields": {
+    "code": "NEW100",
+    "name": "新會員折扣",
+    "discount_type": "amount",
+    "discount_value": 100,
+    "min_spend": 500,
+    "start_date": "2026-07-18T16:04:56.011Z",
+    "end_date": "2026-09-17T16:04:56.011Z",
+    "usage_limit": 0,
+    "is_active": true,
+    "created_at": "2026-07-19T16:04:56.013Z"
+  }
+},
+{
+  "model": "main.coupon",
+  "pk": 2,
+  "fields": {
+    "code": "SALE20",
+    "name": "限時八折優惠",
+    "discount_type": "percent",
+    "discount_value": 20,
+    "min_spend": 1000,
+    "start_date": "2026-07-18T16:04:56.011Z",
+    "end_date": "2026-08-18T16:04:56.011Z",
+    "usage_limit": 100,
+    "is_active": true,
+    "created_at": "2026-07-19T16:04:56.015Z"
+  }
+},
+{
+  "model": "main.coupon",
+  "pk": 3,
+  "fields": {
+    "code": "test123",
+    "name": "test",
+    "discount_type": "percent",
+    "discount_value": 50,
+    "min_spend": 2000,
+    "start_date": "2026-07-20T09:37:00Z",
+    "end_date": "2027-07-20T04:00:00Z",
+    "usage_limit": 2,
+    "is_active": true,
+    "created_at": "2026-07-20T09:38:54.269Z"
+  }
+},
+{
+  "model": "main.usercoupon",
+  "pk": 1,
+  "fields": {
+    "user": 4,
+    "coupon": 1,
+    "status": "unused",
+    "received_at": "2026-07-19T16:04:56.025Z",
+    "used_at": null
+  }
+},
+{
+  "model": "main.usercoupon",
+  "pk": 2,
+  "fields": {
+    "user": 5,
+    "coupon": 1,
+    "status": "unused",
+    "received_at": "2026-07-19T16:04:56.027Z",
+    "used_at": null
+  }
+},
+{
+  "model": "main.usercoupon",
+  "pk": 3,
+  "fields": {
+    "user": 6,
+    "coupon": 1,
+    "status": "unused",
+    "received_at": "2026-07-19T16:04:56.030Z",
+    "used_at": null
+  }
+},
+{
+  "model": "main.usercoupon",
+  "pk": 4,
+  "fields": {
+    "user": 4,
+    "coupon": 2,
+    "status": "unused",
+    "received_at": "2026-07-19T16:26:13.625Z",
+    "used_at": null
+  }
+},
+{
+  "model": "main.usercoupon",
+  "pk": 5,
+  "fields": {
+    "user": 8,
+    "coupon": 2,
+    "status": "unused",
+    "received_at": "2026-07-20T09:01:45.344Z",
+    "used_at": null
+  }
+},
+{
+  "model": "main.usercoupon",
+  "pk": 6,
+  "fields": {
+    "user": 8,
+    "coupon": 1,
+    "status": "unused",
+    "received_at": "2026-07-20T09:01:47.515Z",
+    "used_at": null
+  }
+},
+{
+  "model": "main.usercoupon",
+  "pk": 8,
+  "fields": {
+    "user": 8,
+    "coupon": 3,
+    "status": "unused",
+    "received_at": "2026-07-20T15:08:22.662Z",
+    "used_at": null
+  }
+},
+{
+  "model": "main.usercoupon",
+  "pk": 9,
+  "fields": {
+    "user": 2,
+    "coupon": 3,
+    "status": "unused",
+    "received_at": "2026-07-20T15:48:42.074Z",
+    "used_at": null
+  }
+},
+{
+  "model": "main.promotion",
+  "pk": 1,
+  "fields": {
+    "name": "期末專題優惠活動",
+    "description": "為專題展示建立的測試促銷活動。",
+    "discount_type": "percent",
+    "discount_value": 15,
+    "start_date": "2026-07-18T16:04:56.011Z",
+    "end_date": "2026-08-18T16:04:56.011Z",
+    "is_active": true,
+    "created_at": "2026-07-19T16:04:56.019Z",
+    "courses": [
+      1,
+      2,
+      3,
+      4
+    ]
+  }
+},
+{
+  "model": "main.cart",
+  "pk": 1,
+  "fields": {
+    "user": 4,
+    "created_at": "2026-07-19T16:04:56.032Z",
+    "updated_at": "2026-07-19T16:04:56.032Z"
+  }
+},
+{
+  "model": "main.cart",
+  "pk": 2,
+  "fields": {
+    "user": 5,
+    "created_at": "2026-07-19T16:04:56.037Z",
+    "updated_at": "2026-07-19T16:04:56.037Z"
+  }
+},
+{
+  "model": "main.cart",
+  "pk": 3,
+  "fields": {
+    "user": 6,
+    "created_at": "2026-07-20T14:28:59.395Z",
+    "updated_at": "2026-07-20T14:28:59.395Z"
+  }
+},
+{
+  "model": "main.cart",
+  "pk": 4,
+  "fields": {
+    "user": 8,
+    "created_at": "2026-07-20T15:00:17.332Z",
+    "updated_at": "2026-07-20T15:00:17.332Z"
+  }
+},
+{
+  "model": "main.cart",
+  "pk": 5,
+  "fields": {
+    "user": 2,
+    "created_at": "2026-07-20T15:48:37.784Z",
+    "updated_at": "2026-07-20T15:48:37.784Z"
+  }
+},
+{
+  "model": "main.order",
+  "pk": 1,
+  "fields": {
+    "user": 4,
+    "course": 1,
+    "coupon": 1,
+    "original_price": 1800,
+    "discount_amount": 100,
+    "final_price": 1700,
+    "status": "paid",
+    "created_at": "2026-07-19T16:04:56.043Z"
+  }
+},
+{
+  "model": "main.order",
+  "pk": 2,
+  "fields": {
+    "user": 4,
+    "course": 3,
+    "coupon": null,
+    "original_price": 2000,
+    "discount_amount": 0,
+    "final_price": 2000,
+    "status": "paid",
+    "created_at": "2026-07-19T16:04:56.057Z"
+  }
+},
+{
+  "model": "main.order",
+  "pk": 3,
+  "fields": {
+    "user": 5,
+    "course": 1,
+    "coupon": 2,
+    "original_price": 1800,
+    "discount_amount": 360,
+    "final_price": 1440,
+    "status": "paid",
+    "created_at": "2026-07-19T16:04:56.067Z"
+  }
+},
+{
+  "model": "main.order",
+  "pk": 4,
+  "fields": {
+    "user": 5,
+    "course": 2,
+    "coupon": null,
+    "original_price": 1500,
+    "discount_amount": 0,
+    "final_price": 1500,
+    "status": "paid",
+    "created_at": "2026-07-19T16:04:56.079Z"
+  }
+},
+{
+  "model": "main.order",
+  "pk": 5,
+  "fields": {
+    "user": 6,
+    "course": 4,
+    "coupon": 1,
+    "original_price": 1200,
+    "discount_amount": 100,
+    "final_price": 1100,
+    "status": "refunded",
+    "created_at": "2026-07-19T16:04:56.090Z"
+  }
+},
+{
+  "model": "main.order",
+  "pk": 6,
+  "fields": {
+    "user": 4,
+    "course": 2,
+    "coupon": null,
+    "original_price": 1500,
+    "discount_amount": 0,
+    "final_price": 1500,
+    "status": "paid",
+    "created_at": "2026-07-19T16:22:44.221Z"
+  }
+},
+{
+  "model": "main.order",
+  "pk": 7,
+  "fields": {
+    "user": 6,
+    "course": 1,
+    "coupon": 1,
+    "original_price": 1800,
+    "discount_amount": 100,
+    "final_price": 1700,
+    "status": "paid",
+    "created_at": "2026-07-19T16:47:33.680Z"
+  }
+},
+{
+  "model": "main.order",
+  "pk": 8,
+  "fields": {
+    "user": 5,
+    "course": 3,
+    "coupon": 1,
+    "original_price": 2000,
+    "discount_amount": 400,
+    "final_price": 1600,
+    "status": "paid",
+    "created_at": "2026-07-19T16:47:34.484Z"
+  }
+},
+{
+  "model": "main.order",
+  "pk": 9,
+  "fields": {
+    "user": 5,
+    "course": 4,
+    "coupon": null,
+    "original_price": 1200,
+    "discount_amount": 180,
+    "final_price": 1020,
+    "status": "paid",
+    "created_at": "2026-07-19T16:47:34.495Z"
+  }
+},
+{
+  "model": "main.order",
+  "pk": 11,
+  "fields": {
+    "user": 4,
+    "course": 10,
+    "coupon": 2,
+    "original_price": 1234,
+    "discount_amount": 246,
+    "final_price": 988,
+    "status": "paid",
+    "created_at": "2026-07-19T17:14:13.270Z"
+  }
+},
+{
+  "model": "main.order",
+  "pk": 13,
+  "fields": {
+    "user": 4,
+    "course": 6,
+    "coupon": 1,
+    "original_price": 676,
+    "discount_amount": 100,
+    "final_price": 576,
+    "status": "paid",
+    "created_at": "2026-07-20T08:19:23.266Z"
+  }
+},
+{
+  "model": "main.order",
+  "pk": 14,
+  "fields": {
+    "user": 4,
+    "course": 11,
+    "coupon": null,
+    "original_price": 111,
+    "discount_amount": 0,
+    "final_price": 111,
+    "status": "paid",
+    "created_at": "2026-07-20T08:37:33.781Z"
+  }
+},
+{
+  "model": "main.order",
+  "pk": 15,
+  "fields": {
+    "user": 8,
+    "course": 1,
+    "coupon": 2,
+    "original_price": 1800,
+    "discount_amount": 360,
+    "final_price": 1440,
+    "status": "paid",
+    "created_at": "2026-07-20T09:02:05.612Z"
+  }
+},
+{
+  "model": "main.order",
+  "pk": 16,
+  "fields": {
+    "user": 8,
+    "course": 12,
+    "coupon": 1,
+    "original_price": 2000,
+    "discount_amount": 100,
+    "final_price": 1900,
+    "status": "paid",
+    "created_at": "2026-07-20T09:34:52.541Z"
+  }
+},
+{
+  "model": "main.order",
+  "pk": 24,
+  "fields": {
+    "user": 8,
+    "course": 10,
+    "coupon": 2,
+    "original_price": 1234,
+    "discount_amount": 246,
+    "final_price": 988,
+    "status": "pending",
+    "created_at": "2026-07-20T15:07:07.666Z"
+  }
+},
+{
+  "model": "main.order",
+  "pk": 25,
+  "fields": {
+    "user": 8,
+    "course": null,
+    "coupon": null,
+    "original_price": 1234,
+    "discount_amount": 0,
+    "final_price": 1234,
+    "status": "pending",
+    "created_at": "2026-07-20T15:08:32.954Z"
+  }
+},
+{
+  "model": "main.order",
+  "pk": 26,
+  "fields": {
+    "user": 8,
+    "course": 10,
+    "coupon": null,
+    "original_price": 1234,
+    "discount_amount": 0,
+    "final_price": 1234,
+    "status": "pending",
+    "created_at": "2026-07-20T15:31:12.390Z"
+  }
+},
+{
+  "model": "main.order",
+  "pk": 27,
+  "fields": {
+    "user": 8,
+    "course": 10,
+    "coupon": 2,
+    "original_price": 1234,
+    "discount_amount": 246,
+    "final_price": 988,
+    "status": "pending",
+    "created_at": "2026-07-20T16:07:41.226Z"
+  }
+},
+{
+  "model": "main.order",
+  "pk": 28,
+  "fields": {
+    "user": 2,
+    "course": 10,
+    "coupon": null,
+    "original_price": 1234,
+    "discount_amount": 0,
+    "final_price": 1234,
+    "status": "pending",
+    "created_at": "2026-07-20T16:15:57.941Z"
+  }
+},
+{
+  "model": "main.orderitem",
+  "pk": 1,
+  "fields": {
+    "order": 1,
+    "course": 1,
+    "price": 1800
+  }
+},
+{
+  "model": "main.orderitem",
+  "pk": 2,
+  "fields": {
+    "order": 2,
+    "course": 3,
+    "price": 2000
+  }
+},
+{
+  "model": "main.orderitem",
+  "pk": 3,
+  "fields": {
+    "order": 3,
+    "course": 1,
+    "price": 1800
+  }
+},
+{
+  "model": "main.orderitem",
+  "pk": 4,
+  "fields": {
+    "order": 4,
+    "course": 2,
+    "price": 1500
+  }
+},
+{
+  "model": "main.orderitem",
+  "pk": 5,
+  "fields": {
+    "order": 5,
+    "course": 4,
+    "price": 1200
+  }
+},
+{
+  "model": "main.orderitem",
+  "pk": 6,
+  "fields": {
+    "order": 6,
+    "course": 2,
+    "price": 1500
+  }
+},
+{
+  "model": "main.orderitem",
+  "pk": 7,
+  "fields": {
+    "order": 7,
+    "course": 1,
+    "price": 1800
+  }
+},
+{
+  "model": "main.orderitem",
+  "pk": 8,
+  "fields": {
+    "order": 8,
+    "course": 3,
+    "price": 2000
+  }
+},
+{
+  "model": "main.orderitem",
+  "pk": 9,
+  "fields": {
+    "order": 9,
+    "course": 4,
+    "price": 1200
+  }
+},
+{
+  "model": "main.orderitem",
+  "pk": 11,
+  "fields": {
+    "order": 11,
+    "course": 10,
+    "price": 1234
+  }
+},
+{
+  "model": "main.orderitem",
+  "pk": 13,
+  "fields": {
+    "order": 13,
+    "course": 6,
+    "price": 676
+  }
+},
+{
+  "model": "main.orderitem",
+  "pk": 14,
+  "fields": {
+    "order": 14,
+    "course": 11,
+    "price": 111
+  }
+},
+{
+  "model": "main.orderitem",
+  "pk": 15,
+  "fields": {
+    "order": 15,
+    "course": 1,
+    "price": 1800
+  }
+},
+{
+  "model": "main.orderitem",
+  "pk": 16,
+  "fields": {
+    "order": 16,
+    "course": 12,
+    "price": 2000
+  }
+},
+{
+  "model": "main.orderitem",
+  "pk": 25,
+  "fields": {
+    "order": 24,
+    "course": 10,
+    "price": 1234
+  }
+},
+{
+  "model": "main.orderitem",
+  "pk": 26,
+  "fields": {
+    "order": 25,
+    "course": 10,
+    "price": 1234
+  }
+},
+{
+  "model": "main.orderitem",
+  "pk": 27,
+  "fields": {
+    "order": 26,
+    "course": 10,
+    "price": 1234
+  }
+},
+{
+  "model": "main.orderitem",
+  "pk": 28,
+  "fields": {
+    "order": 27,
+    "course": 10,
+    "price": 1234
+  }
+},
+{
+  "model": "main.orderitem",
+  "pk": 29,
+  "fields": {
+    "order": 28,
+    "course": 10,
+    "price": 1234
+  }
+},
+{
+  "model": "main.couponusage",
+  "pk": 1,
+  "fields": {
+    "user": 4,
+    "coupon": 1,
+    "order": 1,
+    "discount_amount": 100,
+    "used_at": "2026-07-19T16:04:56.052Z"
+  }
+},
+{
+  "model": "main.couponusage",
+  "pk": 2,
+  "fields": {
+    "user": 5,
+    "coupon": 2,
+    "order": 3,
+    "discount_amount": 360,
+    "used_at": "2026-07-19T16:04:56.074Z"
+  }
+},
+{
+  "model": "main.couponusage",
+  "pk": 3,
+  "fields": {
+    "user": 6,
+    "coupon": 1,
+    "order": 5,
+    "discount_amount": 100,
+    "used_at": "2026-07-19T16:04:56.098Z"
+  }
+},
+{
+  "model": "main.couponusage",
+  "pk": 4,
+  "fields": {
+    "user": 6,
+    "coupon": 1,
+    "order": 7,
+    "discount_amount": 100,
+    "used_at": "2026-07-19T16:47:33.690Z"
+  }
+},
+{
+  "model": "main.couponusage",
+  "pk": 5,
+  "fields": {
+    "user": 5,
+    "coupon": 1,
+    "order": 8,
+    "discount_amount": 100,
+    "used_at": "2026-07-19T16:47:34.493Z"
+  }
+},
+{
+  "model": "main.couponusage",
+  "pk": 7,
+  "fields": {
+    "user": 4,
+    "coupon": 2,
+    "order": 11,
+    "discount_amount": 246,
+    "used_at": "2026-07-19T17:14:13.278Z"
+  }
+},
+{
+  "model": "main.couponusage",
+  "pk": 9,
+  "fields": {
+    "user": 4,
+    "coupon": 1,
+    "order": 13,
+    "discount_amount": 100,
+    "used_at": "2026-07-20T08:19:23.274Z"
+  }
+},
+{
+  "model": "main.couponusage",
+  "pk": 10,
+  "fields": {
+    "user": 8,
+    "coupon": 2,
+    "order": 15,
+    "discount_amount": 360,
+    "used_at": "2026-07-20T09:02:05.635Z"
+  }
+},
+{
+  "model": "main.couponusage",
+  "pk": 11,
+  "fields": {
+    "user": 8,
+    "coupon": 1,
+    "order": 16,
+    "discount_amount": 100,
+    "used_at": "2026-07-20T09:34:52.549Z"
+  }
+},
+{
+  "model": "main.payment",
+  "pk": 1,
+  "fields": {
+    "order": 1,
+    "method": "mock",
+    "amount": 1700,
+    "status": "paid",
+    "transaction_no": "MOCK-00001",
+    "virtual_account": null,
+    "payment_code": null,
+    "expire_at": null,
+    "paid_at": "2026-07-19T16:04:56.011Z",
+    "created_at": "2026-07-19T16:04:56.048Z"
+  }
+},
+{
+  "model": "main.payment",
+  "pk": 2,
+  "fields": {
+    "order": 2,
+    "method": "mock",
+    "amount": 2000,
+    "status": "paid",
+    "transaction_no": "MOCK-00002",
+    "virtual_account": null,
+    "payment_code": null,
+    "expire_at": null,
+    "paid_at": "2026-07-19T16:04:56.011Z",
+    "created_at": "2026-07-19T16:04:56.062Z"
+  }
+},
+{
+  "model": "main.payment",
+  "pk": 3,
+  "fields": {
+    "order": 3,
+    "method": "mock",
+    "amount": 1440,
+    "status": "paid",
+    "transaction_no": "MOCK-00003",
+    "virtual_account": null,
+    "payment_code": null,
+    "expire_at": null,
+    "paid_at": "2026-07-19T16:04:56.011Z",
+    "created_at": "2026-07-19T16:04:56.072Z"
+  }
+},
+{
+  "model": "main.payment",
+  "pk": 4,
+  "fields": {
+    "order": 4,
+    "method": "mock",
+    "amount": 1500,
+    "status": "paid",
+    "transaction_no": "MOCK-00004",
+    "virtual_account": null,
+    "payment_code": null,
+    "expire_at": null,
+    "paid_at": "2026-07-19T16:04:56.011Z",
+    "created_at": "2026-07-19T16:04:56.084Z"
+  }
+},
+{
+  "model": "main.payment",
+  "pk": 5,
+  "fields": {
+    "order": 5,
+    "method": "mock",
+    "amount": 1100,
+    "status": "paid",
+    "transaction_no": "MOCK-00005",
+    "virtual_account": null,
+    "payment_code": null,
+    "expire_at": null,
+    "paid_at": "2026-07-19T16:04:56.011Z",
+    "created_at": "2026-07-19T16:04:56.096Z"
+  }
+},
+{
+  "model": "main.payment",
+  "pk": 6,
+  "fields": {
+    "order": 6,
+    "method": "mock",
+    "amount": 1500,
+    "status": "paid",
+    "transaction_no": "MOCK-00006",
+    "virtual_account": null,
+    "payment_code": null,
+    "expire_at": null,
+    "paid_at": "2026-07-19T16:22:44.221Z",
+    "created_at": "2026-07-19T16:22:44.225Z"
+  }
+},
+{
+  "model": "main.payment",
+  "pk": 7,
+  "fields": {
+    "order": 7,
+    "method": "mock",
+    "amount": 1700,
+    "status": "paid",
+    "transaction_no": "MOCK-00007",
+    "virtual_account": null,
+    "payment_code": null,
+    "expire_at": null,
+    "paid_at": "2026-07-19T16:47:33.680Z",
+    "created_at": "2026-07-19T16:47:33.684Z"
+  }
+},
+{
+  "model": "main.payment",
+  "pk": 8,
+  "fields": {
+    "order": 8,
+    "method": "mock",
+    "amount": 1600,
+    "status": "paid",
+    "transaction_no": "MOCK-00008",
+    "virtual_account": null,
+    "payment_code": null,
+    "expire_at": null,
+    "paid_at": "2026-07-19T16:47:34.484Z",
+    "created_at": "2026-07-19T16:47:34.487Z"
+  }
+},
+{
+  "model": "main.payment",
+  "pk": 9,
+  "fields": {
+    "order": 9,
+    "method": "mock",
+    "amount": 1020,
+    "status": "paid",
+    "transaction_no": "MOCK-00009",
+    "virtual_account": null,
+    "payment_code": null,
+    "expire_at": null,
+    "paid_at": "2026-07-19T16:47:34.495Z",
+    "created_at": "2026-07-19T16:47:34.499Z"
+  }
+},
+{
+  "model": "main.payment",
+  "pk": 11,
+  "fields": {
+    "order": 11,
+    "method": "mock",
+    "amount": 988,
+    "status": "paid",
+    "transaction_no": "MOCK-00011",
+    "virtual_account": null,
+    "payment_code": null,
+    "expire_at": null,
+    "paid_at": "2026-07-19T17:14:13.270Z",
+    "created_at": "2026-07-19T17:14:13.274Z"
+  }
+},
+{
+  "model": "main.payment",
+  "pk": 13,
+  "fields": {
+    "order": 13,
+    "method": "mock",
+    "amount": 576,
+    "status": "paid",
+    "transaction_no": "MOCK-00013",
+    "virtual_account": null,
+    "payment_code": null,
+    "expire_at": null,
+    "paid_at": "2026-07-20T08:19:23.266Z",
+    "created_at": "2026-07-20T08:19:23.270Z"
+  }
+},
+{
+  "model": "main.payment",
+  "pk": 14,
+  "fields": {
+    "order": 14,
+    "method": "mock",
+    "amount": 111,
+    "status": "paid",
+    "transaction_no": "MOCK-00014",
+    "virtual_account": null,
+    "payment_code": null,
+    "expire_at": null,
+    "paid_at": "2026-07-20T08:37:33.781Z",
+    "created_at": "2026-07-20T08:37:33.785Z"
+  }
+},
+{
+  "model": "main.payment",
+  "pk": 15,
+  "fields": {
+    "order": 15,
+    "method": "mock",
+    "amount": 1440,
+    "status": "paid",
+    "transaction_no": "MOCK-00015",
+    "virtual_account": null,
+    "payment_code": null,
+    "expire_at": null,
+    "paid_at": "2026-07-20T09:02:05.612Z",
+    "created_at": "2026-07-20T09:02:05.623Z"
+  }
+},
+{
+  "model": "main.payment",
+  "pk": 16,
+  "fields": {
+    "order": 16,
+    "method": "mock",
+    "amount": 1900,
+    "status": "paid",
+    "transaction_no": "MOCK-00016",
+    "virtual_account": null,
+    "payment_code": null,
+    "expire_at": null,
+    "paid_at": "2026-07-20T09:34:52.541Z",
+    "created_at": "2026-07-20T09:34:52.544Z"
+  }
+},
+{
+  "model": "main.payment",
+  "pk": 24,
+  "fields": {
+    "order": 24,
+    "method": "mock",
+    "amount": 988,
+    "status": "pending",
+    "transaction_no": null,
+    "virtual_account": null,
+    "payment_code": null,
+    "expire_at": null,
+    "paid_at": null,
+    "created_at": "2026-07-20T15:07:07.670Z"
+  }
+},
+{
+  "model": "main.payment",
+  "pk": 25,
+  "fields": {
+    "order": 25,
+    "method": "mock",
+    "amount": 1234,
+    "status": "pending",
+    "transaction_no": null,
+    "virtual_account": null,
+    "payment_code": null,
+    "expire_at": null,
+    "paid_at": null,
+    "created_at": "2026-07-20T15:08:32.957Z"
+  }
+},
+{
+  "model": "main.payment",
+  "pk": 26,
+  "fields": {
+    "order": 26,
+    "method": "mock",
+    "amount": 1234,
+    "status": "pending",
+    "transaction_no": null,
+    "virtual_account": null,
+    "payment_code": null,
+    "expire_at": null,
+    "paid_at": null,
+    "created_at": "2026-07-20T15:31:12.394Z"
+  }
+},
+{
+  "model": "main.payment",
+  "pk": 27,
+  "fields": {
+    "order": 27,
+    "method": "mock",
+    "amount": 988,
+    "status": "pending",
+    "transaction_no": null,
+    "virtual_account": null,
+    "payment_code": null,
+    "expire_at": null,
+    "paid_at": null,
+    "created_at": "2026-07-20T16:07:41.230Z"
+  }
+},
+{
+  "model": "main.payment",
+  "pk": 28,
+  "fields": {
+    "order": 28,
+    "method": "mock",
+    "amount": 1234,
+    "status": "pending",
+    "transaction_no": null,
+    "virtual_account": null,
+    "payment_code": null,
+    "expire_at": null,
+    "paid_at": null,
+    "created_at": "2026-07-20T16:15:57.944Z"
+  }
+},
+{
+  "model": "main.refund",
+  "pk": 1,
+  "fields": {
+    "order": 1,
+    "user": 4,
+    "amount": 1700,
+    "reason": "測試退款",
+    "status": "pending",
+    "created_at": "2026-07-19T16:22:44.213Z",
+    "processed_at": null
+  }
+},
+{
+  "model": "main.refund",
+  "pk": 2,
+  "fields": {
+    "order": 5,
+    "user": 6,
+    "amount": 1100,
+    "reason": "測試",
+    "status": "approved",
+    "created_at": "2026-07-19T16:47:35.300Z",
+    "processed_at": "2026-07-19T16:47:36.085Z"
+  }
+},
+{
+  "model": "main.favorite",
+  "pk": 2,
+  "fields": {
+    "user": 5,
+    "course": 3,
+    "created_at": "2026-07-19T16:04:56.147Z"
+  }
+},
+{
+  "model": "main.favorite",
+  "pk": 3,
+  "fields": {
+    "user": 6,
+    "course": 1,
+    "created_at": "2026-07-19T16:04:56.150Z"
+  }
+},
+{
+  "model": "main.favorite",
+  "pk": 4,
+  "fields": {
+    "user": 4,
+    "course": 2,
+    "created_at": "2026-07-19T16:22:44.202Z"
+  }
+},
+{
+  "model": "main.favorite",
+  "pk": 5,
+  "fields": {
+    "user": 2,
+    "course": 10,
+    "created_at": "2026-07-20T16:15:51.245Z"
+  }
+},
+{
+  "model": "main.review",
+  "pk": 1,
+  "fields": {
+    "user": 4,
+    "course": 1,
+    "rating": 5,
+    "comment": "課程內容完整，對專題實作很有幫助。",
+    "created_at": "2026-07-19T16:04:56.153Z",
+    "updated_at": "2026-07-19T16:04:56.153Z"
+  }
+},
+{
+  "model": "main.review",
+  "pk": 2,
+  "fields": {
+    "user": 5,
+    "course": 1,
+    "rating": 4,
+    "comment": "可以快速了解 Django 和資料庫串接。",
+    "created_at": "2026-07-19T16:04:56.155Z",
+    "updated_at": "2026-07-19T16:04:56.155Z"
+  }
+},
+{
+  "model": "main.review",
+  "pk": 3,
+  "fields": {
+    "user": 6,
+    "course": 4,
+    "rating": 5,
+    "comment": "首頁設計和使用者流程講得很清楚。",
+    "created_at": "2026-07-19T16:04:56.157Z",
+    "updated_at": "2026-07-19T16:04:56.157Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 1,
+  "fields": {
+    "user": 4,
+    "title": "歡迎加入 Course Platform",
+    "content": "你已成功註冊平台，可以開始瀏覽與購買課程。",
+    "is_read": false,
+    "created_at": "2026-07-19T16:04:56.160Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 2,
+  "fields": {
+    "user": 5,
+    "title": "歡迎加入 Course Platform",
+    "content": "你已成功註冊平台，可以開始瀏覽與購買課程。",
+    "is_read": false,
+    "created_at": "2026-07-19T16:04:56.162Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 3,
+  "fields": {
+    "user": 6,
+    "title": "歡迎加入 Course Platform",
+    "content": "你已成功註冊平台，可以開始瀏覽與購買課程。",
+    "is_read": true,
+    "created_at": "2026-07-19T16:04:56.165Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 4,
+  "fields": {
+    "user": 4,
+    "title": "退款申請已送出",
+    "content": "訂單 #1 的退款申請已送出，等待審核。",
+    "is_read": false,
+    "created_at": "2026-07-19T16:22:44.215Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 5,
+  "fields": {
+    "user": 4,
+    "title": "購買成功通知",
+    "content": "你已成功購買「MySQL 資料庫設計與 ERD 實戰」，實付金額 NT$ 1500。",
+    "is_read": false,
+    "created_at": "2026-07-19T16:22:44.231Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 6,
+  "fields": {
+    "user": 2,
+    "title": "課程已送審",
+    "content": "你的課程「測試課程AA」已送出審核，通過後才會上架。",
+    "is_read": false,
+    "created_at": "2026-07-19T16:47:31.978Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 7,
+  "fields": {
+    "user": 2,
+    "title": "課程審核通過",
+    "content": "你的課程「測試課程AA」已通過審核並上架。",
+    "is_read": false,
+    "created_at": "2026-07-19T16:47:32.901Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 8,
+  "fields": {
+    "user": 6,
+    "title": "購買成功通知",
+    "content": "你已成功購買「Python Django 線上課程平台實作」，實付金額 NT$ 1700。",
+    "is_read": true,
+    "created_at": "2026-07-19T16:47:33.694Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 9,
+  "fields": {
+    "user": 5,
+    "title": "購買成功通知",
+    "content": "你已成功購買「Power BI 商業數據分析入門」，實付金額 NT$ 1600。",
+    "is_read": false,
+    "created_at": "2026-07-19T16:47:34.491Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 10,
+  "fields": {
+    "user": 5,
+    "title": "購買成功通知",
+    "content": "你已成功購買「UI/UX 介面設計與平台首頁規劃」，實付金額 NT$ 1020。",
+    "is_read": false,
+    "created_at": "2026-07-19T16:47:34.502Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 11,
+  "fields": {
+    "user": 3,
+    "title": "課程有新提問",
+    "content": "課程「UI/UX 介面設計與平台首頁規劃」收到新的問題：問題A",
+    "is_read": false,
+    "created_at": "2026-07-19T16:47:34.517Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 12,
+  "fields": {
+    "user": 6,
+    "title": "你的提問已被回覆",
+    "content": "課程「UI/UX 介面設計與平台首頁規劃」中你的問題「問題A」已有回答。",
+    "is_read": true,
+    "created_at": "2026-07-19T16:47:35.291Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 13,
+  "fields": {
+    "user": 6,
+    "title": "退款申請已送出",
+    "content": "訂單 #5 的退款申請已送出，等待審核。",
+    "is_read": true,
+    "created_at": "2026-07-19T16:47:35.301Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 14,
+  "fields": {
+    "user": 6,
+    "title": "退款已通過",
+    "content": "訂單 #5 的退款申請已通過，將退還 NT$ 1100。",
+    "is_read": true,
+    "created_at": "2026-07-19T16:47:36.089Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 15,
+  "fields": {
+    "user": 2,
+    "title": "課程已送審",
+    "content": "你的課程「67大賽」已送出審核，通過後才會上架。",
+    "is_read": false,
+    "created_at": "2026-07-19T16:50:25.332Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 16,
+  "fields": {
+    "user": 2,
+    "title": "課程已送審",
+    "content": "你的課程「自訂分類測試課」已送出審核，通過後才會上架。",
+    "is_read": false,
+    "created_at": "2026-07-19T17:02:01.297Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 17,
+  "fields": {
+    "user": 2,
+    "title": "課程已送審",
+    "content": "你的課程「整合測試A」已送出審核，通過後才會上架。",
+    "is_read": false,
+    "created_at": "2026-07-19T17:04:34.220Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 18,
+  "fields": {
+    "user": 2,
+    "title": "課程已送審",
+    "content": "你的課程「整合測試B」已送出審核，通過後才會上架。",
+    "is_read": false,
+    "created_at": "2026-07-19T17:04:34.234Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 19,
+  "fields": {
+    "user": 2,
+    "title": "課程已送審",
+    "content": "你的課程「課程分類改進」已送出審核，通過後才會上架。",
+    "is_read": false,
+    "created_at": "2026-07-19T17:07:14.749Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 20,
+  "fields": {
+    "user": 6,
+    "title": "購買成功通知",
+    "content": "你已成功購買「MySQL 資料庫設計與 ERD 實戰」，實付金額 NT$ 1200。",
+    "is_read": false,
+    "created_at": "2026-07-19T17:12:12.755Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 21,
+  "fields": {
+    "user": 4,
+    "title": "購買成功通知",
+    "content": "你已成功購買「課程分類改進」，實付金額 NT$ 988。",
+    "is_read": false,
+    "created_at": "2026-07-19T17:14:13.282Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 22,
+  "fields": {
+    "user": 4,
+    "title": "購買成功通知",
+    "content": "你已成功購買「UI/UX 介面設計與平台首頁規劃」，實付金額 NT$ 960。",
+    "is_read": false,
+    "created_at": "2026-07-20T08:12:49.201Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 23,
+  "fields": {
+    "user": 2,
+    "title": "課程已送審",
+    "content": "你的課程「67」已送出審核，通過後才會上架。",
+    "is_read": false,
+    "created_at": "2026-07-20T08:17:04.220Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 24,
+  "fields": {
+    "user": 4,
+    "title": "購買成功通知",
+    "content": "你已成功購買「67大賽」，實付金額 NT$ 576。",
+    "is_read": false,
+    "created_at": "2026-07-20T08:19:23.278Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 25,
+  "fields": {
+    "user": 4,
+    "title": "購買成功通知",
+    "content": "你已成功購買「67」，實付金額 NT$ 111。",
+    "is_read": false,
+    "created_at": "2026-07-20T08:37:33.789Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 26,
+  "fields": {
+    "user": 8,
+    "title": "購買成功通知",
+    "content": "你已成功購買「Python Django 線上課程平台實作」，實付金額 NT$ 1440。",
+    "is_read": false,
+    "created_at": "2026-07-20T09:02:05.644Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 27,
+  "fields": {
+    "user": 2,
+    "title": "課程已送審",
+    "content": "你的課程「test video」已送出審核，通過後才會上架。",
+    "is_read": false,
+    "created_at": "2026-07-20T09:29:44.389Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 28,
+  "fields": {
+    "user": 8,
+    "title": "購買成功通知",
+    "content": "你已成功購買「test video」，實付金額 NT$ 1900。",
+    "is_read": false,
+    "created_at": "2026-07-20T09:34:52.554Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 29,
+  "fields": {
+    "user": 6,
+    "title": "購買成功通知",
+    "content": "你已成功購買「MySQL 資料庫設計與 ERD 實戰」，實付金額 NT$ 1275。",
+    "is_read": false,
+    "created_at": "2026-07-20T14:28:59.459Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 30,
+  "fields": {
+    "user": 4,
+    "title": "購買成功通知",
+    "content": "你已完成付款並開通課程：UI/UX 介面設計與平台首頁規劃（實付 NT$ 1200）。",
+    "is_read": false,
+    "created_at": "2026-07-20T14:58:01.246Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 31,
+  "fields": {
+    "user": 6,
+    "title": "購買成功通知",
+    "content": "你已完成付款並開通課程：MySQL 資料庫設計與 ERD 實戰（實付 NT$ 1500）。",
+    "is_read": false,
+    "created_at": "2026-07-20T14:58:02.847Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 32,
+  "fields": {
+    "user": 4,
+    "title": "購買成功通知",
+    "content": "你已完成付款並開通課程：test video（實付 NT$ 2000）。",
+    "is_read": false,
+    "created_at": "2026-07-20T14:58:03.638Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 33,
+  "fields": {
+    "user": 6,
+    "title": "購買成功通知",
+    "content": "你已完成付款並開通課程：Power BI 商業數據分析入門、67大賽（實付 NT$ 2276）。",
+    "is_read": false,
+    "created_at": "2026-07-20T14:58:35.190Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 34,
+  "fields": {
+    "user": 2,
+    "title": "課程已送審",
+    "content": "你的課程「奶蛙吐舌頭」已送出審核，通過後才會上架。",
+    "is_read": false,
+    "created_at": "2026-07-20T15:35:27.739Z"
+  }
+},
+{
+  "model": "main.notification",
+  "pk": 35,
+  "fields": {
+    "user": 2,
+    "title": "課程已送審",
+    "content": "你的課程「teach」已送出審核，通過後才會上架。",
+    "is_read": false,
+    "created_at": "2026-07-20T16:13:27.466Z"
+  }
+},
+{
+  "model": "main.coursequestion",
+  "pk": 1,
+  "fields": {
+    "user": 4,
+    "course": 1,
+    "lesson": null,
+    "title": "Django 和 MySQL 的資料表是怎麼連動的？",
+    "content": "我想了解 Django models.py 和 MySQL 資料表之間的關係。",
+    "created_at": "2026-07-19T16:04:56.168Z"
+  }
+},
+{
+  "model": "main.coursequestion",
+  "pk": 2,
+  "fields": {
+    "user": 6,
+    "course": 4,
+    "lesson": null,
+    "title": "問題A",
+    "content": "內容",
+    "created_at": "2026-07-19T16:47:34.515Z"
+  }
+},
+{
+  "model": "main.courseanswer",
+  "pk": 1,
+  "fields": {
+    "question": 1,
+    "user": 2,
+    "content": "Django 會透過 models.py 定義資料結構，再透過 migration 建立 MySQL 資料表。",
+    "created_at": "2026-07-19T16:04:56.171Z"
+  }
+},
+{
+  "model": "main.courseanswer",
+  "pk": 2,
+  "fields": {
+    "question": 2,
+    "user": 3,
+    "content": "老師回覆",
+    "created_at": "2026-07-19T16:47:35.288Z"
+  }
+},
+{
+  "model": "main.courseaudit",
+  "pk": 1,
+  "fields": {
+    "course": 1,
+    "reviewer": 1,
+    "status": "approved",
+    "comment": "測試資料：課程已審核通過。",
+    "created_at": "2026-07-19T16:04:56.173Z",
+    "reviewed_at": "2026-07-19T16:04:56.011Z"
+  }
+},
+{
+  "model": "main.courseaudit",
+  "pk": 2,
+  "fields": {
+    "course": 2,
+    "reviewer": 1,
+    "status": "approved",
+    "comment": "測試資料：課程已審核通過。",
+    "created_at": "2026-07-19T16:04:56.176Z",
+    "reviewed_at": "2026-07-19T16:04:56.011Z"
+  }
+},
+{
+  "model": "main.courseaudit",
+  "pk": 3,
+  "fields": {
+    "course": 3,
+    "reviewer": 1,
+    "status": "approved",
+    "comment": "測試資料：課程已審核通過。",
+    "created_at": "2026-07-19T16:04:56.178Z",
+    "reviewed_at": "2026-07-19T16:04:56.011Z"
+  }
+},
+{
+  "model": "main.courseaudit",
+  "pk": 4,
+  "fields": {
+    "course": 4,
+    "reviewer": 1,
+    "status": "approved",
+    "comment": "測試資料：課程已審核通過。",
+    "created_at": "2026-07-19T16:04:56.180Z",
+    "reviewed_at": "2026-07-19T16:04:56.011Z"
+  }
+},
+{
+  "model": "main.courseaudit",
+  "pk": 6,
+  "fields": {
+    "course": 6,
+    "reviewer": null,
+    "status": "approved",
+    "comment": "6767",
+    "created_at": "2026-07-19T16:50:25.330Z",
+    "reviewed_at": "2026-07-19T16:51:00Z"
+  }
+},
+{
+  "model": "main.courseaudit",
+  "pk": 10,
+  "fields": {
+    "course": 10,
+    "reviewer": 7,
+    "status": "approved",
+    "comment": "",
+    "created_at": "2026-07-19T17:07:14.747Z",
+    "reviewed_at": "2026-07-19T17:07:00Z"
+  }
+},
+{
+  "model": "main.courseaudit",
+  "pk": 11,
+  "fields": {
+    "course": 11,
+    "reviewer": null,
+    "status": "approved",
+    "comment": "",
+    "created_at": "2026-07-20T08:17:04.219Z",
+    "reviewed_at": "2026-07-20T08:17:00Z"
+  }
+},
+{
+  "model": "main.courseaudit",
+  "pk": 12,
+  "fields": {
+    "course": 12,
+    "reviewer": null,
+    "status": "approved",
+    "comment": "",
+    "created_at": "2026-07-20T09:29:44.387Z",
+    "reviewed_at": "2026-07-20T09:33:00Z"
+  }
+},
+{
+  "model": "main.courseaudit",
+  "pk": 13,
+  "fields": {
+    "course": 13,
+    "reviewer": null,
+    "status": "approved",
+    "comment": "",
+    "created_at": "2026-07-20T15:35:27.737Z",
+    "reviewed_at": null
+  }
+},
+{
+  "model": "main.courseaudit",
+  "pk": 14,
+  "fields": {
+    "course": 14,
+    "reviewer": null,
+    "status": "approved",
+    "comment": "",
+    "created_at": "2026-07-20T16:13:27.465Z",
+    "reviewed_at": null
+  }
+}
+]

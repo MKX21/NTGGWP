@@ -1,4 +1,6 @@
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Sum
 from django.contrib.auth.models import User
 from django.utils import timezone
 
@@ -11,6 +13,9 @@ class Profile(models.Model):
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, verbose_name="使用者")
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, verbose_name="角色")
+    avatar = models.ImageField(
+        upload_to='avatars/', blank=True, null=True, verbose_name="大頭貼"
+    )
 
     def __str__(self):
         return f"{self.user.username} - {self.get_role_display()}"
@@ -66,8 +71,56 @@ class Course(models.Model):
     is_published = models.BooleanField(default=True, verbose_name="是否上架")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="建立時間")
 
+    # 教師自訂折扣（任何課程皆可設定，不限募資課程）
+    discount_price = models.PositiveIntegerField(
+        blank=True, null=True, verbose_name="折扣價（選填，需低於原價）"
+    )
+
+    # 募資開課
+    is_crowdfunding = models.BooleanField(default=False, verbose_name="是否為募資課程")
+    funding_goal = models.PositiveIntegerField(default=0, verbose_name="募資門檻人數")
+    funding_start_date = models.DateTimeField(blank=True, null=True, verbose_name="募資開始時間")
+    funding_end_date = models.DateTimeField(blank=True, null=True, verbose_name="募資結束時間")
+    early_bird_price = models.PositiveIntegerField(
+        blank=True, null=True, verbose_name="早鳥優惠價（募資期間適用，需低於原價）"
+    )
+
     def __str__(self):
         return self.title
+
+    def is_funding_active(self):
+        if not self.is_crowdfunding or not self.funding_start_date or not self.funding_end_date:
+            return False
+        now = timezone.now()
+        return self.funding_start_date <= now <= self.funding_end_date
+
+    def funding_backers_count(self):
+        return self.enrollment_set.count()
+
+    def funding_progress_percent(self):
+        if not self.funding_goal:
+            return 0
+        return min(100, round(self.funding_backers_count() / self.funding_goal * 100))
+
+    def funding_is_goal_met(self):
+        return self.funding_goal > 0 and self.funding_backers_count() >= self.funding_goal
+
+    def funding_days_left(self):
+        if not self.funding_end_date:
+            return 0
+        delta = self.funding_end_date - timezone.now()
+        return max(0, delta.days)
+
+    def get_effective_price(self):
+        """目前實際售價：募資期間內優先用早鳥價，其次一般折扣價，否則原價。"""
+        if self.is_crowdfunding and self.is_funding_active() and self.early_bird_price and self.early_bird_price < self.price:
+            return self.early_bird_price
+        if self.discount_price and self.discount_price < self.price:
+            return self.discount_price
+        return self.price
+
+    def has_discount(self):
+        return self.get_effective_price() < self.price
 
     class Meta:
         verbose_name = "課程"
@@ -105,6 +158,12 @@ class CourseLesson(models.Model):
     title = models.CharField(max_length=200, verbose_name="單元名稱")
     content = models.TextField(blank=True, null=True, verbose_name="單元內容")
     video_url = models.URLField(blank=True, null=True, verbose_name="影片連結")
+    video_file = models.FileField(
+        upload_to='course_videos/',
+        blank=True,
+        null=True,
+        verbose_name="上傳影片檔"
+    )
     duration_minutes = models.PositiveIntegerField(default=0, verbose_name="影片分鐘數")
     sort_order = models.PositiveIntegerField(default=1, verbose_name="單元順序")
     is_free_preview = models.BooleanField(default=False, verbose_name="是否免費試看")
@@ -154,6 +213,33 @@ class LearningRecord(models.Model):
         verbose_name_plural = "學習紀錄"
 
 
+class LessonProgress(models.Model):
+    """單元觀看進度：累積實際看過的秒數 + 續看位置（跨次保留）。"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="使用者")
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, verbose_name="課程")
+    lesson = models.ForeignKey(CourseLesson, on_delete=models.CASCADE, verbose_name="單元")
+    # 每一秒是否看過的 bitmap（'0'/'1'），跨次累積、快轉跳過的秒不會被算入
+    watched_map = models.TextField(blank=True, default='', verbose_name="已觀看秒圖")
+    watched_seconds = models.PositiveIntegerField(default=0, verbose_name="累積觀看秒數")
+    last_position = models.PositiveIntegerField(default=0, verbose_name="上次觀看位置(秒)")
+    duration = models.PositiveIntegerField(default=0, verbose_name="影片總長(秒)")
+    is_completed = models.BooleanField(default=False, verbose_name="是否完成")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新時間")
+
+    def percent(self):
+        if self.duration <= 0:
+            return 0
+        return min(100, int(self.watched_seconds / self.duration * 100))
+
+    def __str__(self):
+        return f"{self.user.username} - {self.lesson.title} - {self.percent()}%"
+
+    class Meta:
+        verbose_name = "單元觀看進度"
+        verbose_name_plural = "單元觀看進度"
+        unique_together = ('user', 'lesson')
+
+
 class Coupon(models.Model):
     DISCOUNT_TYPE_CHOICES = [
         ('amount', '固定金額折扣'),
@@ -192,7 +278,28 @@ class Coupon(models.Model):
                 return False
         return True
 
-    def calculate_discount(self, price):
+    def is_expired(self):
+        return timezone.now() > self.end_date
+
+    def status_label(self):
+        """後台/前台顯示用的目前狀態文字。"""
+        now = timezone.now()
+        if not self.is_active:
+            return '已停用'
+        if self.start_date > now:
+            return '未開始'
+        if self.end_date < now:
+            return '已過期'
+        if self.usage_limit > 0 and self.usages.count() >= self.usage_limit:
+            return '已用完'
+        return '使用中'
+
+    def discount_for(self, price):
+        """純計算折扣金額，不檢查券是否有效。
+
+        有效性由呼叫端負責（見 checkout.quote_basket），因為 is_valid_now()
+        會查資料庫，而定價計算必須能在沒有資料庫的情況下被測。
+        """
         if price < self.min_spend:
             return 0
 
@@ -203,10 +310,13 @@ class Coupon(models.Model):
         else:
             discount = 0
 
-        if discount > price:
-            discount = price
+        return min(discount, price)
 
-        return discount
+    def calculate_discount(self, price):
+        # 期限/啟用/使用次數任一不符 → 一律 0 折扣（防止過期券被折抵）
+        if not self.is_valid_now():
+            return 0
+        return self.discount_for(price)
 
     class Meta:
         verbose_name = "優惠券"
@@ -230,6 +340,12 @@ class UserCoupon(models.Model):
     )
     received_at = models.DateTimeField(auto_now_add=True, verbose_name="領取時間")
     used_at = models.DateTimeField(blank=True, null=True, verbose_name="使用時間")
+
+    def effective_status(self):
+        """顯示用：尚未使用但券已過期 → 顯示已過期。"""
+        if self.status == 'unused' and self.coupon.is_expired():
+            return '已過期'
+        return self.get_status_display()
 
     def __str__(self):
         return f"{self.user.username} - {self.coupon.code} - {self.get_status_display()}"
@@ -256,6 +372,26 @@ class Promotion(models.Model):
 
     def __str__(self):
         return self.name
+
+    def is_active_now(self):
+        now = timezone.now()
+        return self.is_active and self.start_date <= now <= self.end_date
+
+    def discount_for(self, price):
+        """純計算折扣金額，作用於售價。不檢查活動是否在期間內。
+
+        期間判定由呼叫端負責（見 checkout._active_promotion_map，那裡用
+        資料庫過濾一次撈完，避免逐課查詢）。
+        """
+        if self.discount_type == 'amount':
+            discount = self.discount_value
+        elif self.discount_type == 'percent':
+            discount = int(price * self.discount_value / 100)
+        else:
+            discount = 0
+
+        # 夾住上限：discount_value 設成 150（%）也不會折出負數金額
+        return min(discount, price)
 
     class Meta:
         verbose_name = "促銷活動"
@@ -345,7 +481,11 @@ class OrderItem(models.Model):
         verbose_name="訂單"
     )
     course = models.ForeignKey(Course, on_delete=models.CASCADE, verbose_name="課程")
-    price = models.PositiveIntegerField(verbose_name="購買當下價格")
+    price = models.PositiveIntegerField(verbose_name="購買當下售價")
+    # 分攤到這一項的促銷 + 優惠券折扣；paid_amount = price - discount_amount。
+    # 同一張訂單所有明細的 paid_amount 加總，精確等於 Order.final_price。
+    discount_amount = models.PositiveIntegerField(default=0, verbose_name="分攤折扣")
+    paid_amount = models.PositiveIntegerField(default=0, verbose_name="實付金額")
 
     def __str__(self):
         return f"{self.order.id} - {self.course.title}"
@@ -378,7 +518,8 @@ class CouponUsage(models.Model):
 class Payment(models.Model):
     PAYMENT_METHOD_CHOICES = [
         ('credit_card', '信用卡'),
-        ('atm', 'ATM轉帳'),
+        ('atm', 'ATM 虛擬帳號轉帳'),
+        ('cvs', '超商代碼繳費'),
         ('line_pay', 'LINE Pay'),
         ('cash', '現金'),
         ('mock', '模擬付款'),
@@ -416,6 +557,14 @@ class Payment(models.Model):
         null=True,
         verbose_name="交易編號"
     )
+    # 模擬金流用（未來串接真金流時由 gateway 回傳填入）
+    virtual_account = models.CharField(
+        max_length=30, blank=True, null=True, verbose_name="ATM 虛擬帳號"
+    )
+    payment_code = models.CharField(
+        max_length=30, blank=True, null=True, verbose_name="超商繳費代碼"
+    )
+    expire_at = models.DateTimeField(blank=True, null=True, verbose_name="繳費期限")
     paid_at = models.DateTimeField(blank=True, null=True, verbose_name="付款時間")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="建立時間")
 
@@ -579,3 +728,196 @@ class CourseAudit(models.Model):
     class Meta:
         verbose_name = "課程審核"
         verbose_name_plural = "課程審核"
+
+
+# =========================
+# 分潤、收支與提領
+# =========================
+
+class CourseSplitSetting(models.Model):
+    """課程分潤設定：講師／公司的營收分潤比例，以及行銷成本負擔比例。
+
+    每堂課最多一筆；未自訂過的課程一律套用預設值（見 for_course）。
+    """
+    DEFAULT_TEACHER_SPLIT_PERCENT = 70
+    DEFAULT_COMPANY_SPLIT_PERCENT = 30
+    DEFAULT_TEACHER_MARKETING_SHARE_PERCENT = 50
+    DEFAULT_COMPANY_MARKETING_SHARE_PERCENT = 50
+
+    course = models.OneToOneField(
+        Course,
+        on_delete=models.CASCADE,
+        related_name="split_setting",
+        verbose_name="課程"
+    )
+    teacher_split_percent = models.PositiveSmallIntegerField(
+        default=DEFAULT_TEACHER_SPLIT_PERCENT, verbose_name="講師分潤比例(%)"
+    )
+    company_split_percent = models.PositiveSmallIntegerField(
+        default=DEFAULT_COMPANY_SPLIT_PERCENT, verbose_name="公司分潤比例(%)"
+    )
+    teacher_marketing_share_percent = models.PositiveSmallIntegerField(
+        default=DEFAULT_TEACHER_MARKETING_SHARE_PERCENT, verbose_name="講師負擔行銷成本比例(%)"
+    )
+    company_marketing_share_percent = models.PositiveSmallIntegerField(
+        default=DEFAULT_COMPANY_MARKETING_SHARE_PERCENT, verbose_name="公司負擔行銷成本比例(%)"
+    )
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新時間")
+
+    def clean(self):
+        if self.teacher_split_percent + self.company_split_percent != 100:
+            raise ValidationError('講師分潤比例 + 公司分潤比例必須等於 100')
+        if self.teacher_marketing_share_percent + self.company_marketing_share_percent != 100:
+            raise ValidationError('講師行銷成本負擔比例 + 公司行銷成本負擔比例必須等於 100')
+
+    @classmethod
+    def for_course(cls, course):
+        """取得課程的分潤設定；未自訂過就回傳未存檔的預設值物件，不多寫一筆資料庫紀錄。"""
+        return cls.objects.filter(course=course).first() or cls(course=course)
+
+    def __str__(self):
+        return f"{self.course.title} - 講師{self.teacher_split_percent}% / 公司{self.company_split_percent}%"
+
+    class Meta:
+        verbose_name = "課程分潤設定"
+        verbose_name_plural = "課程分潤設定"
+
+
+class RevenueRecord(models.Model):
+    """收支記錄與分潤計算：訂單項目付款成功後，依課程當下的分潤設定拆算金額。
+
+    金額欄位（分潤比例、成本負擔比例）是建立當下從 CourseSplitSetting 拍照存檔，
+    之後設定異動不會追溯改到已建立的紀錄。
+    """
+    STATUS_CHOICES = [
+        ('confirmed', '已確認'),
+        ('reversed', '已沖銷（退款）'),
+    ]
+
+    order_item = models.OneToOneField(
+        OrderItem, on_delete=models.CASCADE, related_name="revenue_record", verbose_name="訂單明細"
+    )
+    order = models.ForeignKey(
+        Order, on_delete=models.CASCADE, related_name="revenue_records", verbose_name="訂單"
+    )
+    course = models.ForeignKey(
+        Course, on_delete=models.CASCADE, related_name="revenue_records", verbose_name="課程"
+    )
+    # 講師另存快照：課程日後轉讓給別的講師時，不會追溯改到舊紀錄的歸屬人。
+    teacher = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="revenue_records", verbose_name="講師"
+    )
+
+    gross_amount = models.PositiveIntegerField(verbose_name="實付金額")
+    marketing_cost = models.PositiveIntegerField(default=0, verbose_name="行銷成本")
+
+    teacher_split_percent = models.PositiveSmallIntegerField(verbose_name="講師分潤比例(%)")
+    company_split_percent = models.PositiveSmallIntegerField(verbose_name="公司分潤比例(%)")
+    teacher_marketing_share_percent = models.PositiveSmallIntegerField(verbose_name="講師行銷成本負擔比例(%)")
+    company_marketing_share_percent = models.PositiveSmallIntegerField(verbose_name="公司行銷成本負擔比例(%)")
+
+    # 允許為負：行銷成本異常偏高時如實呈現（該方倒貼），而不是報錯。
+    teacher_amount = models.IntegerField(default=0, verbose_name="講師應付金額")
+    company_amount = models.IntegerField(default=0, verbose_name="公司實收金額")
+
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default='confirmed', verbose_name="狀態"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="建立時間")
+    reversed_at = models.DateTimeField(blank=True, null=True, verbose_name="沖銷時間")
+
+    def recompute(self):
+        """依目前欄位重新計算 teacher_amount / company_amount。
+
+        分潤比例作用於實付金額，成本負擔比例作用於行銷成本，兩組比例分開套用；
+        每一組都用「算一邊、另一邊用相減取得」，確保
+        teacher_amount + company_amount 精確等於 gross_amount - marketing_cost。
+        """
+        gross_teacher = round(self.gross_amount * self.teacher_split_percent / 100)
+        gross_company = self.gross_amount - gross_teacher
+        cost_teacher = round(self.marketing_cost * self.teacher_marketing_share_percent / 100)
+        cost_company = self.marketing_cost - cost_teacher
+        self.teacher_amount = gross_teacher - cost_teacher
+        self.company_amount = gross_company - cost_company
+
+    def save(self, *args, **kwargs):
+        self.recompute()
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def create_for_order_item(cls, item):
+        """訂單項目付款成功後，建立對應的收支分潤紀錄。冪等：已存在就直接回傳。"""
+        setting = CourseSplitSetting.for_course(item.course)
+        record, _ = cls.objects.get_or_create(
+            order_item=item,
+            defaults={
+                'order': item.order,
+                'course': item.course,
+                'teacher': item.course.teacher,
+                'gross_amount': item.paid_amount,
+                'teacher_split_percent': setting.teacher_split_percent,
+                'company_split_percent': setting.company_split_percent,
+                'teacher_marketing_share_percent': setting.teacher_marketing_share_percent,
+                'company_marketing_share_percent': setting.company_marketing_share_percent,
+            }
+        )
+        return record
+
+    def __str__(self):
+        return f"{self.course.title} - 訂單#{self.order_id} - 講師 NT$ {self.teacher_amount}"
+
+    class Meta:
+        verbose_name = "收支分潤紀錄"
+        verbose_name_plural = "收支分潤紀錄"
+
+
+class WithdrawalRequest(models.Model):
+    """講師提領申請紀錄。"""
+    STATUS_CHOICES = [
+        ('pending', '待處理'),
+        ('completed', '已完成'),
+        ('rejected', '已拒絕'),
+    ]
+
+    teacher = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="withdrawal_requests", verbose_name="講師"
+    )
+    amount = models.PositiveIntegerField(verbose_name="提領金額")
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="狀態"
+    )
+    note = models.TextField(blank=True, null=True, verbose_name="處理備註")
+    requested_at = models.DateTimeField(auto_now_add=True, verbose_name="申請時間")
+    processed_at = models.DateTimeField(blank=True, null=True, verbose_name="處理時間")
+
+    def clean(self):
+        # 只在建立新申請時擋超額提領；狀態異動（核准/拒絕）不重新檢查，
+        # 否則自己已佔用的額度會被重複扣一次。
+        if self.pk is None:
+            balance = self.available_balance(self.teacher)
+            if self.amount > balance:
+                raise ValidationError(f'提領金額超過可提領餘額（NT$ {balance}）')
+
+    def save(self, *args, **kwargs):
+        if self.pk is None:
+            self.full_clean()
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def available_balance(cls, teacher):
+        """可提領餘額 = 已確認的分潤總額 − 已佔用（待處理＋已完成）的提領金額。"""
+        confirmed = RevenueRecord.objects.filter(
+            teacher=teacher, status='confirmed'
+        ).aggregate(total=Sum('teacher_amount'))['total'] or 0
+        reserved = cls.objects.filter(
+            teacher=teacher, status__in=['pending', 'completed']
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        return confirmed - reserved
+
+    def __str__(self):
+        return f"{self.teacher.username} - NT$ {self.amount} - {self.get_status_display()}"
+
+    class Meta:
+        verbose_name = "提領紀錄"
+        verbose_name_plural = "提領紀錄"
+        ordering = ['-requested_at']

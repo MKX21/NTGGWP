@@ -1,0 +1,112 @@
+{% extends 'main/base_eduflow.html' %}
+{% block title %}營運數據分析 | EduFlow{% endblock %}
+{% block extra_head %}<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>{% endblock %}
+
+{% block content %}
+<main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+  <div class="flex items-center justify-between flex-wrap gap-3 mb-6">
+    <div>
+      <h1 class="text-2xl font-black text-slate-900 mb-1">營運數據分析</h1>
+      <p class="text-slate-500">平台即時營運總覽，可搭配「資料匯出」匯入 Power BI 建立進階報表。</p>
+    </div>
+    <a href="{% url 'export_data_page' %}" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-5 py-2.5 rounded-lg transition whitespace-nowrap">📊 匯出至 Power BI</a>
+  </div>
+
+  <!-- KPI 卡片 -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-5">
+      <div class="text-sm text-slate-500 mb-1">總營收</div>
+      <div class="text-2xl font-black text-brand-700">NT$ {{ total_revenue }}</div>
+    </div>
+    <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-5">
+      <div class="text-sm text-slate-500 mb-1">學生人次</div>
+      <div class="text-2xl font-black text-brand-700">{{ total_students }}</div>
+    </div>
+    <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-5">
+      <div class="text-sm text-slate-500 mb-1">上架課程</div>
+      <div class="text-2xl font-black text-brand-700">{{ published_courses }} / {{ total_courses }}</div>
+    </div>
+    <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-5">
+      <div class="text-sm text-slate-500 mb-1">平均評分</div>
+      <div class="text-2xl font-black text-brand-700">{% if avg_rating %}★ {{ avg_rating }}{% else %}—{% endif %}</div>
+    </div>
+    <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-5">
+      <div class="text-sm text-slate-500 mb-1">優惠券總折扣</div>
+      <div class="text-2xl font-black text-slate-800">NT$ {{ total_discount }}</div>
+    </div>
+    <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-5 {% if pending_audits %}ring-2 ring-amber-300{% endif %}">
+      <div class="text-sm text-slate-500 mb-1">待審核課程{% if pending_audits %}・需處理{% endif %}</div>
+      <div class="text-2xl font-black {% if pending_audits %}text-amber-600{% else %}text-slate-800{% endif %}">{{ pending_audits }}</div>
+    </div>
+    <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-5 {% if pending_refunds %}ring-2 ring-red-300{% endif %}">
+      <div class="text-sm text-slate-500 mb-1">待處理退款{% if pending_refunds %}・需處理{% endif %}</div>
+      <div class="text-2xl font-black {% if pending_refunds %}text-red-600{% else %}text-slate-800{% endif %}">{{ pending_refunds }}</div>
+    </div>
+  </div>
+
+  <!-- 營收趨勢 -->
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 mb-6">
+    <h2 class="font-black text-slate-900 mb-4">近 30 天營收趨勢</h2>
+    <div class="relative h-72"><canvas id="revenueChart"></canvas></div>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-6 mb-6">
+    <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6">
+      <h2 class="font-black text-slate-900 mb-4">熱銷課程 Top 5</h2>
+      <div class="relative h-72"><canvas id="topCoursesChart"></canvas></div>
+    </div>
+    <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6">
+      <h2 class="font-black text-slate-900 mb-4">課程分類分布</h2>
+      <div class="relative h-72"><canvas id="categoryChart"></canvas></div>
+    </div>
+    <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6">
+      <h2 class="font-black text-slate-900 mb-4">付款方式分布</h2>
+      <div class="relative h-72"><canvas id="methodChart"></canvas></div>
+    </div>
+    <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6">
+      <h2 class="font-black text-slate-900 mb-4">訂單狀態分布</h2>
+      <div class="relative h-72"><canvas id="statusChart"></canvas></div>
+    </div>
+  </div>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const opts = { responsive: true, maintainAspectRatio: false };
+  const palette = ["#4f46e5","#7c3aed","#ec4899","#f59e0b","#10b981","#3b82f6","#f43f5e"];
+
+  new Chart(document.getElementById("revenueChart"), {
+    type: "line",
+    data: {
+      labels: {{ revenue_labels_json|safe }},
+      datasets: [{ label: "營收 NT$", data: {{ revenue_series_json|safe }}, borderColor: "#4f46e5", backgroundColor: "rgba(79,70,229,0.1)", fill: true, tension: 0.3 }]
+    },
+    options: opts
+  });
+
+  new Chart(document.getElementById("topCoursesChart"), {
+    type: "bar",
+    data: { labels: {{ top_course_labels_json|safe }}, datasets: [{ label: "銷售額 NT$", data: {{ top_course_revenue_json|safe }}, backgroundColor: "#7c3aed", borderRadius: 6 }] },
+    options: Object.assign({}, opts, { indexAxis: 'y' })
+  });
+
+  new Chart(document.getElementById("categoryChart"), {
+    type: "doughnut",
+    data: { labels: {{ cat_labels_json|safe }}, datasets: [{ data: {{ cat_counts_json|safe }}, backgroundColor: palette }] },
+    options: opts
+  });
+
+  new Chart(document.getElementById("methodChart"), {
+    type: "doughnut",
+    data: { labels: {{ method_labels_json|safe }}, datasets: [{ data: {{ method_counts_json|safe }}, backgroundColor: palette }] },
+    options: opts
+  });
+
+  new Chart(document.getElementById("statusChart"), {
+    type: "bar",
+    data: { labels: {{ status_labels_json|safe }}, datasets: [{ label: "訂單數", data: {{ status_counts_json|safe }}, backgroundColor: "#ec4899", borderRadius: 6 }] },
+    options: opts
+  });
+</script>
+{% endblock %}

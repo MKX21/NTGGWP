@@ -1,0 +1,159 @@
+{% extends 'main/base_eduflow.html' %}
+{% block title %}{{ lesson.title }} ｜ {{ course.title }}{% endblock %}
+
+{% block content %}
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+
+    <!-- 播放器 -->
+    <div class="lg:col-span-2">
+      <div class="bg-white rounded-2xl overflow-hidden ring-1 ring-slate-100 shadow-sm">
+        <div class="video-box bg-black aspect-video flex items-center justify-center">
+          {% if lesson.video_file %}
+          <video class="w-full h-full" controls preload="metadata" controlslist="nodownload">
+            <source src="{% url 'stream_lesson_video' lesson.id %}" />
+            你的瀏覽器不支援影片播放。
+          </video>
+          {% elif lesson.video_url %}
+          <video class="w-full h-full" controls preload="metadata">
+            <source src="{{ lesson.video_url }}" />
+          </video>
+          {% else %}
+          <div class="text-slate-300 text-center p-10 leading-relaxed">🎬 此單元尚未上傳影片<br />老師可於「內容管理」上傳 mp4 影片檔</div>
+          {% endif %}
+        </div>
+        <div class="p-6">
+          <p class="text-sm text-slate-400 mb-1">{{ course.title }} ・ 第 {{ lesson.chapter.sort_order }} 章</p>
+          <h1 class="text-2xl font-black text-slate-900 mb-2">{{ lesson.chapter.sort_order }}-{{ lesson.sort_order }} {{ lesson.title }}</h1>
+          <div class="text-slate-500 mb-4">影片長度 {{ lesson.duration_minutes }} 分鐘{% if lesson.is_free_preview %} ・ <span class="text-green-600 font-medium">免費試看</span>{% endif %}</div>
+          {% if lesson.content %}<div class="text-slate-700 leading-relaxed whitespace-pre-line">{{ lesson.content }}</div>{% endif %}
+
+          {% if can_record %}
+          <div class="mt-5 flex items-center gap-3 flex-wrap">
+            <div class="font-bold text-slate-700">
+              <span id="doneTag" class="text-green-600" style="{% if not is_completed %}display:none;{% endif %}"><i class="fas fa-circle-check"></i> 已完成本單元</span>
+              <span id="progText" style="{% if is_completed %}display:none;{% endif %}">本單元觀看進度：<b id="watchPct" class="text-brand-600">{{ lesson_percent }}%</b><span class="text-slate-400 font-normal text-sm ml-1">（累積計算，看滿 60% 即完成，快轉不計）</span></span>
+            </div>
+            <a href="{% url 'course_detail' course.id %}" class="ml-auto text-brand-600 hover:underline font-medium text-sm">回課程頁</a>
+          </div>
+          <input type="hidden" id="csrftoken" value="{{ csrf_token }}" />
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- 側欄課綱 -->
+    <aside>
+      <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-5 lg:sticky lg:top-24 max-h-[calc(100vh-120px)] overflow-y-auto no-scrollbar">
+        <h2 class="text-lg font-black text-slate-900 mb-2">課程內容</h2>
+        <div class="flex justify-between text-sm text-slate-500 mb-1.5"><span>完成進度</span><span>{{ done_count }}/{{ total_lessons }}（{{ progress }}%）</span></div>
+        <div class="h-2 bg-slate-100 rounded-full overflow-hidden mb-4"><div class="h-full bg-gradient-to-r from-brand-600 to-violet-500 rounded-full" style="width: {{ progress }}%;"></div></div>
+
+        {% if progress == 100 %}
+        <a href="{% url 'certificate' course.id %}" class="block text-center bg-accent-500 hover:bg-accent-600 text-white font-bold py-2.5 rounded-lg mb-4 transition">🎓 下載結業證書</a>
+        {% endif %}
+
+        {% for chapter in chapters %}
+        <div class="text-xs font-black text-slate-400 mt-4 mb-1.5">第 {{ chapter.sort_order }} 章：{{ chapter.title }}</div>
+        {% for l in chapter.lessons.all %}
+          {% if can_record or l.is_free_preview %}
+          <a href="{% url 'watch_lesson' l.id %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm mb-1 transition {% if l.id == lesson.id %}bg-brand-50 text-brand-700 font-bold{% else %}text-slate-700 hover:bg-slate-50{% endif %}">
+            <span class="w-5 h-5 rounded-full flex items-center justify-center text-[11px] shrink-0 {% if l.id in completed_ids %}bg-green-500 text-white{% else %}border border-slate-300 text-transparent{% endif %}"><i class="fas fa-check"></i></span>
+            <span class="flex-1">{{ chapter.sort_order }}-{{ l.sort_order }} {{ l.title }}</span>
+            <span class="text-slate-400 text-xs">{{ l.duration_minutes }}分</span>
+          </a>
+          {% else %}
+          <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm mb-1 text-slate-400">
+            <span class="w-5 h-5 flex items-center justify-center shrink-0"><i class="fas fa-lock text-xs"></i></span>
+            <span class="flex-1">{{ chapter.sort_order }}-{{ l.sort_order }} {{ l.title }}</span>
+            <span class="text-xs">{{ l.duration_minutes }}分</span>
+          </div>
+          {% endif %}
+        {% endfor %}
+        {% endfor %}
+      </div>
+    </aside>
+  </div>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    var video = document.querySelector(".video-box video");
+    if (!video) return;
+
+    var RESUME = {{ resume_position|default:0 }};
+    var SAVE_URL = "{% url 'save_progress' lesson.id %}";
+    var tokenEl = document.getElementById("csrftoken");
+    var canRecord = !!tokenEl;
+    var csrf = tokenEl ? tokenEl.value : "";
+    var pctEl = document.getElementById("watchPct");
+    var doneTag = document.getElementById("doneTag");
+    var progText = document.getElementById("progText");
+
+    function seekResume() {
+      if (RESUME > 0 && isFinite(video.duration) && RESUME < video.duration) {
+        try { video.currentTime = RESUME; } catch (e) {}
+      }
+    }
+    video.addEventListener("loadedmetadata", seekResume);
+    if (video.readyState >= 1) seekResume();
+
+    if (!canRecord) return;
+
+    var watched = new Set();
+    var pending = [];
+    var lastPos = 0;
+    var completed = false;
+
+    video.addEventListener("timeupdate", function () {
+      if (!video.paused && !video.seeking) {
+        var s = Math.floor(video.currentTime);
+        if (!watched.has(s)) { watched.add(s); pending.push(s); }
+      }
+      lastPos = Math.floor(video.currentTime);
+    });
+
+    function buildForm() {
+      var fd = new FormData();
+      fd.append("csrfmiddlewaretoken", csrf);
+      fd.append("seconds", pending.join(","));
+      fd.append("position", lastPos);
+      fd.append("duration", Math.floor(video.duration) || 0);
+      pending = [];
+      return fd;
+    }
+
+    function save() {
+      if (completed && pending.length === 0) return;
+      if (pending.length === 0 && lastPos === 0) return;
+      fetch(SAVE_URL, { method: "POST", body: buildForm() })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (!d || !d.ok) return;
+          if (pctEl) pctEl.textContent = d.progress + "%";
+          if (d.completed && !completed) {
+            completed = true;
+            if (progText) progText.style.display = "none";
+            if (doneTag) doneTag.style.display = "";
+          }
+        })
+        .catch(function () {});
+    }
+
+    setInterval(save, 10000);
+    video.addEventListener("pause", save);
+    video.addEventListener("ended", save);
+
+    function flush() {
+      if (pending.length === 0) return;
+      try { navigator.sendBeacon(SAVE_URL, buildForm()); } catch (e) { save(); }
+    }
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden") flush();
+    });
+    window.addEventListener("pagehide", flush);
+  })();
+</script>
+{% endblock %}

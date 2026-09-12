@@ -10,22 +10,35 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# 讀取專案根目錄的 .env（放共用資料庫連線資訊等機密，不會進版控）
+load_dotenv(BASE_DIR.parent / '.env')
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-!myfgv08#hs01651h)z0w9m48ywynf10)135pb!5tnmn%zug2n'
+# 不放固定的 fallback —— 版控裡的金鑰等於沒有金鑰（任何人都能偽造 session
+# 與密碼重設連結）。沒設 .env 時每次啟動自動產生一把臨時金鑰：程式照跑，
+# 但重啟會作廢所有登入狀態。正式部署務必在 .env 設固定值。
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    import secrets
+
+    SECRET_KEY = 'django-insecure-dev-' + secrets.token_urlsafe(50)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 
 # Application definition
@@ -55,13 +68,14 @@ ROOT_URLCONF = 'myproject.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'main.context_processors.nav_context',
             ],
         },
     },
@@ -73,19 +87,30 @@ WSGI_APPLICATION = 'myproject.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+# 連線資訊全部從環境變數(.env)讀取；沒設定時 fallback 回本機預設，
+# 這樣沒建 .env 的人仍可跑本機 MySQL，設了 .env 就會連到共用雲端資料庫。
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'course_platform_db',
-        'USER': 'root',
-        'PASSWORD': '221302',
-        'HOST': '127.0.0.1',
-        'PORT': '3306',
+        'NAME': os.environ.get('DB_NAME', 'course_platform_db'),
+        'USER': os.environ.get('DB_USER', 'root'),
+        # 沒有預設密碼：本機 MySQL 的密碼每個人都不一樣，寫死一個在版控裡
+        # 既不會對，又等於公開一組密碼。請在 .env 設定（見 .env.example）。
+        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+        'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
+        'PORT': os.environ.get('DB_PORT', '3306'),
+        # 遠端資料庫每次重新建立連線很花時間，保持連線 60 秒重複使用
+        'CONN_MAX_AGE': int(os.environ.get('DB_CONN_MAX_AGE', '60')),
         'OPTIONS': {
             'charset': 'utf8mb4',
         },
     }
 }
+
+# 部分雲端 MySQL（如 Aiven）需要 TLS，把平台給的 ca.pem 路徑填在 DB_SSL_CA 即可。
+_db_ssl_ca = os.environ.get('DB_SSL_CA')
+if _db_ssl_ca:
+    DATABASES['default']['OPTIONS']['ssl'] = {'ca': _db_ssl_ca}
 
 
 # Password validation
@@ -125,5 +150,23 @@ USE_TZ = True
 STATIC_URL = 'static/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'noreply@example.com'
+# Email（密碼重設信）
+# 設了 EMAIL_HOST_USER 就走真的 SMTP；沒設就把信印在終端機。
+# 跟資料庫連線同一個哲學：有 .env 用真的，沒有也能跑，測試不會真的寄信。
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+
+if EMAIL_HOST_USER:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+    EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+    EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL') or EMAIL_HOST_USER or 'noreply@example.com'
+
+# 沒有這行時 makemigrations 會依環境的 Django 版本猜預設值，導致每個模型的
+# id 欄位在不同機器上跑出不同的遷移。既有的遷移檔全部是 BigAutoField，
+# 明確設定與資料庫現況一致，避免產生不相干的 alter id 遷移。
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

@@ -1,62 +1,16 @@
-<!doctype html>
-<html lang="zh-Hant">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>購買成功</title>
-    <style>
-      body {
-        font-family: "Microsoft JhengHei", sans-serif;
-        background: #f7f8fb;
-        margin: 0;
-        color: #1f2937;
-      }
+{% extends 'main/base_eduflow.html' %}
+{% block title %}購買成功 | EduFlow{% endblock %}
 
-      .container {
-        max-width: 600px;
-        margin: 80px auto;
-        padding: 20px;
-      }
-
-      .card {
-        background: white;
-        border-radius: 20px;
-        padding: 36px;
-        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
-        text-align: center;
-      }
-
-      h1 {
-        margin-top: 0;
-        font-size: 32px;
-      }
-
-      p {
-        color: #6b7280;
-        line-height: 1.8;
-        font-size: 17px;
-      }
-
-      .btn {
-        display: inline-block;
-        margin-top: 20px;
-        background: #2563eb;
-        color: white;
-        padding: 12px 22px;
-        border-radius: 12px;
-        text-decoration: none;
-        font-weight: bold;
-      }
-    </style>
-  </head>
-  <body>
-    {% include 'main/partials/navbar.html' %}
-    <div class="container">
-      <div class="card">
-        <h1>購買成功</h1>
-        <p>你已成功購買課程：<strong>{{ course.title }}</strong></p>
-        <a href="/" class="btn">回首頁</a>
-      </div>
+{% block content %}
+<main class="max-w-md mx-auto px-4 py-16">
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-10 text-center">
+    <div class="text-5xl mb-3">✅</div>
+    <h1 class="text-2xl font-black text-slate-900 mb-2">購買成功</h1>
+    <p class="text-slate-500 mb-6">你已成功購買課程：<strong class="text-slate-800">{{ course.title }}</strong></p>
+    <div class="flex gap-3 justify-center flex-wrap">
+      <a href="{% url 'my_courses' %}" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-6 py-3 rounded-lg transition">我的課程</a>
+      <a href="{% url 'home' %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-6 py-3 rounded-lg transition">回首頁</a>
     </div>
-  </body>
-</html>
+  </div>
+</main>
+{% endblock %}

@@ -1,0 +1,37 @@
+<article class="{{ card_extra }} bg-white rounded-2xl overflow-hidden ring-1 ring-slate-100 hover:shadow-lg transition group">
+    <a href="{% url 'course_detail' course.id %}" class="block">
+        <div class="relative aspect-video overflow-hidden bg-slate-200">
+            {% if course.image %}
+            <img src="{{ course.image.url }}" alt="{{ course.title }}" class="w-full h-full object-cover zoom" loading="lazy">
+            {% else %}
+            <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-brand-400 to-violet-400 text-white text-4xl font-black">{{ course.title|slice:":1"|upper }}</div>
+            {% endif %}
+            <span class="absolute top-3 left-3 bg-white/95 text-brand-600 text-xs font-bold px-2.5 py-1 rounded-full">{{ course.get_level_display }}</span>
+            {% if course.is_crowdfunding and course.is_funding_active %}
+            <span class="absolute top-3 right-3 bg-accent-500 text-white text-xs font-bold px-2.5 py-1 rounded-full"><i class="fas fa-bullhorn mr-1"></i>募資中</span>
+            {% endif %}
+        </div>
+        <div class="p-5">
+            {% if course.category %}<p class="text-xs text-brand-600 font-medium mb-1">{{ course.category.name }}</p>{% endif %}
+            <h3 class="font-bold text-slate-900 leading-snug mb-2 line-clamp-2 h-11 group-hover:text-brand-600 transition">{{ course.title }}</h3>
+            <p class="text-sm text-slate-500 mb-3">{{ course.teacher.username }} 老師</p>
+            <div class="flex items-center gap-1 text-sm mb-3">
+                {% if course.avg_rating %}
+                <span class="text-amber-400"><i class="fas fa-star"></i></span>
+                <span class="font-bold text-slate-700">{{ course.avg_rating }}</span>
+                <span class="text-slate-400">({{ course.review_count }})</span>
+                {% else %}
+                <span class="text-slate-400">尚無評分</span>
+                {% endif %}
+            </div>
+            <div class="flex items-baseline gap-2">
+                {% if course.has_discount %}
+                <span class="text-sm text-red-500 line-through decoration-2">NT$ {{ course.price }}</span>
+                <span class="text-lg font-black text-red-600">NT$ {{ course.get_effective_price }}</span>
+                {% else %}
+                <span class="text-lg font-black text-slate-900">NT$ {{ course.price }}</span>
+                {% endif %}
+            </div>
+        </div>
+    </a>
+</article>

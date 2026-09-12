@@ -1,0 +1,89 @@
+<style>
+  /* ===== 液態玻璃設計系統（共用） ===== */
+  :root {
+    --brand: #4f46e5;
+    --brand-2: #7c3aed;
+    --ink: #0f172a;
+    --ink-soft: #475569;
+    --glass-bg: rgba(255, 255, 255, 0.55);
+    --glass-bg-strong: rgba(255, 255, 255, 0.72);
+    --glass-brd: rgba(255, 255, 255, 0.65);
+    --glass-shadow: 0 8px 32px rgba(31, 38, 135, 0.18);
+    --radius: 22px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif;
+    color: var(--ink);
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+    background: #eef2ff;
+  }
+
+  /* 流動的液態色塊背景，玻璃卡片才有東西可「透」 */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: -25%;
+    z-index: -2;
+    background:
+      radial-gradient(closest-side at 18% 24%, #a5b4fc, transparent 60%),
+      radial-gradient(closest-side at 82% 18%, #f0abfc, transparent 55%),
+      radial-gradient(closest-side at 68% 82%, rgba(124, 58, 237, 0.45), transparent 60%),
+      radial-gradient(closest-side at 12% 78%, #38bdf8, transparent 55%);
+    filter: blur(42px) saturate(140%);
+    animation: floatBlobs 20s ease-in-out infinite alternate;
+  }
+
+  @keyframes floatBlobs {
+    0%   { transform: translate(0, 0) scale(1); }
+    50%  { transform: translate(3%, 2%) scale(1.08); }
+    100% { transform: translate(-3%, -2%) scale(1); }
+  }
+
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    border: 1px solid var(--glass-brd);
+    box-shadow: var(--glass-shadow);
+    border-radius: var(--radius);
+  }
+
+  .glass-strong { background: var(--glass-bg-strong); }
+
+  .glass-btn {
+    display: inline-block;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.92), rgba(124, 58, 237, 0.92));
+    color: #fff;
+    font-weight: 700;
+    padding: 12px 22px;
+    border-radius: 14px;
+    text-decoration: none;
+    box-shadow: 0 6px 18px rgba(79, 70, 229, 0.35);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .glass-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(79, 70, 229, 0.45); }
+  .glass-btn.ghost { background: rgba(255, 255, 255, 0.45); color: var(--ink); }
+  .glass-btn.warn { background: linear-gradient(135deg, #f59e0b, #f97316); box-shadow: 0 6px 18px rgba(245, 158, 11, 0.35); }
+  .glass-btn.danger { background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 6px 18px rgba(239, 68, 68, 0.35); }
+
+  .glass-input {
+    width: 100%;
+    padding: 13px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 12px;
+    font-size: 16px;
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(6px);
+    box-sizing: border-box;
+    color: var(--ink);
+  }
+  .glass-input:focus { outline: 2px solid rgba(124, 58, 237, 0.5); }
+</style>

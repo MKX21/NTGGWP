@@ -1,0 +1,44 @@
+<h2 class="text-lg font-black text-slate-900 mb-3">基本資訊</h2>
+{{ form.title.label_tag }} {{ form.title }} {{ form.title.errors }}
+{{ form.category_name.label_tag }} {{ form.category_name }}
+<p class="text-xs text-slate-400 -mt-1 mb-2">{{ form.category_name.help_text }}</p>
+{{ form.category_name.errors }}
+{{ form.level.label_tag }} {{ form.level }}
+{{ form.description.label_tag }} {{ form.description }}
+{{ form.image.label_tag }} {{ form.image }}
+
+<h2 class="text-lg font-black text-slate-900 mt-6 mb-3 border-t border-slate-100 pt-5">定價與折扣</h2>
+{{ form.price.label_tag }} {{ form.price }} {{ form.price.errors }}
+{{ form.discount_price.label_tag }} {{ form.discount_price }}
+<p class="text-xs text-slate-400 -mt-1 mb-2">{{ form.discount_price.help_text }}</p>
+{{ form.discount_price.errors }}
+
+<h2 class="text-lg font-black text-slate-900 mt-6 mb-3 border-t border-slate-100 pt-5">募資開課設定</h2>
+<label class="flex items-center gap-2 font-semibold text-slate-700 cursor-pointer">
+  {{ form.is_crowdfunding }} {{ form.is_crowdfunding.label }}
+</label>
+<div id="crowdfundingFields" class="mt-3 pl-1 border-l-2 border-accent-200">
+  <div class="pl-4 space-y-1">
+    {{ form.funding_goal.label_tag }} {{ form.funding_goal }} {{ form.funding_goal.errors }}
+    <p class="text-xs text-slate-400 -mt-1 mb-2">{{ form.funding_goal.help_text }}</p>
+
+    <div class="grid sm:grid-cols-2 gap-3">
+      <div>{{ form.funding_start_date.label_tag }} {{ form.funding_start_date }} {{ form.funding_start_date.errors }}</div>
+      <div>{{ form.funding_end_date.label_tag }} {{ form.funding_end_date }} {{ form.funding_end_date.errors }}</div>
+    </div>
+
+    {{ form.early_bird_price.label_tag }} {{ form.early_bird_price }} {{ form.early_bird_price.errors }}
+    <p class="text-xs text-slate-400 -mt-1 mb-2">{{ form.early_bird_price.help_text }}</p>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var cb = document.querySelector('#courseForm [name=is_crowdfunding]');
+    var box = document.getElementById('crowdfundingFields');
+    if (!cb || !box) return;
+    function sync() { box.style.display = cb.checked ? '' : 'none'; }
+    cb.addEventListener('change', sync);
+    sync();
+  })();
+</script>
