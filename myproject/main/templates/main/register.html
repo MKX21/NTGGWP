@@ -2,36 +2,103 @@
 {% block title %}註冊帳號 | EduFlow{% endblock %}
 
 {% block content %}
-<main class="max-w-md mx-auto px-4 py-14">
-  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8">
-    <h1 class="text-2xl font-black text-slate-900 mb-1">註冊帳號</h1>
-    <p class="text-slate-500 mb-6">填寫帳號資訊即可註冊，所有新帳號皆為學生身分；教師權限由平台審核後開通。</p>
+<style>
+  /* ===== 玻璃質感（僅作用於註冊頁，與登入頁同款）===== */
+  .glass-login {
+    --g-text: #e8ecf8;
+    --g-muted: #aab2c7;
+    --g-border: hsl(0 0% 100% / 0.28);
+    min-height: calc(100vh - 4rem);
+    display: grid;
+    place-items: center;
+    padding: 2.5rem 1rem;
+    color: var(--g-text);
+    background:
+      radial-gradient(circle at 15% 12%, hsl(172 75% 48% / 0.24), transparent 45%),
+      radial-gradient(circle at 85% 85%, hsl(205 75% 48% / 0.22), transparent 42%),
+      radial-gradient(hsl(0 0% 100% / 0.05) 1px, transparent 1.4px) 0 0 / 24px 24px,
+      linear-gradient(135deg, #0b1220 0%, #0a0e14 55%, #0d1512 100%);
+  }
+  .glass-card {
+    width: min(27rem, 100%);
+    border-radius: 1.25rem;
+    padding: 2.25rem;
+    background: hsl(225 24% 13% / 0.35);
+    border: 1px solid var(--g-border);
+    box-shadow: 0 1.25rem 2.81rem hsl(0 0% 0% / 0.45);
+    backdrop-filter: blur(14px) saturate(120%);
+    -webkit-backdrop-filter: blur(14px) saturate(120%);
+  }
+  .glass-card h1 { color: #fff; }
+  .glass-card .g-sub, .glass-card .g-muted { color: var(--g-muted); }
+  /* Django form.as_p 的欄位也套深色 */
+  .glass-card .ef-form label { color: var(--g-muted); font-weight: 600; }
+  .glass-card .ef-form p { margin: 0 0 .9rem; }
+  .glass-card .ef-form input:not([type=checkbox]):not([type=radio]):not([type=file]),
+  .glass-card .ef-form select {
+    width: 100%;
+    border-radius: 0.75rem;
+    border: 1px solid hsl(0 0% 100% / 0.22);
+    background: hsl(222 29% 7% / 0.6);
+    color: var(--g-text);
+    padding: 0.7rem 0.85rem;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .glass-card .ef-form input::placeholder { color: #7c869c; }
+  .glass-card .ef-form input:focus, .glass-card .ef-form select:focus {
+    border-color: hsl(172 70% 55% / 0.8);
+    box-shadow: 0 0 0 3px hsl(172 70% 55% / 0.18);
+  }
+  .glass-card .ef-form .helptext { color: #7c869c; font-size: .8rem; }
+  .glass-card .ef-form ul.errorlist { color: #ffb4b4; font-size: .82rem; list-style: none; padding: 0; margin: .25rem 0; }
+  .glass-btn {
+    width: 100%; border: 0; border-radius: 0.75rem; padding: 0.8rem;
+    font-weight: 600; letter-spacing: .02em; cursor: pointer; color: #04110f;
+    background: linear-gradient(135deg, hsl(168 75% 55%), hsl(190 75% 55%));
+    transition: filter .15s, transform .05s;
+  }
+  .glass-btn:hover { filter: brightness(1.08); }
+  .glass-btn:active { transform: translateY(1px); }
+  .glass-oauth {
+    display: flex; align-items: center; justify-content: center; gap: .5rem;
+    width: 100%; padding: 0.65rem; border-radius: 0.75rem;
+    border: 1px solid var(--g-border); color: var(--g-text);
+    background: hsl(0 0% 100% / 0.04); transition: background .15s;
+  }
+  .glass-oauth:hover { background: hsl(0 0% 100% / 0.1); }
+  .glass-oauth.line { background: #06C755; border-color: transparent; color: #fff; }
+  .glass-oauth.line:hover { background: #05b34c; }
+  .glass-link { color: hsl(172 70% 62%); }
+  .glass-link:hover { text-decoration: underline; }
+  .glass-sep { height: 1px; background: hsl(0 0% 100% / 0.14); }
+</style>
+
+<section class="glass-login">
+  <div class="glass-card">
+    <h1 class="text-2xl font-black mb-1">註冊帳號</h1>
+    <p class="g-sub mb-6 text-sm">填寫帳號資訊即可註冊，所有新帳號皆為學生身分；教師權限由平台審核後開通。</p>
+
     <div class="ef-form">
       <form method="post">
         {% csrf_token %}
         {{ form.as_p }}
-        <button type="submit" class="w-full bg-jp-primary hover:bg-jp-primaryHover text-white font-medium tracking-wide py-3 rounded-lg transition mt-2">註冊</button>
+        <button type="submit" class="glass-btn mt-1">註冊</button>
       </form>
     </div>
 
     <div class="flex items-center gap-3 my-5">
-      <div class="flex-1 h-px bg-jp-border"></div>
-      <span class="text-xs text-jp-muted">或使用快速註冊 / 登入</span>
-      <div class="flex-1 h-px bg-jp-border"></div>
+      <div class="glass-sep flex-1"></div>
+      <span class="text-xs g-muted">或使用快速註冊 / 登入</span>
+      <div class="glass-sep flex-1"></div>
     </div>
     <div class="space-y-3">
-      <a href="{% url 'google_login' %}"
-         class="flex items-center justify-center gap-2 w-full border border-jp-border hover:bg-jp-bg text-jp-text font-medium py-2.5 rounded-lg transition">
-        <span>使用 Google 繼續</span>
-      </a>
-      <a href="{% url 'line_login' %}"
-         class="flex items-center justify-center gap-2 w-full bg-[#06C755] hover:bg-[#05b34c] text-white font-medium py-2.5 rounded-lg transition">
-        <span>使用 LINE 繼續</span>
-      </a>
+      <a href="{% url 'google_login' %}" class="glass-oauth"><span>使用 Google 繼續</span></a>
+      <a href="{% url 'line_login' %}" class="glass-oauth line"><span>使用 LINE 繼續</span></a>
     </div>
-    <p class="text-xs text-jp-muted mt-2 text-center">透過快速登入（Google／LINE）建立的帳號預設為學生身分。</p>
+    <p class="text-xs g-muted mt-2 text-center">透過快速登入（Google／LINE）建立的帳號預設為學生身分。</p>
 
-    <p class="text-sm text-jp-muted mt-4 text-center">已經有帳號了？<a href="{% url 'login' %}" class="text-jp-primary hover:underline">前往登入</a></p>
+    <p class="text-sm g-muted mt-4 text-center">已經有帳號了？<a href="{% url 'login' %}" class="glass-link">前往登入</a></p>
   </div>
-</main>
+</section>
 {% endblock %}
