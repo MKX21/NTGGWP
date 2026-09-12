@@ -11,7 +11,7 @@
         <div class="video-box bg-black aspect-video flex items-center justify-center">
           {% if lesson.video_file %}
           <video class="w-full h-full" controls preload="metadata" controlslist="nodownload">
-            <source src="{{ lesson.video_file.url }}" />
+            <source src="{% url 'stream_lesson_video' lesson.id %}" />
             你的瀏覽器不支援影片播放。
           </video>
           {% elif lesson.video_url %}
@@ -27,6 +27,29 @@
           <h1 class="text-2xl font-black text-slate-900 mb-2">{{ lesson.chapter.sort_order }}-{{ lesson.sort_order }} {{ lesson.title }}</h1>
           <div class="text-slate-500 mb-4">影片長度 {{ lesson.duration_minutes }} 分鐘{% if lesson.is_free_preview %} ・ <span class="text-green-600 font-medium">免費試看</span>{% endif %}</div>
           {% if lesson.content %}<div class="text-slate-700 leading-relaxed whitespace-pre-line">{{ lesson.content }}</div>{% endif %}
+
+          {% if can_download_materials and lesson.materials.all %}
+          <div class="mt-5 border-t border-slate-100 pt-4">
+            <h3 class="font-bold text-slate-800 mb-3"><i class="fas fa-folder-open text-jp-primary mr-1"></i> 課程教材</h3>
+            {% regroup lesson.materials.all|dictsort:"material_type" by get_material_type_display as type_groups %}
+            {% for group in type_groups %}
+            <div class="mb-3">
+              <div class="text-xs font-bold text-slate-400 mb-1">{{ group.grouper }}</div>
+              <ul class="space-y-1.5">
+                {% for m in group.list %}
+                <li>
+                  <a href="{{ m.file.url }}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 text-slate-700 hover:text-jp-primary">
+                    <i class="fas {{ m.icon_class }} text-jp-primary w-4 text-center"></i>
+                    <span class="hover:underline">{{ m.title }}</span>
+                    {% if m.size_display %}<span class="text-xs text-slate-400">（{{ m.size_display }}）</span>{% endif %}
+                  </a>
+                </li>
+                {% endfor %}
+              </ul>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
 
           {% if can_record %}
           <div class="mt-5 flex items-center gap-3 flex-wrap">

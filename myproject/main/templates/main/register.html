@@ -5,7 +5,7 @@
 <main class="max-w-md mx-auto px-4 py-14">
   <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8">
     <h1 class="text-2xl font-black text-slate-900 mb-1">註冊帳號</h1>
-    <p class="text-slate-500 mb-6">填寫帳號資訊即可註冊，所有新帳號皆為學生身分。</p>
+    <p class="text-slate-500 mb-6">填寫帳號資訊即可註冊，所有新帳號皆為學生身分；教師權限由平台審核後開通。</p>
     <div class="ef-form">
       <form method="post">
         {% csrf_token %}
@@ -29,7 +29,7 @@
         <span>使用 LINE 繼續</span>
       </a>
     </div>
-    <p class="text-xs text-jp-muted mt-2 text-center">透過快速登入建立的帳號同樣預設為學生身分。</p>
+    <p class="text-xs text-jp-muted mt-2 text-center">透過快速登入（Google／LINE）建立的帳號預設為學生身分。</p>
 
     <p class="text-sm text-jp-muted mt-4 text-center">已經有帳號了？<a href="{% url 'login' %}" class="text-jp-primary hover:underline">前往登入</a></p>
   </div>

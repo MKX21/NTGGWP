@@ -89,6 +89,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'myproject.wsgi.application'
 
+# @login_required 未登入時導向本站登入頁（預設是不存在的 /accounts/login/）。
+LOGIN_URL = 'login'
+
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
