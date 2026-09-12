@@ -17,6 +17,7 @@ from django.db.models import (
     Sum,
 )
 from django.db.models.functions import Coalesce
+from django.db import transaction
 from django.core.paginator import Paginator
 from django.urls import reverse
 from django.conf import settings
@@ -371,16 +372,15 @@ def register(request):
         form = RegisterForm(request.POST)
 
         if form.is_valid():
-            user = User.objects.create_user(
-                username=form.cleaned_data['username'],
-                email=form.cleaned_data['email'],
-                password=form.cleaned_data['password']
-            )
-
-            Profile.objects.create(
-                user=user,
-                role=form.cleaned_data['role']
-            )
+            # 註冊一律建成學生身分（教師權限由 Admin 後台另外賦予）。
+            # 用交易包住，避免 Profile 建失敗時留下沒有 Profile 的殘帳號。
+            with transaction.atomic():
+                user = User.objects.create_user(
+                    username=form.cleaned_data['username'],
+                    email=form.cleaned_data['email'],
+                    password=form.cleaned_data['password']
+                )
+                Profile.objects.create(user=user, role='student')
 
             return redirect('register_success')
     else:
