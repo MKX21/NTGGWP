@@ -1,4 +1,5 @@
-{% with is_home=force_home_nav|yesno:'home,'|default:request.resolver_match.url_name %}
+{% with is_home='home' %}
+{# 全站已改為統一深色玻璃風格，導覽列固定使用原本首頁的深色版本，不再依頁面切換淺色版 #}
 <!-- ============ 頂部公告列（可關閉） ============ -->
 {% if is_home == 'home' %}
 <div id="announcement-bar" class="bg-electric text-white text-sm">
@@ -126,7 +127,7 @@
 </nav>
 {% endwith %}
 
-{% with is_home=force_home_nav|yesno:'home,'|default:request.resolver_match.url_name %}
+{% with is_home='home' %}
 <!-- ============ 手機側邊選單 ============ -->
 <div data-mobile-menu class="fixed inset-0 z-[60] hidden lg:hidden">
     <div data-mobile-close class="absolute inset-0 bg-jp-text/50 backdrop-blur-sm"></div>
