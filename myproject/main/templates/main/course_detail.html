@@ -281,13 +281,21 @@
 
                             {% for ans in q.answers.all %}
                             <div class="flex gap-3 mt-4">
-                                {% if ans.user.profile.avatar %}
+                                {% if ans.is_ai_generated %}
+                                <span class="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white flex items-center justify-center text-sm shrink-0"><i class="fas fa-wand-magic-sparkles"></i></span>
+                                {% elif ans.user.profile.avatar %}
                                 <img src="{{ ans.user.profile.avatar.url }}" class="w-9 h-9 rounded-full object-cover shrink-0">
                                 {% else %}
                                 <span class="w-9 h-9 rounded-full bg-gradient-to-br from-brand-700 to-brand-500 text-white flex items-center justify-center text-sm font-bold shrink-0">{{ ans.user.profile.display_name|slice:":1"|upper }}</span>
                                 {% endif %}
                                 <div class="flex-1 min-w-0 bg-jp-bg rounded-xl px-4 py-3">
-                                    <div class="font-bold text-jp-text text-sm">{{ ans.user.profile.display_name }}{% if ans.user_id == course.teacher_id %} <span class="text-xs font-medium text-jp-primary">・課程講師</span>{% endif %}</div>
+                                    <div class="font-bold text-jp-text text-sm">
+                                        {% if ans.is_ai_generated %}
+                                        AI 助教 <span class="text-xs font-medium text-violet-600">・自動回覆，講師稍後會再確認</span>
+                                        {% else %}
+                                        {{ ans.user.profile.display_name }}{% if ans.user_id == course.teacher_id %} <span class="text-xs font-medium text-jp-primary">・課程講師</span>{% endif %}
+                                        {% endif %}
+                                    </div>
                                     <p class="text-jp-muted text-sm mt-1 whitespace-pre-line">{{ ans.content }}</p>
                                     <div class="text-xs text-jp-muted mt-2">{{ ans.created_at|date:"m/d" }}</div>
                                 </div>
@@ -449,8 +457,10 @@
 {% if already_purchased or is_course_teacher or user.is_superuser %}
 <!-- AI 課程助教（浮動視窗） -->
 <div class="fixed bottom-6 right-6 z-40" data-ai-assistant>
-  <button data-ai-toggle class="w-14 h-14 rounded-full bg-jp-primary hover:bg-jp-primaryHover text-white shadow-lg flex items-center justify-center text-xl transition" aria-label="AI 課程助教">
-    <i class="fas fa-robot"></i>
+  <button data-ai-toggle class="relative flex items-center gap-2 h-14 pl-4 pr-5 rounded-full bg-jp-primary hover:bg-jp-primaryHover text-white shadow-lg transition" aria-label="AI 課程助教，點我提問">
+    <span class="absolute inset-0 rounded-full bg-jp-primary animate-ping opacity-40 pointer-events-none" data-ai-ping></span>
+    <i class="fas fa-robot text-xl relative"></i>
+    <span class="font-bold text-sm whitespace-nowrap relative">AI 助教・問我</span>
   </button>
   <div data-ai-panel class="hidden absolute bottom-16 right-0 w-80 sm:w-96 bg-white rounded-2xl ring-1 ring-slate-200 shadow-2xl overflow-hidden flex flex-col" style="height:28rem">
     <div class="bg-jp-primary text-white px-4 py-3 flex items-center justify-between">
@@ -570,6 +580,8 @@ document.querySelectorAll('[data-funding-countdown]').forEach((root) => {
     root.querySelector('[data-ai-toggle]').addEventListener('click', () => {
         panel.classList.toggle('hidden');
         if (!panel.classList.contains('hidden')) input.focus();
+        const ping = root.querySelector('[data-ai-ping]');
+        if (ping) ping.remove();
     });
     root.querySelector('[data-ai-close]').addEventListener('click', () => panel.classList.add('hidden'));
 

@@ -109,6 +109,7 @@ urlpatterns = [
 
     # AI 課程助教
     path('course/<int:course_id>/ask-ai/', views.ask_ai, name='ask_ai'),
+    path('ask-platform-ai/', views.ask_platform_ai, name='ask_platform_ai'),
 
     # 追蹤講師
     path('teacher/<int:teacher_id>/follow/', views.toggle_follow, name='toggle_follow'),

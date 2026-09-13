@@ -2182,6 +2182,14 @@ def add_question(request, course_id):
                     content=f'課程「{course.title}」收到新的問題：{q.title}'
                 )
 
+                from . import ai_assistant
+                if ai_assistant.auto_answer_question(q):
+                    Notification.objects.create(
+                        user=q.user,
+                        title='AI 助教已回覆你的提問',
+                        content=f'課程「{course.title}」中你的問題「{q.title}」已有 AI 助教的參考回覆，講師稍後仍會親自確認。'
+                    )
+
     return redirect('course_detail', course_id=course.id)
 
 
@@ -2979,6 +2987,23 @@ def ask_ai(request, course_id):
     return JsonResponse(result)
 
 
+@login_required
+def ask_platform_ai(request):
+    """首頁 AI 助手問答（平台 FAQ + 課程推薦，POST，回傳 JSON）。限已登入使用者。"""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': '方法不允許。'}, status=405)
+
+    try:
+        payload = json.loads(request.body.decode('utf-8'))
+        question = payload.get('question', '')
+    except (ValueError, AttributeError):
+        question = request.POST.get('question', '')
+
+    from . import ai_assistant
+    result = ai_assistant.answer_platform_question(question)
+    return JsonResponse(result)
+
+
 # =========================
 # 支援 Range 的媒體服務（開發環境播放影片用）
 # =========================
@@ -3373,8 +3398,9 @@ def teacher_qna(request):
     questions = CourseQuestion.objects.filter(
         course__teacher=request.user
     ).select_related('user', 'course').prefetch_related('answers').annotate(
-        answer_count=Count('answers')
-    ).order_by('answer_count', '-created_at')
+        human_answer_count=Count('answers', filter=Q(answers__is_ai_generated=False)),
+        ai_answer_count=Count('answers', filter=Q(answers__is_ai_generated=True)),
+    ).order_by('human_answer_count', '-created_at')
 
     return render(request, 'main/teacher_qna.html', {
         'questions': questions,

@@ -16,8 +16,10 @@
             <div class="font-bold text-slate-800">{{ q.title }}</div>
             <div class="text-sm text-slate-500">課程「{{ q.course.title }}」・{{ q.user.username }} 提問於 {{ q.created_at|date:"Y-m-d H:i" }}</div>
           </div>
-          {% if q.answer_count %}
+          {% if q.human_answer_count %}
           <span class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">已回覆</span>
+          {% elif q.ai_answer_count %}
+          <span class="px-3 py-1 rounded-full text-xs font-bold bg-violet-100 text-violet-700">AI 已答覆・待確認</span>
           {% else %}
           <span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700">待回覆</span>
           {% endif %}
@@ -26,7 +28,11 @@
 
         {% for a in q.answers.all %}
         <div class="bg-slate-50 rounded-xl p-3 mb-2 text-sm">
+          {% if a.is_ai_generated %}
+          <span class="font-bold text-violet-600">AI 助教（自動回覆）：</span>{{ a.content }}
+          {% else %}
           <span class="font-bold text-jp-primaryHover">{{ a.user.username }}：</span>{{ a.content }}
+          {% endif %}
           <span class="text-slate-400 text-xs ml-2">{{ a.created_at|date:"Y-m-d H:i" }}</span>
         </div>
         {% endfor %}

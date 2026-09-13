@@ -783,6 +783,7 @@ class CourseAnswer(models.Model):
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="回答者")
     content = models.TextField(verbose_name="回答內容")
+    is_ai_generated = models.BooleanField(default=False, verbose_name="AI 自動回答")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="回答時間")
 
     def __str__(self):
