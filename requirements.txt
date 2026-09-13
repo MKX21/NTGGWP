@@ -7,6 +7,7 @@ imageio-ffmpeg==0.6.0
 requests==2.32.3
 Pillow
 anthropic
+google-genai
 gunicorn==23.0.0
 whitenoise==6.8.2
 django-storages==1.14.4

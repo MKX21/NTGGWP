@@ -697,9 +697,9 @@ class CourseQuestionAdmin(admin.ModelAdmin):
 
 @admin.register(CourseAnswer)
 class CourseAnswerAdmin(admin.ModelAdmin):
-    list_display = ('question', 'user', 'created_at')
+    list_display = ('question', 'user', 'is_ai_generated', 'created_at')
     search_fields = ('question__title', 'user__username', 'content')
-    list_filter = ('created_at',)
+    list_filter = ('is_ai_generated', 'created_at')
     autocomplete_fields = ('question', 'user')
 
 

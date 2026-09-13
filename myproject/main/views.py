@@ -187,12 +187,15 @@ def home(request):
         ).order_by('funding_end_date')[:10]
     )
 
+    from . import ai_assistant
+
     return render(request, 'main/home.html', {
         'page_obj': page_obj,
         'sort': sort,
         'q': q,
         'cat': cat,
         'categories': categories,
+        'platform_faqs': ai_assistant.PLATFORM_FAQS,
         'total_students': total_students,
         'total_courses': total_courses,
         'total_teachers': total_teachers,
@@ -352,8 +355,11 @@ def course_detail(request, course_id):
     )['total'] or 0
     student_count = Enrollment.objects.filter(course=course).count()
 
+    from . import ai_assistant
+
     return render(request, 'main/course_detail.html', {
         'course': course,
+        'platform_faqs': ai_assistant.PLATFORM_FAQS,
         'already_purchased': already_purchased,
         'chapters': chapters,
         'reviews': reviews,
@@ -2227,6 +2233,14 @@ def add_question(request, course_id):
                     content=f'課程「{course.title}」收到新的問題：{q.title}'
                 )
 
+                from . import ai_assistant
+                if ai_assistant.auto_answer_question(q):
+                    Notification.objects.create(
+                        user=q.user,
+                        title='AI 助教已回覆你的提問',
+                        content=f'課程「{course.title}」中你的問題「{q.title}」已有 AI 助教的參考回覆，講師稍後仍會親自確認。'
+                    )
+
     return redirect('course_detail', course_id=course.id)
 
 
@@ -3057,7 +3071,37 @@ def ask_ai(request, course_id):
         question = request.POST.get('question', '')
 
     from . import ai_assistant
+
+    # 先比對固定 FAQ（觀看課程方法／付費方式／課程遺失／忘記帳密等），
+    # 命中就直接回答，完全不呼叫 AI API、不吃額度。
+    faq = ai_assistant.match_platform_faq(question)
+    if faq:
+        return JsonResponse({'ok': True, 'answer': faq['answer'], 'faq': True})
+
     result = ai_assistant.answer_course_question(course, question)
+    return JsonResponse(result)
+
+
+@login_required
+def ask_platform_ai(request):
+    """首頁 AI 助手問答（平台 FAQ + 課程推薦，POST，回傳 JSON）。限已登入使用者。"""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': '方法不允許。'}, status=405)
+
+    try:
+        payload = json.loads(request.body.decode('utf-8'))
+        question = payload.get('question', '')
+    except (ValueError, AttributeError):
+        question = request.POST.get('question', '')
+
+    from . import ai_assistant
+
+    # 先比對固定 FAQ，命中就直接回答，完全不呼叫 AI API、不吃額度。
+    faq = ai_assistant.match_platform_faq(question)
+    if faq:
+        return JsonResponse({'ok': True, 'answer': faq['answer'], 'faq': True})
+
+    result = ai_assistant.answer_platform_question(question)
     return JsonResponse(result)
 
 
@@ -3463,8 +3507,9 @@ def teacher_qna(request):
     questions = CourseQuestion.objects.filter(
         course__teacher=request.user
     ).select_related('user', 'course').prefetch_related('answers').annotate(
-        answer_count=Count('answers')
-    ).order_by('answer_count', '-created_at')
+        human_answer_count=Count('answers', filter=Q(answers__is_ai_generated=False)),
+        ai_answer_count=Count('answers', filter=Q(answers__is_ai_generated=True)),
+    ).order_by('human_answer_count', '-created_at')
 
     return render(request, 'main/teacher_qna.html', {
         'questions': questions,

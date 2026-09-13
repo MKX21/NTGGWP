@@ -290,13 +290,21 @@
 
                             {% for ans in q.answers.all %}
                             <div class="flex gap-3 mt-4">
-                                {% if ans.user.profile.avatar %}
+                                {% if ans.is_ai_generated %}
+                                <span class="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white flex items-center justify-center text-sm shrink-0"><i class="fas fa-wand-magic-sparkles"></i></span>
+                                {% elif ans.user.profile.avatar %}
                                 <img src="{{ ans.user.profile.avatar.url }}" class="w-9 h-9 rounded-full object-cover shrink-0">
                                 {% else %}
                                 <span class="w-9 h-9 rounded-full bg-gradient-to-br from-brand-700 to-brand-500 text-white flex items-center justify-center text-sm font-bold shrink-0">{{ ans.user.profile.display_name|slice:":1"|upper }}</span>
                                 {% endif %}
                                 <div class="flex-1 min-w-0 bg-jp-bg rounded-xl px-4 py-3">
-                                    <div class="font-bold text-jp-text text-sm">{{ ans.user.profile.display_name }}{% if ans.user_id == course.teacher_id %} <span class="text-xs font-medium text-jp-primary">・課程講師</span>{% endif %}</div>
+                                    <div class="font-bold text-jp-text text-sm">
+                                        {% if ans.is_ai_generated %}
+                                        AI 助教 <span class="text-xs font-medium text-violet-600">・自動回覆，講師稍後會再確認</span>
+                                        {% else %}
+                                        {{ ans.user.profile.display_name }}{% if ans.user_id == course.teacher_id %} <span class="text-xs font-medium text-jp-primary">・課程講師</span>{% endif %}
+                                        {% endif %}
+                                    </div>
                                     <p class="text-jp-muted text-sm mt-1 whitespace-pre-line">{{ ans.content }}</p>
                                     <div class="text-xs text-jp-muted mt-2">{{ ans.created_at|date:"m/d" }}</div>
                                 </div>
@@ -458,23 +466,31 @@
 {% if already_purchased or is_course_teacher or user.is_superuser %}
 <!-- AI 課程助教（浮動視窗） -->
 <div class="fixed bottom-6 right-6 z-40" data-ai-assistant>
-  <button data-ai-toggle class="w-14 h-14 rounded-full bg-jp-primary hover:bg-jp-primaryHover text-white shadow-lg flex items-center justify-center text-xl transition" aria-label="AI 課程助教">
-    <i class="fas fa-robot"></i>
+  <button data-ai-toggle class="relative flex items-center gap-2 h-14 pl-4 pr-5 rounded-full bg-jp-primary hover:bg-jp-primaryHover text-white shadow-lg transition" aria-label="AI 課程助教，點我提問">
+    <span class="absolute inset-0 rounded-full bg-jp-primary animate-ping opacity-40 pointer-events-none" data-ai-ping></span>
+    <i class="fas fa-robot text-xl relative"></i>
+    <span class="font-bold text-sm whitespace-nowrap relative">AI 助教・問我</span>
   </button>
   <div data-ai-panel class="hidden absolute bottom-16 right-0 w-80 sm:w-96 bg-white rounded-2xl ring-1 ring-slate-200 shadow-2xl overflow-hidden flex flex-col" style="height:28rem">
     <div class="bg-jp-primary text-white px-4 py-3 flex items-center justify-between">
       <div class="font-bold"><i class="fas fa-robot mr-2"></i>AI 課程助教</div>
       <button data-ai-close class="text-white/80 hover:text-white"><i class="fas fa-times"></i></button>
     </div>
+    <div data-ai-faq class="flex flex-wrap gap-1.5 px-3 pt-3 pb-2 border-b border-slate-100 bg-white">
+      {% for faq in platform_faqs %}
+      <button type="button" data-faq-id="{{ faq.id }}" class="text-xs bg-slate-100 hover:bg-jp-primary hover:text-white text-slate-600 rounded-full px-3 py-1.5 transition whitespace-nowrap">{{ faq.label }}</button>
+      {% endfor %}
+    </div>
     <div data-ai-log class="flex-1 overflow-y-auto p-4 space-y-3 text-sm bg-slate-50">
       <div class="bg-white rounded-xl p-3 ring-1 ring-slate-100 text-slate-600">嗨！我是「{{ course.title }}」的 AI 助教，關於這門課的內容都可以問我 🙌</div>
     </div>
     <form data-ai-form class="p-3 border-t border-slate-100 flex gap-2">
-      <input data-ai-input type="text" placeholder="輸入你的問題…" class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200" autocomplete="off">
-      <button type="submit" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-4 rounded-lg text-sm">送出</button>
+      <input data-ai-input type="text" placeholder="輸入你的問題…" class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-brand-200" autocomplete="off">
+      <button type="submit" data-ai-submit class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-4 rounded-lg text-sm disabled:opacity-60 disabled:cursor-not-allowed">送出</button>
     </form>
   </div>
 </div>
+{{ platform_faqs|json_script:"course-ai-faqs-data" }}
 {% endif %}
 {% endblock %}
 
@@ -573,14 +589,32 @@ document.querySelectorAll('[data-funding-countdown]').forEach((root) => {
     const log = root.querySelector('[data-ai-log]');
     const form = root.querySelector('[data-ai-form]');
     const input = root.querySelector('[data-ai-input]');
+    const submitBtn = root.querySelector('[data-ai-submit]');
+    const SUBMIT_LABEL = submitBtn.textContent;
+    const COOLDOWN_MS = 1000;
+    let busy = false;
     const csrftoken = '{{ csrf_token }}';
     const askUrl = "{% url 'ask_ai' course.id %}";
+    const faqDataEl = document.getElementById('course-ai-faqs-data');
+    const FAQS = faqDataEl ? JSON.parse(faqDataEl.textContent) : [];
 
     root.querySelector('[data-ai-toggle]').addEventListener('click', () => {
         panel.classList.toggle('hidden');
         if (!panel.classList.contains('hidden')) input.focus();
+        const ping = root.querySelector('[data-ai-ping]');
+        if (ping) ping.remove();
     });
     root.querySelector('[data-ai-close]').addEventListener('click', () => panel.classList.add('hidden'));
+
+    // 常見問題快速按鈕：直接用本機資料顯示問答，完全不打 API、不消耗額度。
+    root.querySelectorAll('[data-ai-faq] [data-faq-id]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const faq = FAQS.find((f) => f.id === btn.dataset.faqId);
+            if (!faq) return;
+            bubble(faq.question, 'user');
+            setTimeout(() => bubble(faq.answer, 'ai'), 300);
+        });
+    });
 
     function bubble(text, who) {
         const el = document.createElement('div');
@@ -593,10 +627,31 @@ document.querySelectorAll('[data-funding-countdown]').forEach((root) => {
         return el;
     }
 
+    // 防重複發送：送出後鎖住輸入框／按鈕，回覆後再強制冷卻 1 秒才解鎖，
+    // 避免使用者連點或頻繁送出觸發後端 API 的 429（限流）錯誤。
+    function setBusy(isBusy, label) {
+        busy = isBusy;
+        input.disabled = isBusy;
+        submitBtn.disabled = isBusy;
+        submitBtn.textContent = label || (isBusy ? '思考中…' : SUBMIT_LABEL);
+    }
+
+    function startCooldown() {
+        submitBtn.textContent = SUBMIT_LABEL;
+        submitBtn.disabled = true;
+        setTimeout(() => {
+            busy = false;
+            input.disabled = false;
+            submitBtn.disabled = false;
+        }, COOLDOWN_MS);
+    }
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (busy) return;
         const q = input.value.trim();
         if (!q) return;
+        setBusy(true);
         bubble(q, 'user');
         input.value = '';
         const thinking = bubble('思考中…', 'ai');
@@ -610,6 +665,8 @@ document.querySelectorAll('[data-funding-countdown]').forEach((root) => {
             thinking.textContent = data.ok ? data.answer : (data.error || '發生錯誤，請稍後再試。');
         } catch (err) {
             thinking.textContent = '連線失敗，請稍後再試。';
+        } finally {
+            startCooldown();
         }
     });
 })();
