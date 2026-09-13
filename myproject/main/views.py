@@ -186,12 +186,15 @@ def home(request):
         ).order_by('funding_end_date')[:10]
     )
 
+    from . import ai_assistant
+
     return render(request, 'main/home.html', {
         'page_obj': page_obj,
         'sort': sort,
         'q': q,
         'cat': cat,
         'categories': categories,
+        'platform_faqs': ai_assistant.PLATFORM_FAQS,
         'total_students': total_students,
         'total_courses': total_courses,
         'avg_all': avg_all,
@@ -350,8 +353,11 @@ def course_detail(request, course_id):
     )['total'] or 0
     student_count = Enrollment.objects.filter(course=course).count()
 
+    from . import ai_assistant
+
     return render(request, 'main/course_detail.html', {
         'course': course,
+        'platform_faqs': ai_assistant.PLATFORM_FAQS,
         'already_purchased': already_purchased,
         'chapters': chapters,
         'reviews': reviews,
@@ -3026,6 +3032,13 @@ def ask_ai(request, course_id):
         question = request.POST.get('question', '')
 
     from . import ai_assistant
+
+    # 先比對固定 FAQ（觀看課程方法／付費方式／課程遺失／忘記帳密等），
+    # 命中就直接回答，完全不呼叫 AI API、不吃額度。
+    faq = ai_assistant.match_platform_faq(question)
+    if faq:
+        return JsonResponse({'ok': True, 'answer': faq['answer'], 'faq': True})
+
     result = ai_assistant.answer_course_question(course, question)
     return JsonResponse(result)
 
@@ -3043,6 +3056,12 @@ def ask_platform_ai(request):
         question = request.POST.get('question', '')
 
     from . import ai_assistant
+
+    # 先比對固定 FAQ，命中就直接回答，完全不呼叫 AI API、不吃額度。
+    faq = ai_assistant.match_platform_faq(question)
+    if faq:
+        return JsonResponse({'ok': True, 'answer': faq['answer'], 'faq': True})
+
     result = ai_assistant.answer_platform_question(question)
     return JsonResponse(result)
 

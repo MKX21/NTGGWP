@@ -476,15 +476,21 @@
       <div class="font-bold"><i class="fas fa-robot mr-2"></i>AI 課程助教</div>
       <button data-ai-close class="text-white/80 hover:text-white"><i class="fas fa-times"></i></button>
     </div>
+    <div data-ai-faq class="flex flex-wrap gap-1.5 px-3 pt-3 pb-2 border-b border-slate-100 bg-white">
+      {% for faq in platform_faqs %}
+      <button type="button" data-faq-id="{{ faq.id }}" class="text-xs bg-slate-100 hover:bg-jp-primary hover:text-white text-slate-600 rounded-full px-3 py-1.5 transition whitespace-nowrap">{{ faq.label }}</button>
+      {% endfor %}
+    </div>
     <div data-ai-log class="flex-1 overflow-y-auto p-4 space-y-3 text-sm bg-slate-50">
       <div class="bg-white rounded-xl p-3 ring-1 ring-slate-100 text-slate-600">嗨！我是「{{ course.title }}」的 AI 助教，關於這門課的內容都可以問我 🙌</div>
     </div>
     <form data-ai-form class="p-3 border-t border-slate-100 flex gap-2">
-      <input data-ai-input type="text" placeholder="輸入你的問題…" class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200" autocomplete="off">
-      <button type="submit" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-4 rounded-lg text-sm">送出</button>
+      <input data-ai-input type="text" placeholder="輸入你的問題…" class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-brand-200" autocomplete="off">
+      <button type="submit" data-ai-submit class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-4 rounded-lg text-sm disabled:opacity-60 disabled:cursor-not-allowed">送出</button>
     </form>
   </div>
 </div>
+{{ platform_faqs|json_script:"course-ai-faqs-data" }}
 {% endif %}
 {% endblock %}
 
@@ -583,8 +589,14 @@ document.querySelectorAll('[data-funding-countdown]').forEach((root) => {
     const log = root.querySelector('[data-ai-log]');
     const form = root.querySelector('[data-ai-form]');
     const input = root.querySelector('[data-ai-input]');
+    const submitBtn = root.querySelector('[data-ai-submit]');
+    const SUBMIT_LABEL = submitBtn.textContent;
+    const COOLDOWN_MS = 1000;
+    let busy = false;
     const csrftoken = '{{ csrf_token }}';
     const askUrl = "{% url 'ask_ai' course.id %}";
+    const faqDataEl = document.getElementById('course-ai-faqs-data');
+    const FAQS = faqDataEl ? JSON.parse(faqDataEl.textContent) : [];
 
     root.querySelector('[data-ai-toggle]').addEventListener('click', () => {
         panel.classList.toggle('hidden');
@@ -593,6 +605,16 @@ document.querySelectorAll('[data-funding-countdown]').forEach((root) => {
         if (ping) ping.remove();
     });
     root.querySelector('[data-ai-close]').addEventListener('click', () => panel.classList.add('hidden'));
+
+    // 常見問題快速按鈕：直接用本機資料顯示問答，完全不打 API、不消耗額度。
+    root.querySelectorAll('[data-ai-faq] [data-faq-id]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const faq = FAQS.find((f) => f.id === btn.dataset.faqId);
+            if (!faq) return;
+            bubble(faq.question, 'user');
+            setTimeout(() => bubble(faq.answer, 'ai'), 300);
+        });
+    });
 
     function bubble(text, who) {
         const el = document.createElement('div');
@@ -605,10 +627,31 @@ document.querySelectorAll('[data-funding-countdown]').forEach((root) => {
         return el;
     }
 
+    // 防重複發送：送出後鎖住輸入框／按鈕，回覆後再強制冷卻 1 秒才解鎖，
+    // 避免使用者連點或頻繁送出觸發後端 API 的 429（限流）錯誤。
+    function setBusy(isBusy, label) {
+        busy = isBusy;
+        input.disabled = isBusy;
+        submitBtn.disabled = isBusy;
+        submitBtn.textContent = label || (isBusy ? '思考中…' : SUBMIT_LABEL);
+    }
+
+    function startCooldown() {
+        submitBtn.textContent = SUBMIT_LABEL;
+        submitBtn.disabled = true;
+        setTimeout(() => {
+            busy = false;
+            input.disabled = false;
+            submitBtn.disabled = false;
+        }, COOLDOWN_MS);
+    }
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (busy) return;
         const q = input.value.trim();
         if (!q) return;
+        setBusy(true);
         bubble(q, 'user');
         input.value = '';
         const thinking = bubble('思考中…', 'ai');
@@ -622,6 +665,8 @@ document.querySelectorAll('[data-funding-countdown]').forEach((root) => {
             thinking.textContent = data.ok ? data.answer : (data.error || '發生錯誤，請稍後再試。');
         } catch (err) {
             thinking.textContent = '連線失敗，請稍後再試。';
+        } finally {
+            startCooldown();
         }
     });
 })();
