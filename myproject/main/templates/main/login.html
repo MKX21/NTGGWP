@@ -3,7 +3,7 @@
 
 {% block content %}
 <style>
-  /* ===== 入學通行證式登入頁 ===== */
+  /* ===== 玻璃質感登入頁（僅作用於登入頁）===== */
   .glass-login {
     --g-text: #e8ecf8;
     --g-muted: #aab2c7;
@@ -13,123 +13,23 @@
     place-items: center;
     padding: 2.5rem 1rem;
     color: var(--g-text);
+    /* 純 CSS 深色紋理：兩道青綠光暈 + 細點陣 + 斜向光帶,不依賴外部圖 */
     background:
       radial-gradient(circle at 15% 12%, hsl(172 75% 48% / 0.24), transparent 45%),
       radial-gradient(circle at 85% 85%, hsl(205 75% 48% / 0.22), transparent 42%),
       radial-gradient(hsl(0 0% 100% / 0.05) 1px, transparent 1.4px) 0 0 / 24px 24px,
       linear-gradient(135deg, #0b1220 0%, #0a0e14 55%, #0d1512 100%);
   }
-
-  /* 卡片改為「通行證」構圖：左＝票根資訊，中＝撕票線，右＝表單 */
-  .pass-card {
-    width: min(52rem, 100%);
-    display: grid;
-    grid-template-columns: 1fr 1px 1.15fr;
+  .glass-card {
+    width: min(27rem, 100%);
     border-radius: 1.25rem;
+    padding: 2.25rem;
     background: hsl(225 24% 13% / 0.35);
     border: 1px solid var(--g-border);
     box-shadow: 0 1.25rem 2.81rem hsl(0 0% 0% / 0.45);
     backdrop-filter: blur(14px) saturate(120%);
     -webkit-backdrop-filter: blur(14px) saturate(120%);
-    overflow: hidden;
-    position: relative;
   }
-  .pass-stub {
-    padding: 2.25rem 2rem;
-    position: relative;
-    background-image: radial-gradient(hsl(0 0% 100% / 0.05) 1px, transparent 1.3px);
-    background-size: 15px 15px;
-    display: flex;
-    flex-direction: column;
-  }
-  .pass-eyebrow {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.68rem;
-    font-weight: 600;
-    letter-spacing: 0.2em;
-    color: hsl(172 65% 62%);
-  }
-  .pass-title {
-    margin-top: 0.6rem;
-    font-size: 1.9rem;
-    line-height: 1.15;
-  }
-  .pass-meta {
-    margin-top: auto;
-    padding-top: 1.5rem;
-    display: grid;
-    gap: 0.55rem;
-  }
-  .pass-meta-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 0.75rem;
-    padding-bottom: 0.45rem;
-    border-bottom: 1px dashed hsl(0 0% 100% / 0.14);
-    font-size: 0.78rem;
-  }
-  .pass-meta-row dt { color: var(--g-muted); }
-  .pass-meta-row dd { font-family: 'IBM Plex Mono', monospace; color: var(--g-text); letter-spacing: 0.02em; }
-  .pass-stamp {
-    position: absolute;
-    right: 1.75rem;
-    bottom: 1.75rem;
-    width: 5.2rem;
-    height: 5.2rem;
-    border-radius: 50%;
-    border: 2px dashed hsl(172 70% 58% / 0.65);
-    color: hsl(172 70% 66%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.62rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    line-height: 1.3;
-    transform: rotate(-10deg);
-    opacity: 0.85;
-    pointer-events: none;
-  }
-
-  /* 撕票線：中間的虛線 + 上下兩個圓形缺口 */
-  .pass-perf {
-    position: relative;
-    width: 1px;
-    background-image: repeating-linear-gradient(180deg, hsl(0 0% 100% / 0.22) 0 6px, transparent 6px 13px);
-  }
-  .pass-perf::before, .pass-perf::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 15px;
-    height: 15px;
-    border-radius: 50%;
-    background: hsl(225 26% 9%);
-    border: 1px solid hsl(0 0% 100% / 0.14);
-  }
-  .pass-perf::before { top: -7px; }
-  .pass-perf::after { bottom: -7px; }
-
-  .pass-form {
-    padding: 2.25rem 2rem;
-  }
-
-  @media (max-width: 760px) {
-    .pass-card { grid-template-columns: 1fr; grid-auto-flow: row; }
-    .pass-perf {
-      width: auto; height: 1px;
-      background-image: repeating-linear-gradient(90deg, hsl(0 0% 100% / 0.22) 0 6px, transparent 6px 13px);
-    }
-    .pass-perf::before, .pass-perf::after { top: 50%; left: auto; transform: translateY(-50%); }
-    .pass-perf::before { left: -7px; }
-    .pass-perf::after { right: -7px; left: auto; }
-    .pass-stamp { position: static; margin-top: 1.5rem; transform: rotate(-6deg); }
-  }
-
   .glass-card h1 { color: #fff; }
   .glass-card .g-sub, .glass-card label, .glass-card .g-muted { color: var(--g-muted); }
   .glass-input {
@@ -160,7 +60,7 @@
     transition: filter .15s, transform .05s;
   }
   .glass-btn:hover { filter: brightness(1.08); }
-  .glass-btn:active { transform: translateY(0) scale(.99); }
+  .glass-btn:active { transform: translateY(1px); }
   .glass-oauth {
     display: flex; align-items: center; justify-content: center; gap: .5rem;
     width: 100%; padding: 0.65rem; border-radius: 0.75rem;
@@ -168,11 +68,9 @@
     background: hsl(0 0% 100% / 0.04); transition: background .15s;
   }
   .glass-oauth:hover { background: hsl(0 0% 100% / 0.1); }
-  .glass-oauth.line { background: #06C755; border-color: transparent; color: #fff; }
-  .glass-oauth.line:hover { background: #05b34c; }
   .glass-link { color: hsl(172 70% 62%); }
   .glass-link:hover { text-decoration: underline; }
-  /* 分隔線：延續刻度線語彙 */
+  /* 分隔線：刻度線，呼應課程章節／進度的視覺語彙 */
   .glass-sep {
     height: 7px;
     background-image: linear-gradient(90deg, hsl(0 0% 100% / .3) 1px, transparent 1px);
@@ -184,57 +82,39 @@
 </style>
 
 <section class="glass-login">
-  <div class="pass-card">
+  <div class="glass-card">
+    <h1 class="font-display italic text-3xl font-medium mb-1">登入</h1>
+    <p class="g-sub mb-6 text-sm">輸入帳號名稱或 Gmail 與密碼登入平台。</p>
 
-    <!-- 左：票根資訊面 -->
-    <div class="pass-stub">
-      <span class="pass-eyebrow">EDUFLOW · ACCESS PASS</span>
-      <h1 class="font-display italic pass-title font-medium">歡迎回來，<br>繼續上次的章節。</h1>
-      <dl class="pass-meta">
-        <div class="pass-meta-row"><dt>身分別</dt><dd>STUDENT / TEACHER</dd></div>
-        <div class="pass-meta-row"><dt>核發方式</dt><dd>帳號自動核對</dd></div>
-        <div class="pass-meta-row"><dt>使用效期</dt><dd>永久有效</dd></div>
-      </dl>
-      <div class="pass-stamp">VALID<br>ACCESS</div>
+    {% if error_message %}
+    <div class="mb-5 text-sm font-medium px-4 py-3 rounded-lg" style="background:hsl(0 70% 55% / 0.15);color:#ffb4b4;border:1px solid hsl(0 70% 60% / 0.3)">{{ error_message }}</div>
+    {% endif %}
+
+    <form method="post" class="space-y-4">
+      {% csrf_token %}
+      <div>
+        <label class="block font-medium mb-1.5 text-sm" for="username">帳號名稱或 Gmail</label>
+        <input type="text" id="username" name="username" placeholder="請輸入帳號名稱或 Gmail" required class="glass-input">
+      </div>
+      <div>
+        <label class="block font-medium mb-1.5 text-sm" for="password">密碼</label>
+        <input type="password" id="password" name="password" required class="glass-input">
+      </div>
+      <button type="submit" class="glass-btn">登入</button>
+    </form>
+
+    <div class="flex items-center gap-3 my-5">
+      <div class="glass-sep flex-1"></div>
+      <span class="text-xs g-muted">或使用快速登入</span>
+      <div class="glass-sep flex-1"></div>
+    </div>
+    <div class="space-y-3">
+      <a href="{% url 'google_login' %}" class="glass-oauth"><span>使用 Google 登入</span></a>
     </div>
 
-    <div class="pass-perf" aria-hidden="true"></div>
-
-    <!-- 右：表單面 -->
-    <div class="pass-form">
-      <h2 class="text-lg font-bold mb-1">登入</h2>
-      <p class="g-sub mb-5 text-sm">輸入帳號名稱或 Gmail 與密碼登入平台。</p>
-
-      {% if error_message %}
-      <div class="mb-5 text-sm font-medium px-4 py-3 rounded-lg" style="background:hsl(0 70% 55% / 0.15);color:#ffb4b4;border:1px solid hsl(0 70% 60% / 0.3)">{{ error_message }}</div>
-      {% endif %}
-
-      <form method="post" class="space-y-4">
-        {% csrf_token %}
-        <div>
-          <label class="block font-medium mb-1.5 text-sm" for="username">帳號名稱或 Gmail</label>
-          <input type="text" id="username" name="username" placeholder="請輸入帳號名稱或 Gmail" required class="glass-input">
-        </div>
-        <div>
-          <label class="block font-medium mb-1.5 text-sm" for="password">密碼</label>
-          <input type="password" id="password" name="password" required class="glass-input">
-        </div>
-        <button type="submit" class="glass-btn">登入</button>
-      </form>
-
-      <div class="flex items-center gap-3 my-5">
-        <div class="glass-sep flex-1"></div>
-        <span class="text-xs g-muted">或使用快速登入</span>
-        <div class="glass-sep flex-1"></div>
-      </div>
-      <div class="space-y-3">
-        <a href="{% url 'google_login' %}" class="glass-oauth"><span>使用 Google 登入</span></a>
-      </div>
-
-      <div class="flex items-center justify-between mt-5 text-sm">
-        <a href="{% url 'password_reset' %}" class="glass-link">忘記密碼？</a>
-        <a href="{% url 'register' %}" class="g-muted hover:text-white transition">還沒有帳號？免費註冊</a>
-      </div>
+    <div class="flex items-center justify-between mt-5 text-sm">
+      <a href="{% url 'password_reset' %}" class="glass-link">忘記密碼？</a>
+      <a href="{% url 'register' %}" class="g-muted hover:text-white transition">還沒有帳號？免費註冊</a>
     </div>
   </div>
 </section>

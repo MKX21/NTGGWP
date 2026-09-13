@@ -1,0 +1,65 @@
+{% extends 'main/base_eduflow.html' %}
+{% block title %}講師總覽 | EduFlow{% endblock %}
+
+{% block content %}
+<section id="teachers" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+    <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
+        <div>
+            <span class="inline-flex items-center gap-2 text-jp-primary font-medium text-sm mb-2"><i class="fas fa-chalkboard-user"></i> 業界專家親自授課</span>
+            <h1 class="text-2xl md:text-3xl font-bold tracking-wide text-jp-text">講師總覽</h1>
+            {% if q %}<p class="text-jp-muted mt-1">「{{ q }}」的搜尋結果，共 {{ total_teachers }} 位</p>
+            {% else %}<p class="text-jp-muted mt-1">共 {{ total_teachers }} 位講師，點進去看看他們開了哪些課</p>{% endif %}
+        </div>
+    </div>
+
+    <!-- 搜尋 -->
+    <form action="{% url 'teacher_catalog' %}" method="get" class="relative max-w-lg mb-10">
+        <input type="text" name="q" value="{{ q }}" placeholder="搜尋講師名稱…"
+               class="w-full bg-jp-bg border border-jp-border focus:bg-jp-surface focus:border-brand-300 focus:ring-2 focus:ring-brand-200 rounded-full py-2.5 pl-11 pr-4 text-sm outline-none transition">
+        <button type="submit" class="absolute left-4 top-3 text-jp-muted" aria-label="搜尋"><i class="fas fa-search"></i></button>
+    </form>
+
+    {% if teachers %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for teacher in teachers %}
+        <a href="{% url 'teacher_profile' teacher.id %}" class="group flex flex-col bg-jp-surface border border-jp-border rounded-2xl p-6 hover:border-jp-primary transition">
+            <div class="flex items-center gap-4 mb-4">
+                {% if teacher.profile.avatar %}
+                <img src="{{ teacher.profile.avatar.url }}" alt="{{ teacher.profile.display_name }}" class="w-14 h-14 rounded-full object-cover shrink-0">
+                {% else %}
+                <span class="w-14 h-14 rounded-full bg-gradient-to-br from-brand-700 to-brand-500 text-white flex items-center justify-center text-xl font-bold shrink-0">{{ teacher.profile.display_name|slice:":1"|upper }}</span>
+                {% endif %}
+                <div class="min-w-0">
+                    <h3 class="font-bold text-jp-text truncate group-hover:text-jp-primary transition">{{ teacher.profile.display_name }}</h3>
+                    {% if teacher.profile.headline %}
+                    <p class="text-sm text-jp-muted truncate">{{ teacher.profile.headline }}</p>
+                    {% else %}
+                    <p class="text-sm text-jp-muted truncate">講師</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if teacher.profile.bio %}
+            <p class="text-sm text-jp-muted line-clamp-2 mb-4 flex-1">{{ teacher.profile.bio }}</p>
+            {% else %}
+            <p class="text-sm text-jp-muted mb-4 flex-1">這位講師還沒有填寫簡介。</p>
+            {% endif %}
+
+            <div class="flex items-center gap-4 text-sm text-jp-muted border-t border-jp-border pt-4">
+                <span><i class="fas fa-book-open mr-1 text-jp-primary"></i>{{ teacher.course_count }} 門課程</span>
+                <span><i class="fas fa-user-graduate mr-1 text-jp-primary"></i>{{ teacher.student_count }} 位學生</span>
+                {% if teacher.avg_rating %}
+                <span><i class="fas fa-star mr-1 text-amber-400"></i>{{ teacher.avg_rating }}</span>
+                {% endif %}
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-16 text-jp-muted border-2 border-dashed border-jp-border rounded-xl">
+        <p class="text-lg font-bold mb-1">找不到符合的講師</p>
+        <p class="text-sm">換個關鍵字再試試看。</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

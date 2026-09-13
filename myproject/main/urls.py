@@ -17,6 +17,7 @@ urlpatterns = [
     path('lesson/<int:lesson_id>/progress/', views.save_progress, name='save_progress'),
     path('lesson/<int:lesson_id>/video/', views.stream_lesson_video, name='stream_lesson_video'),
     path('course/<int:course_id>/certificate/', views.certificate, name='certificate'),
+    path('teachers/', views.teacher_catalog, name='teacher_catalog'),
     path('teacher/<int:teacher_id>/profile/', views.teacher_profile, name='teacher_profile'),
     path('course/<int:course_id>/edit/', views.edit_course, name='edit_course'),
     path('course/<int:course_id>/delete/', views.delete_course, name='delete_course'),

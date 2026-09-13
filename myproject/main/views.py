@@ -163,6 +163,7 @@ def home(request):
         c.icon = icon
     total_students = Enrollment.objects.values('student').distinct().count()
     total_courses = Course.objects.filter(is_published=True).count()
+    total_teachers = Course.objects.filter(is_published=True).values('teacher').distinct().count()
     avg_all = Review.objects.aggregate(a=Avg('rating'))['a']
     avg_all = round(avg_all, 1) if avg_all else 4.8
 
@@ -194,6 +195,7 @@ def home(request):
         'categories': categories,
         'total_students': total_students,
         'total_courses': total_courses,
+        'total_teachers': total_teachers,
         'avg_all': avg_all,
         'popular_courses': popular_courses,
         'latest_courses': latest_courses,
@@ -2644,6 +2646,43 @@ def certificate(request, course_id):
 # =========================
 # Task 4 講師公開頁
 # =========================
+
+def teacher_catalog(request):
+    """講師總覽：列出所有有公開課程的講師，供首頁「講師」入口點進來瀏覽。"""
+    q = request.GET.get('q', '').strip()
+
+    teacher_ids = (
+        Course.objects.filter(is_published=True)
+        .values_list('teacher_id', flat=True)
+        .distinct()
+    )
+    teachers = User.objects.filter(id__in=teacher_ids).select_related('profile')
+    if q:
+        teachers = teachers.filter(
+            Q(username__icontains=q)
+            | Q(first_name__icontains=q)
+            | Q(last_name__icontains=q)
+        )
+
+    review_stats = Review.objects.filter(course__teacher=OuterRef('pk')).values('course__teacher')
+    teachers = teachers.annotate(
+        course_count=Count('course', filter=Q(course__is_published=True), distinct=True),
+        student_count=Count('course__enrollment', distinct=True),
+        avg_rating_raw=Subquery(
+            review_stats.annotate(a=Avg('rating')).values('a')[:1],
+            output_field=FloatField()),
+    ).order_by('-course_count', '-student_count', 'username')
+
+    teachers = list(teachers)
+    for t in teachers:
+        t.avg_rating = round(t.avg_rating_raw, 1) if t.avg_rating_raw else None
+
+    return render(request, 'main/teacher_catalog.html', {
+        'teachers': teachers,
+        'q': q,
+        'total_teachers': len(teachers),
+    })
+
 
 def teacher_profile(request, teacher_id):
     teacher = get_object_or_404(User, id=teacher_id)
