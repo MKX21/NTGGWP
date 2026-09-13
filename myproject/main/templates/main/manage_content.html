@@ -41,8 +41,10 @@
         <strong class="text-slate-800">{{ chapter.sort_order }}-{{ lesson.sort_order }} {{ lesson.title }}</strong>
         <span class="text-slate-400">（{{ lesson.duration_minutes }} 分{% if lesson.is_free_preview %}・免費試看{% endif %}）</span>
         {% if lesson.video_file %}<span class="text-green-600 font-bold text-xs ml-1">🎬 已上傳影片</span>{% elif lesson.video_url %}<span class="text-jp-primary font-bold text-xs ml-1">🔗 影片連結</span>{% endif %}
+        <span class="text-jp-primary font-bold text-xs ml-1">📎 教材 {{ lesson.materials.count }}</span>
       </div>
       <div class="flex gap-2">
+        <a href="{% url 'edit_lesson' lesson.id %}#materials" class="bg-white ring-1 ring-brand-200 hover:ring-brand-400 text-jp-primary font-bold px-3 py-1.5 rounded-lg text-sm transition">教材</a>
         <a href="{% url 'edit_lesson' lesson.id %}" class="bg-white ring-1 ring-slate-200 hover:ring-brand-300 text-slate-700 font-bold px-3 py-1.5 rounded-lg text-sm transition">編輯</a>
         <form method="post" action="{% url 'delete_lesson' lesson.id %}" class="inline" onsubmit="return confirm('確定刪除此單元？');">
           {% csrf_token %}<button type="submit" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-3 py-1.5 rounded-lg text-sm transition">刪除</button>

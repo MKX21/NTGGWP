@@ -1,0 +1,4 @@
+# 部署相關檔案在 Linux(EB/EC2) 上執行，強制 LF，避免 Windows CRLF 讓指令解析失敗
+Procfile text eol=lf
+*.config text eol=lf
+.ebextensions/** text eol=lf

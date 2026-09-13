@@ -1,4 +1,4 @@
-{% with is_home=request.resolver_match.url_name|default:'' %}
+{% with is_home=force_home_nav|yesno:'home,'|default:request.resolver_match.url_name %}
 <!-- ============ 頂部公告列（可關閉） ============ -->
 {% if is_home == 'home' %}
 <div id="announcement-bar" class="bg-electric text-white text-sm">
@@ -126,7 +126,7 @@
 </nav>
 {% endwith %}
 
-{% with is_home=request.resolver_match.url_name|default:'' %}
+{% with is_home=force_home_nav|yesno:'home,'|default:request.resolver_match.url_name %}
 <!-- ============ 手機側邊選單 ============ -->
 <div data-mobile-menu class="fixed inset-0 z-[60] hidden lg:hidden">
     <div data-mobile-close class="absolute inset-0 bg-jp-text/50 backdrop-blur-sm"></div>

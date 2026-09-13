@@ -87,6 +87,8 @@ urlpatterns = [
     path('content/lesson/add/<int:chapter_id>/', views.add_lesson, name='add_lesson'),
     path('content/lesson/<int:lesson_id>/edit/', views.edit_lesson, name='edit_lesson'),
     path('content/lesson/<int:lesson_id>/delete/', views.delete_lesson, name='delete_lesson'),
+    path('content/lesson/<int:lesson_id>/material/add/', views.add_material, name='add_material'),
+    path('content/material/<int:material_id>/delete/', views.delete_material, name='delete_material'),
 
     # A3 退款審核
     path('refunds/manage/', views.manage_refunds, name='manage_refunds'),

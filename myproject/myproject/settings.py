@@ -35,6 +35,14 @@ SECRET_KEY = os.environ.get(
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+# 正式部署時把 EB／自訂網域填進 ALLOWED_HOSTS 環境變數（逗號分隔），本機不填照常跑。
+ALLOWED_HOSTS += [h.strip() for h in os.environ.get('ALLOWED_HOSTS', '').split(',') if h.strip()]
+
+# 表單 POST（登入、結帳等）在 https 網域需要信任來源，否則會 CSRF 失敗。
+# 例：CSRF_TRUSTED_ORIGINS=https://xxx.elasticbeanstalk.com,https://your-domain.com
+CSRF_TRUSTED_ORIGINS = [
+    o.strip() for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()
+]
 
 
 # Application definition
@@ -51,6 +59,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # WhiteNoise 讓 gunicorn 也能送靜態檔（本機 runserver 不受影響）。
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -78,6 +88,9 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'myproject.wsgi.application'
+
+# @login_required 未登入時導向本站登入頁（預設是不存在的 /accounts/login/）。
+LOGIN_URL = 'login'
 
 
 # Database
@@ -142,8 +155,45 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+# collectstatic 會把靜態檔集中到這裡，供 WhiteNoise 在正式環境送出。
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# 儲存後端：靜態檔一律走 WhiteNoise（壓縮＋帶 hash 快取）。
+# 上傳檔（media）預設存本機磁碟；一旦設了 AWS_STORAGE_BUCKET_NAME 就改存 S3
+# —— 因為 EB／容器的磁碟是暫時的，重新部署後本機上傳的檔案會消失。
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
+
+AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', '')
+if AWS_STORAGE_BUCKET_NAME:
+    AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', '')
+    # 金鑰用 EB/EC2 的 IAM Role 提供（boto3 會自動取用），不必設；
+    # 只有本機測試連 S3 時才用環境變數帶入一組金鑰。
+    _ak = os.environ.get('AWS_ACCESS_KEY_ID', '')
+    _sk = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
+    if _ak and _sk:
+        AWS_ACCESS_KEY_ID = _ak
+        AWS_SECRET_ACCESS_KEY = _sk
+    # 東京區的新 bucket 需要 SigV4 + 區域端點，否則簽名網址會走全球端點被 307 轉址。
+    AWS_S3_SIGNATURE_VERSION = 's3v4'
+    if AWS_S3_REGION_NAME:
+        # 指定區域端點，讓簽章與網址主機一致、直達不轉址。
+        AWS_S3_ENDPOINT_URL = f'https://s3.{AWS_S3_REGION_NAME}.amazonaws.com'
+    # 私有 bucket + 簽名網址（AWS_QUERYSTRING_AUTH 預設 True）：
+    # 圖片網址帶簽章、每次算，不必把 bucket 設成公開存取。
+    STORAGES['default'] = {
+        'BACKEND': 'storages.backends.s3.S3Storage',
+        'OPTIONS': {'location': 'media'},
+    }
 
 # Email（密碼重設信）
 # 設了 EMAIL_HOST_USER 就走真的 SMTP；沒設就把信印在終端機。

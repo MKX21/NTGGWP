@@ -7,6 +7,7 @@ from .models import (
     Review,
     CourseChapter,
     CourseLesson,
+    LessonMaterial,
     CourseQuestion,
     CourseAnswer,
     CourseAnnouncement,
@@ -181,6 +182,18 @@ class LessonForm(forms.ModelForm):
         widgets = {
             'content': forms.Textarea(attrs={'rows': 3}),
             'video_file': forms.ClearableFileInput(attrs={'accept': 'video/*'}),
+        }
+
+
+class LessonMaterialForm(forms.ModelForm):
+    class Meta:
+        model = LessonMaterial
+        fields = ['title', 'material_type', 'file', 'sort_order']
+        labels = {
+            'title': '教材名稱（例：第 1 節簡報、練習範例）',
+            'material_type': '教材類型',
+            'file': '檔案（pptx / docx / pdf / 圖片等）',
+            'sort_order': '排序',
         }
 
 

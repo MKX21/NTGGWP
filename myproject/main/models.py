@@ -249,6 +249,66 @@ class CourseLesson(models.Model):
         ordering = ['chapter', 'sort_order']
 
 
+class LessonMaterial(models.Model):
+    """單元教材：掛在單元底下的可下載檔案（簡報、練習範例、延伸閱讀等）。"""
+    TYPE_CHOICES = [
+        ('slides', '簡報'),
+        ('practice', '練習檔'),
+        ('reading', '延伸閱讀'),
+        ('other', '其他'),
+    ]
+
+    lesson = models.ForeignKey(
+        CourseLesson, on_delete=models.CASCADE, related_name="materials", verbose_name="單元"
+    )
+    title = models.CharField(max_length=200, verbose_name="教材名稱")
+    material_type = models.CharField(
+        max_length=20, choices=TYPE_CHOICES, default='slides', verbose_name="教材類型"
+    )
+    file = models.FileField(upload_to='lesson_materials/', verbose_name="檔案")
+    size_bytes = models.PositiveBigIntegerField(default=0, verbose_name="檔案大小(bytes)")
+    sort_order = models.PositiveIntegerField(default=1, verbose_name="排序")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="上傳時間")
+
+    def filename(self):
+        import os
+        return os.path.basename(self.file.name)
+
+    def icon_class(self):
+        """依副檔名回傳 Font Awesome 圖示 class。"""
+        name = self.filename().lower()
+        ext = name.rsplit('.', 1)[-1] if '.' in name else ''
+        return {
+            'ppt': 'fa-file-powerpoint', 'pptx': 'fa-file-powerpoint',
+            'doc': 'fa-file-word', 'docx': 'fa-file-word',
+            'pdf': 'fa-file-pdf',
+            'xls': 'fa-file-excel', 'xlsx': 'fa-file-excel', 'csv': 'fa-file-csv',
+            'zip': 'fa-file-zipper', 'rar': 'fa-file-zipper', '7z': 'fa-file-zipper',
+            'jpg': 'fa-file-image', 'jpeg': 'fa-file-image', 'png': 'fa-file-image', 'gif': 'fa-file-image',
+            'mp4': 'fa-file-video', 'mp3': 'fa-file-audio',
+            'txt': 'fa-file-lines',
+        }.get(ext, 'fa-file')
+
+    def size_display(self):
+        """人類可讀的檔案大小（用存好的 size_bytes，不即時打 S3）。"""
+        b = self.size_bytes or 0
+        if b <= 0:
+            return ''
+        for unit in ['B', 'KB', 'MB', 'GB']:
+            if b < 1024:
+                return f'{b:.0f} {unit}' if unit == 'B' else f'{b:.1f} {unit}'
+            b /= 1024
+        return f'{b:.1f} TB'
+
+    def __str__(self):
+        return f"{self.lesson.title} - {self.title}"
+
+    class Meta:
+        verbose_name = "單元教材"
+        verbose_name_plural = "單元教材"
+        ordering = ['lesson', 'sort_order', 'id']
+
+
 class CourseBundle(models.Model):
     """合購優惠組合：Admin 指定數門課程以合購價一起販售。"""
     name = models.CharField(max_length=200, verbose_name="合購名稱")

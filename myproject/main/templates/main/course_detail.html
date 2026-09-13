@@ -208,9 +208,18 @@
                         </button>
                         <ul class="divide-y divide-jp-border" data-accordion-body>
                             {% for lesson in chapter.lessons.all %}
-                            <li class="flex items-center justify-between px-4 py-3 text-sm">
-                                <span class="text-jp-text"><i class="fas fa-circle-play text-jp-muted mr-2"></i>{{ chapter.sort_order }}-{{ lesson.sort_order }} {{ lesson.title }}</span>
-                                <span class="text-jp-muted">{{ lesson.duration_minutes }} 分{% if lesson.is_free_preview %} <span class="text-green-600 font-bold ml-1">免費試看</span>{% endif %}</span>
+                            <li class="text-sm">
+                                {% if already_purchased or is_course_teacher or lesson.is_free_preview %}
+                                <a href="{% url 'watch_lesson' lesson.id %}" class="flex items-center justify-between px-4 py-3 hover:bg-jp-bg transition">
+                                    <span class="text-jp-text"><i class="fas fa-circle-play text-jp-primary mr-2"></i>{{ chapter.sort_order }}-{{ lesson.sort_order }} {{ lesson.title }}</span>
+                                    <span class="text-jp-muted">{{ lesson.duration_minutes }} 分{% if lesson.is_free_preview %} <span class="text-green-600 font-bold ml-1">免費試看</span>{% endif %}</span>
+                                </a>
+                                {% else %}
+                                <div class="flex items-center justify-between px-4 py-3">
+                                    <span class="text-jp-muted"><i class="fas fa-lock text-jp-muted mr-2"></i>{{ chapter.sort_order }}-{{ lesson.sort_order }} {{ lesson.title }}</span>
+                                    <span class="text-jp-muted">{{ lesson.duration_minutes }} 分</span>
+                                </div>
+                                {% endif %}
                             </li>
                             {% empty %}<li class="px-4 py-3 text-sm text-jp-muted">此章節尚無單元</li>{% endfor %}
                         </ul>

@@ -17,6 +17,7 @@ from django.db.models import (
     Sum,
 )
 from django.db.models.functions import Coalesce
+from django.db import transaction
 from django.core.paginator import Paginator
 from django.urls import reverse
 from django.conf import settings
@@ -27,6 +28,7 @@ from django.utils import timezone
 from .models import (
     Course,
     CourseLesson,
+    LessonMaterial,
     CourseSplitSetting,
     Profile,
     Enrollment,
@@ -69,6 +71,7 @@ from .forms import (
     ReviewForm,
     ChapterForm,
     LessonForm,
+    LessonMaterialForm,
     QuestionForm,
     AnswerForm,
     ProfileEditForm,
@@ -171,6 +174,8 @@ def home(request):
         base_pub.annotate(sc=Count('enrollment', distinct=True)).order_by('-sc', '-created_at')[:10]
     )
     latest_courses = _decorate(base_pub.order_by('-created_at')[:10])
+    # 首頁最上面大輪播：隨機挑幾門,每次進來順序不同
+    hero_courses = _decorate(base_pub.order_by('?')[:6])
 
     now = timezone.now()
     funding_courses = list(
@@ -192,6 +197,7 @@ def home(request):
         'avg_all': avg_all,
         'popular_courses': popular_courses,
         'latest_courses': latest_courses,
+        'hero_courses': hero_courses,
         'funding_courses': funding_courses,
         'sort_options': [
             ('newest', '最新'),
@@ -371,16 +377,15 @@ def register(request):
         form = RegisterForm(request.POST)
 
         if form.is_valid():
-            user = User.objects.create_user(
-                username=form.cleaned_data['username'],
-                email=form.cleaned_data['email'],
-                password=form.cleaned_data['password']
-            )
-
-            Profile.objects.create(
-                user=user,
-                role=form.cleaned_data['role']
-            )
+            # 註冊一律建成學生；教師權限只由 Admin 後台賦予（設 is_teacher）。
+            # 用交易包住，避免 Profile 建失敗時留下沒有 Profile 的殘帳號。
+            with transaction.atomic():
+                user = User.objects.create_user(
+                    username=form.cleaned_data['username'],
+                    email=form.cleaned_data['email'],
+                    password=form.cleaned_data['password']
+                )
+                Profile.objects.create(user=user, role='student')
 
             return redirect('register_success')
     else:
@@ -440,7 +445,8 @@ def login_view(request):
             error_message = '帳號 / Email 或密碼錯誤。'
 
     return render(request, 'main/login.html', {
-        'error_message': error_message
+        'error_message': error_message,
+        'force_home_nav': True,   # 登入頁用深色玻璃版面，導覽列也走深色
     })
 
 
@@ -796,6 +802,7 @@ def watch_lesson(request, lesson_id):
         'total_lessons': total_lessons,
         'is_completed': is_completed,
         'can_record': enrolled or is_teacher,
+        'can_download_materials': enrolled or is_teacher,
         'lesson_percent': lesson_percent,
         'resume_position': resume_position,
     })
@@ -2065,7 +2072,43 @@ def edit_lesson(request, lesson_id):
         'form': form,
         'lesson': lesson,
         'course': course,
+        'materials': lesson.materials.all(),
+        'material_form': LessonMaterialForm(),
     })
+
+
+@login_required
+def add_material(request, lesson_id):
+    """單元教材上傳（課程講師本人）。"""
+    lesson = get_object_or_404(CourseLesson, id=lesson_id)
+    course, redirect_resp = _require_course_teacher(request, lesson.chapter.course_id)
+    if redirect_resp:
+        return redirect_resp
+
+    if request.method == 'POST':
+        form = LessonMaterialForm(request.POST, request.FILES)
+        if form.is_valid():
+            material = form.save(commit=False)
+            material.lesson = lesson
+            if material.file:
+                material.size_bytes = material.file.size
+            material.save()
+
+    return redirect('edit_lesson', lesson_id=lesson.id)
+
+
+@login_required
+def delete_material(request, material_id):
+    material = get_object_or_404(LessonMaterial, id=material_id)
+    lesson = material.lesson
+    course, redirect_resp = _require_course_teacher(request, lesson.chapter.course_id)
+    if redirect_resp:
+        return redirect_resp
+
+    if request.method == 'POST':
+        material.delete()
+
+    return redirect('edit_lesson', lesson_id=lesson.id)
 
 
 @login_required
@@ -3074,7 +3117,15 @@ def stream_lesson_video(request, lesson_id):
     if not lesson.video_file:
         raise Http404('這個單元沒有上傳影片')
 
-    return _range_file_response(request, lesson.video_file.path)
+    # 權限已檢查通過。本機(FileSystemStorage)直接串流檔案並支援 Range；
+    # 線上(S3)沒有實體 .path，改導向帶簽章的暫時性網址（同樣先過了上面的購課檢查）。
+    try:
+        local_path = lesson.video_file.path
+    except (NotImplementedError, ValueError):
+        local_path = None
+    if local_path:
+        return _range_file_response(request, local_path)
+    return redirect(lesson.video_file.url)
 
 
 def serve_media(request, path):

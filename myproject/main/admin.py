@@ -428,6 +428,22 @@ class RefundAdmin(admin.ModelAdmin):
     autocomplete_fields = ('order', 'user')
     actions = ['approve_refund', 'reject_refund']
 
+    def save_model(self, request, obj, form, change):
+        # 在改單頁調整「狀態」時也要走 transitions，才會真的收回課權、回沖款項，
+        # 否則只改一個欄位會造成「已退款卻還能看」。
+        if change and 'status' in getattr(form, 'changed_data', []):
+            previous = Refund.objects.filter(pk=obj.pk).first()
+            if previous and previous.status == 'pending':
+                if obj.status in ('approved', 'completed'):
+                    obj.status = 'pending'      # 交給 transition 改狀態
+                    transitions.approve_refund(obj)
+                    return
+                if obj.status == 'rejected':
+                    obj.status = 'pending'
+                    transitions.reject_refund(obj)
+                    return
+        super().save_model(request, obj, form, change)
+
     @admin.display(description='退款狀態')
     def refund_badge(self, obj):
         return status_badge(obj.status, obj.get_status_display())

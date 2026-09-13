@@ -15,5 +15,35 @@
       </div>
     </form>
   </div>
+
+  <!-- 課程教材（簡報 / 練習範例 / 延伸閱讀） -->
+  <div id="materials" class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8 mt-6 scroll-mt-24">
+    <h2 class="text-xl font-black text-slate-900 mb-1">課程教材</h2>
+    <p class="text-sm text-slate-500 mb-4">學員在觀看此單元時可下載這些檔案（簡報、練習檔、延伸資料）。</p>
+
+    {% if materials %}
+    <ul class="divide-y divide-slate-100 mb-5">
+      {% for m in materials %}
+      <li class="flex items-center justify-between py-3 gap-3">
+        <span class="text-slate-800 min-w-0"><i class="fas {{ m.icon_class }} text-jp-primary mr-2"></i>{{ m.title }}
+          <span class="text-xs bg-slate-100 text-slate-500 rounded px-1.5 py-0.5 ml-1">{{ m.get_material_type_display }}</span>
+          <span class="text-xs text-slate-400 ml-1">{{ m.filename }}{% if m.size_display %} · {{ m.size_display }}{% endif %}</span></span>
+        <form method="post" action="{% url 'delete_material' m.id %}" onsubmit="return confirm('確定刪除這份教材？');" class="shrink-0">
+          {% csrf_token %}
+          <button type="submit" class="text-red-500 hover:text-red-700 text-sm font-medium">刪除</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-slate-400 mb-5">尚未上傳任何教材。</p>
+    {% endif %}
+
+    <form method="post" action="{% url 'add_material' lesson.id %}" enctype="multipart/form-data" class="ef-form border-t border-slate-100 pt-4">
+      {% csrf_token %}
+      {{ material_form.as_p }}
+      <button type="submit" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-5 py-2.5 rounded-lg transition mt-2">＋ 新增教材</button>
+    </form>
+  </div>
 </main>
 {% endblock %}
