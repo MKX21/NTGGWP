@@ -48,7 +48,14 @@
                             hover: '#0fa588',
                         },
                     },
-                    fontFamily: { sans: ['"Noto Sans TC"', '"Inter"', 'system-ui', 'sans-serif'] },
+                    fontFamily: {
+                        sans: ['"Noto Sans TC"', '"Inter"', 'system-ui', 'sans-serif'],
+                        // 簽名字體：僅覆蓋拉丁字母／數字（logo、標題裡的英數、金額、大數字），
+                        // 中文字元會自動 fallback 回 Noto Sans TC，形成中英文混排的層次感。
+                        display: ['"Fraunces"', '"Noto Sans TC"', 'serif'],
+                        // 票根／通行證數據感的等寬字，用於登入註冊頁的票券資訊列
+                        ticket: ['"IBM Plex Mono"', 'monospace'],
+                    },
                     keyframes: {
                         'float': { '0%,100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-12px)' } },
                         'fade-up': { '0%': { opacity: 0, transform: 'translateY(16px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
@@ -61,7 +68,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Inter:wght@400;600;800&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
