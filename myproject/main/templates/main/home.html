@@ -337,7 +337,7 @@
 
 {% if user.is_authenticated %}
 <!-- AI 平台助手（浮動視窗）：平台 FAQ + 課程推薦，不綁定單一課程 -->
-<div class="fixed bottom-6 right-6 z-40" data-platform-ai-assistant>
+<div class="fixed bottom-24 right-6 z-40" data-platform-ai-assistant>
   <button data-platform-ai-toggle class="relative flex items-center gap-2 h-14 pl-4 pr-5 rounded-full bg-jp-primary hover:bg-jp-primaryHover text-white shadow-lg transition" aria-label="AI 平台助手，點我提問">
     <span class="absolute inset-0 rounded-full bg-jp-primary animate-ping opacity-40 pointer-events-none" data-platform-ai-ping></span>
     <i class="fas fa-robot text-xl relative"></i>
