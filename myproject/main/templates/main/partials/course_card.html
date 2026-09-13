@@ -1,4 +1,4 @@
-<article class="{{ card_extra }} bg-jp-surface rounded-xl overflow-hidden border border-jp-border hover:-translate-y-1 hover:shadow-lg transition-all group">
+<article class="{{ card_extra }} bg-jp-surface rounded-lg overflow-hidden border border-jp-border hover:border-jp-primary hover:-translate-y-1 transition-all group">
     <a href="{% url 'course_detail' course.id %}" class="block">
         <div class="relative aspect-video overflow-hidden bg-jp-bg">
             {% if course.image %}
@@ -6,9 +6,9 @@
             {% else %}
             <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-brand-600 to-brand-400 text-white text-4xl font-bold">{{ course.title|slice:":1"|upper }}</div>
             {% endif %}
-            <span class="absolute top-3 left-3 bg-jp-surface/95 text-jp-primary text-xs font-medium px-2.5 py-1 rounded-full">{{ course.get_level_display }}</span>
+            <span class="absolute top-3 left-3 bg-jp-bg/90 text-jp-primary text-xs font-medium px-2 py-1 rounded">{{ course.get_level_display }}</span>
             {% if course.is_crowdfunding and course.is_funding_active %}
-            <span class="absolute top-3 right-3 bg-accent-100 text-accent-600 text-xs font-medium px-2.5 py-1 rounded-full"><i class="fas fa-bullhorn mr-1"></i>募資中</span>
+            <span class="absolute top-3 right-3 bg-accent-500 text-black text-xs font-bold px-2 py-1 rounded"><i class="fas fa-bullhorn mr-1"></i>募資中</span>
             {% endif %}
         </div>
         <div class="p-5">
@@ -18,7 +18,7 @@
             <div class="flex items-center gap-1 text-sm mb-3">
                 {% if course.avg_rating %}
                 <span class="text-amber-500"><i class="fas fa-star"></i></span>
-                <span class="font-medium text-jp-text">{{ course.avg_rating }}</span>
+                <span class="font-grotesk tabular-nums font-medium text-jp-text">{{ course.avg_rating }}</span>
                 <span class="text-jp-muted">({{ course.review_count }})</span>
                 {% else %}
                 <span class="text-jp-muted">尚無評分</span>
@@ -26,10 +26,10 @@
             </div>
             <div class="flex items-baseline gap-2">
                 {% if course.has_discount %}
-                <span class="text-sm text-jp-muted line-through decoration-2">NT$ {{ course.price }}</span>
-                <span class="text-lg font-bold text-jp-accent">NT$ {{ course.get_effective_price }}</span>
+                <span class="font-grotesk tabular-nums text-sm text-jp-muted line-through decoration-2">NT$ {{ course.price }}</span>
+                <span class="font-grotesk tabular-nums text-lg font-bold text-jp-accent">NT$ {{ course.get_effective_price }}</span>
                 {% else %}
-                <span class="text-lg font-bold text-jp-accent">NT$ {{ course.price }}</span>
+                <span class="font-grotesk tabular-nums text-lg font-bold text-jp-accent">NT$ {{ course.price }}</span>
                 {% endif %}
             </div>
         </div>

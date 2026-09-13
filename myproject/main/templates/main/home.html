@@ -18,11 +18,11 @@
             <div class="absolute inset-0 bg-gradient-to-r from-black/90 via-black/55 to-black/10"></div>
             <div class="relative max-w-7xl mx-auto h-full px-6 sm:px-8 lg:px-12 flex flex-col justify-center">
                 <div class="max-w-xl text-white">
-                    <span class="inline-flex items-center gap-2 bg-white/10 backdrop-blur border border-white/20 px-3 py-1 rounded-full text-sm font-medium mb-4">
+                    <span class="inline-flex items-center gap-2 bg-black/50 border border-white/25 px-3 py-1 rounded text-sm font-medium mb-4">
                         <i class="fas fa-star text-electric"></i>{% if course.category %}{{ course.category.name }}{% else %}精選推薦{% endif %}
                     </span>
                     <p class="text-white/80 text-sm mb-2">{{ course.teacher.profile.display_name }} 老師</p>
-                    <h1 class="text-3xl md:text-5xl font-black tracking-wide leading-tight mb-4 drop-shadow">{{ course.title }}</h1>
+                    <h1 class="font-grotesk text-tight-head text-3xl md:text-5xl font-extrabold leading-tight mb-4">{{ course.title }}</h1>
                     <p class="text-base md:text-lg text-white/80 mb-8 line-clamp-2">{{ course.description|truncatechars:60 }}</p>
                     <span class="btn-glass-primary tracking-wide px-7 py-3 text-base">查看課程 <i class="fas fa-arrow-right"></i></span>
                 </div>
@@ -46,7 +46,7 @@
 {% else %}
 <header class="relative overflow-hidden bg-satdark-bg border-b border-satdark-border">
     <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 text-center">
-        <h1 class="text-3xl md:text-5xl font-bold tracking-wide leading-tight mb-6 text-satdark-text">學習不設限，<span class="text-electric">開啟你的知識新篇章</span></h1>
+        <h1 class="font-grotesk text-tight-head text-3xl md:text-5xl font-extrabold leading-tight mb-6 text-satdark-text">學習不設限，<span class="text-electric">開啟你的知識新篇章</span></h1>
         <p class="text-lg text-satdark-muted mb-8 max-w-xl mx-auto">集結業界專家親授的精選課程，現在就加入 EduFlow。</p>
         <a href="{% url 'course_catalog' %}" class="bg-electric hover:bg-electric-hover text-white font-medium px-8 py-3.5 rounded-md transition">瀏覽課程</a>
     </div>
@@ -88,22 +88,22 @@
 <section class="bg-satdark-bg">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div class="grid sm:grid-cols-2 gap-6">
-            <a href="{% url 'course_catalog' %}" class="group relative overflow-hidden rounded-2xl bg-satdark-surface border border-satdark-border h-64 flex flex-col justify-end p-8 transition hover:border-electric/50 bg-center bg-cover" style="background-image:url('/media/site/hero-courses.jpg')">
+            <a href="{% url 'course_catalog' %}" class="group relative overflow-hidden rounded-lg bg-satdark-surface border border-satdark-border h-64 flex flex-col justify-end p-8 transition hover:border-electric bg-center bg-cover" style="background-image:url('/media/site/hero-courses.jpg')">
                 <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-black/25"></div>
                 <i class="fas fa-arrow-right absolute top-8 right-8 text-white/80 group-hover:text-electric group-hover:translate-x-1 transition"></i>
                 <div class="relative">
-                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-electric/30 backdrop-blur text-white text-2xl mb-4"><i class="fas fa-book-open"></i></span>
-                    <h3 class="text-2xl font-bold text-white mb-1">課程</h3>
-                    <p class="text-sm text-white/75">探索 {{ total_courses }}+ 堂精選課程</p>
+                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-md bg-electric text-white text-2xl mb-4"><i class="fas fa-book-open"></i></span>
+                    <h3 class="font-grotesk text-2xl font-extrabold text-white mb-1">課程</h3>
+                    <p class="text-sm text-white/75">探索 <span class="font-grotesk tabular-nums">{{ total_courses }}+</span> 堂精選課程</p>
                 </div>
             </a>
-            <a href="{% url 'teacher_catalog' %}" class="group relative overflow-hidden rounded-2xl bg-satdark-surface border border-satdark-border h-64 flex flex-col justify-end p-8 transition hover:border-electric/50 bg-center bg-cover" style="background-image:url('/media/site/hero-teachers.jpg')">
+            <a href="{% url 'teacher_catalog' %}" class="group relative overflow-hidden rounded-lg bg-satdark-surface border border-satdark-border h-64 flex flex-col justify-end p-8 transition hover:border-electric bg-center bg-cover" style="background-image:url('/media/site/hero-teachers.jpg')">
                 <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-black/25"></div>
                 <i class="fas fa-arrow-right absolute top-8 right-8 text-white/80 group-hover:text-electric group-hover:translate-x-1 transition"></i>
                 <div class="relative">
-                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-brand-400/30 backdrop-blur text-white text-2xl mb-4"><i class="fas fa-chalkboard-user"></i></span>
-                    <h3 class="text-2xl font-bold text-white mb-1">講師</h3>
-                    <p class="text-sm text-white/75">{{ total_teachers }}+ 位業界專家親自授課</p>
+                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-md bg-brand-400 text-white text-2xl mb-4"><i class="fas fa-chalkboard-user"></i></span>
+                    <h3 class="font-grotesk text-2xl font-extrabold text-white mb-1">講師</h3>
+                    <p class="text-sm text-white/75"><span class="font-grotesk tabular-nums">{{ total_teachers }}+</span> 位業界專家親自授課</p>
                 </div>
             </a>
         </div>
@@ -129,21 +129,21 @@
 <!-- ============ 信任數字 ============ -->
 <section class="bg-satdark-bg">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="bg-satdark-surface border border-satdark-border rounded-xl p-6 text-center">
-                <div class="text-3xl font-bold text-electric">{{ total_enrollments }}+</div>
+        <div class="grid grid-cols-2 md:grid-cols-4 divide-x divide-satdark-border border-y border-satdark-border">
+            <div class="px-4 py-6 text-center">
+                <div class="font-grotesk tabular-nums text-3xl md:text-4xl font-extrabold text-satdark-text">{{ total_enrollments }}+</div>
                 <div class="text-sm text-satdark-muted mt-1">累積購課人次</div>
             </div>
-            <div class="bg-satdark-surface border border-satdark-border rounded-xl p-6 text-center">
-                <div class="text-3xl font-bold text-electric">{{ total_students }}+</div>
+            <div class="px-4 py-6 text-center">
+                <div class="font-grotesk tabular-nums text-3xl md:text-4xl font-extrabold text-satdark-text">{{ total_students }}+</div>
                 <div class="text-sm text-satdark-muted mt-1">累積學員</div>
             </div>
-            <div class="bg-satdark-surface border border-satdark-border rounded-xl p-6 text-center">
-                <div class="text-3xl font-bold text-electric">{{ total_teachers }}+</div>
+            <div class="px-4 py-6 text-center">
+                <div class="font-grotesk tabular-nums text-3xl md:text-4xl font-extrabold text-satdark-text">{{ total_teachers }}+</div>
                 <div class="text-sm text-satdark-muted mt-1">合作講師</div>
             </div>
-            <div class="bg-satdark-surface border border-satdark-border rounded-xl p-6 text-center">
-                <div class="text-3xl font-bold text-electric">{{ avg_all }}<span class="text-lg">/5</span></div>
+            <div class="px-4 py-6 text-center">
+                <div class="font-grotesk tabular-nums text-3xl md:text-4xl font-extrabold text-satdark-text">{{ avg_all }}<span class="text-lg">/5</span></div>
                 <div class="text-sm text-satdark-muted mt-1">平均評價</div>
             </div>
         </div>
@@ -157,7 +157,7 @@
         <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
             <div>
                 <span class="inline-flex items-center gap-2 text-electric font-medium text-sm mb-2"><i class="fas fa-fire"></i> 集資倒數中</span>
-                <h2 class="text-2xl md:text-3xl font-bold tracking-wide text-satdark-text">募資中課程</h2>
+                <h2 class="font-grotesk text-tight-head text-2xl md:text-3xl font-extrabold text-satdark-text">募資中課程</h2>
                 <p class="text-satdark-muted mt-1">搶先支持新課，享最優惠早鳥價</p>
             </div>
             <div class="flex gap-2">
@@ -181,7 +181,7 @@
         <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
             <div>
                 <span class="inline-flex items-center gap-2 text-electric font-medium text-sm mb-2"><i class="fas fa-fire"></i> 學員熱選</span>
-                <h2 class="text-2xl md:text-3xl font-bold tracking-wide text-satdark-text">熱門課程</h2>
+                <h2 class="font-grotesk text-tight-head text-2xl md:text-3xl font-extrabold text-satdark-text">熱門課程</h2>
                 <p class="text-satdark-muted mt-1">最多人購買的精選課程</p>
             </div>
             <div class="flex items-center gap-3">
@@ -208,7 +208,7 @@
         <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
             <div>
                 <span class="inline-flex items-center gap-2 text-electric font-medium text-sm mb-2"><i class="fas fa-sparkles"></i> 新鮮上架</span>
-                <h2 class="text-2xl md:text-3xl font-bold tracking-wide text-satdark-text">最新課程</h2>
+                <h2 class="font-grotesk text-tight-head text-2xl md:text-3xl font-extrabold text-satdark-text">最新課程</h2>
                 <p class="text-satdark-muted mt-1">跟上最新趨勢，第一時間開始學習</p>
             </div>
             <div class="flex items-center gap-3">
@@ -241,14 +241,14 @@
         <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
             <div>
                 <span class="inline-flex items-center gap-2 text-electric font-medium text-sm mb-2"><i class="fas fa-compass"></i> 主題精選</span>
-                <h2 class="text-2xl md:text-3xl font-bold tracking-wide text-satdark-text">{{ section.category.name }}</h2>
+                <h2 class="font-grotesk text-tight-head text-2xl md:text-3xl font-extrabold text-satdark-text">{{ section.category.name }}</h2>
                 {% if section.category.description %}<p class="text-satdark-muted mt-1 max-w-md">{{ section.category.description }}</p>{% endif %}
             </div>
             <a href="{% url 'course_catalog' %}?cat={{ section.category.name }}" class="text-electric hover:underline font-medium text-sm">查看全部</a>
         </div>
         <div class="flex gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-2 -mx-1 px-1 no-scrollbar">
             {% for course in section.courses %}
-            {% include 'main/partials/course_card_dark.html' with card_extra="snap-start shrink-0 w-[260px] backdrop-blur bg-satdark-surface/90" %}
+            {% include 'main/partials/course_card_dark.html' with card_extra="snap-start shrink-0 w-[260px] bg-satdark-surface" %}
             {% endfor %}
         </div>
     </div>
@@ -259,7 +259,7 @@
         <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
             <div>
                 <span class="inline-flex items-center gap-2 text-electric font-medium text-sm mb-2"><i class="fas fa-compass"></i> 主題精選</span>
-                <h2 class="text-2xl md:text-3xl font-bold tracking-wide text-satdark-text">{{ section.category.name }}</h2>
+                <h2 class="font-grotesk text-tight-head text-2xl md:text-3xl font-extrabold text-satdark-text">{{ section.category.name }}</h2>
                 {% if section.category.description %}<p class="text-satdark-muted mt-1">{{ section.category.description }}</p>{% endif %}
             </div>
             <a href="{% url 'course_catalog' %}?cat={{ section.category.name }}" class="text-electric hover:underline font-medium text-sm">查看全部</a>
@@ -287,7 +287,7 @@
 <section class="bg-satdark-bg">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div class="text-center max-w-2xl mx-auto mb-12">
-            <h2 class="text-2xl md:text-3xl font-bold tracking-wide text-satdark-text mb-3">為什麼選擇 EduFlow？</h2>
+            <h2 class="font-grotesk text-tight-head text-2xl md:text-3xl font-extrabold text-satdark-text mb-3">為什麼選擇 EduFlow？</h2>
             <p class="text-satdark-muted">我們用更好的體驗與制度，陪你把學習變成真正的成長。</p>
         </div>
         <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -318,16 +318,15 @@
 <!-- ============ 成為講師 CTA ============ -->
 <section class="bg-satdark-bg">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div class="relative overflow-hidden rounded-2xl bg-satdark-surface border border-satdark-border text-white px-8 py-12 md:p-14">
-            <div class="pointer-events-none absolute -top-16 -right-10 h-64 w-64 rounded-full bg-electric/20 blur-2xl"></div>
+        <div class="relative overflow-hidden rounded-lg bg-satdark-surface border border-satdark-border text-white px-8 py-12 md:p-14">
             <div class="relative flex flex-col md:flex-row items-center justify-between gap-8">
                 <div class="max-w-xl">
-                    <h2 class="text-2xl md:text-3xl font-bold tracking-wide mb-3">把你的專業，變成影響力</h2>
+                    <h2 class="font-grotesk text-tight-head text-2xl md:text-3xl font-extrabold mb-3">把你的專業，變成影響力</h2>
                     <p class="text-satdark-muted">加入 EduFlow 講師行列，打造屬於你的線上課程，觸及成千上萬名學員。</p>
                 </div>
                 <div class="flex gap-3 shrink-0">
                     <a href="{% url 'register' %}" class="bg-electric text-white font-medium px-6 py-3 rounded-md hover:bg-electric-hover transition">立即開課</a>
-                    <a href="{% url 'course_catalog' %}" class="bg-white/5 backdrop-blur border border-satdark-border text-white font-medium px-6 py-3 rounded-md hover:bg-white/10 transition">了解更多</a>
+                    <a href="{% url 'course_catalog' %}" class="border border-satdark-border text-white font-medium px-6 py-3 rounded-md hover:border-electric transition">了解更多</a>
                 </div>
             </div>
         </div>

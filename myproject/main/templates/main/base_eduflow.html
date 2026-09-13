@@ -55,6 +55,9 @@
                         display: ['"Fraunces"', '"Noto Sans TC"', 'serif'],
                         // 票根／通行證數據感的等寬字，用於登入註冊頁的票券資訊列
                         ticket: ['"IBM Plex Mono"', 'monospace'],
+                        // 扎實無襯線標題字（首頁／課程總覽／課程詳情用）：僅覆蓋拉丁字母與數字，
+                        // 中文字元自動 fallback 回 Noto Sans TC。取代玻璃風的視覺主力字體。
+                        grotesk: ['"Hanken Grotesk"', '"Noto Sans TC"', 'sans-serif'],
                     },
                     keyframes: {
                         'float': { '0%,100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-12px)' } },
@@ -68,7 +71,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Inter:wght@400;600;800&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Inter:wght@400;600;800&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=IBM+Plex+Mono:wght@500;600&family=Hanken+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
@@ -140,59 +143,42 @@
         .text-amber-600, .text-amber-700 { color: #fcd34d !important; }
         .text-blue-600, .text-blue-700, .text-indigo-600, .text-indigo-700 { color: #93c5fd !important; }
 
-        /* ===== iOS 液態玻璃按鈕（Liquid Glass）===== */
+        /* ===== 扎實直角按鈕（取代玻璃質感）=====
+           拿掉 backdrop-filter／漸層光暈／圓角膠囊，改成實色填底＋細邊框＋小圓角，
+           呼應 Kajabi 那種篤定、無多餘裝飾的介面語彙。 */
         .btn-glass, .btn-glass-primary {
             position: relative; display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
-            border-radius: 9999px; font-weight: 700; cursor: pointer; overflow: hidden;
-            color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.30);
-            border: 1px solid rgba(255,255,255,.40);
-            -webkit-backdrop-filter: blur(22px) saturate(185%) brightness(1.08);
-            backdrop-filter: blur(22px) saturate(185%) brightness(1.08);
-            box-shadow:
-                inset 0 1px 1px rgba(255,255,255,.75),
-                inset 0 -10px 22px rgba(255,255,255,.10),
-                inset 0 0 0 1px rgba(255,255,255,.06),
-                0 6px 22px rgba(0,0,0,.22);
-            transition: transform .22s cubic-bezier(.2,.8,.2,1), box-shadow .22s ease, background .22s ease;
+            border-radius: 0.5rem; font-weight: 700; cursor: pointer;
+            transition: transform .15s ease, background .15s ease, border-color .15s ease;
         }
-        /* 鏡面高光：頂部亮弧 + 斜向反光帶 */
-        .btn-glass::after, .btn-glass-primary::after {
-            content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-            background:
-                radial-gradient(130% 90% at 28% -10%, rgba(255,255,255,.55), rgba(255,255,255,0) 55%),
-                linear-gradient(180deg, rgba(255,255,255,.20), rgba(255,255,255,0) 42%);
+        .btn-glass:hover, .btn-glass-primary:hover { transform: translateY(-1px); }
+        .btn-glass:active, .btn-glass-primary:active { transform: translateY(0); }
+        /* 次要按鈕：透明底＋白色細邊框 */
+        .btn-glass {
+            color: #fff; background: transparent; border: 1px solid rgba(255,255,255,.35);
         }
-        .btn-glass:hover, .btn-glass-primary:hover {
-            transform: translateY(-1px) scale(1.02);
-            box-shadow: inset 0 1px 1px rgba(255,255,255,.85), inset 0 -10px 22px rgba(255,255,255,.14), 0 12px 34px rgba(0,0,0,.30);
+        .btn-glass:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.55); }
+        /* 主要按鈕：實色青綠填底 */
+        .btn-glass-primary {
+            color: #04110f; background: #16c2a3; border: 1px solid #16c2a3;
         }
-        .btn-glass:active, .btn-glass-primary:active { transform: translateY(0) scale(.99); }
-        /* 中性玻璃：幾乎透明的清玻璃 */
-        .btn-glass { background: rgba(255,255,255,.10); }
-        .btn-glass:hover { background: rgba(255,255,255,.18); }
-        /* 主色玻璃：極淡藍調透明玻璃 */
-        .btn-glass-primary { background: rgba(90,150,255,.22); }
-        .btn-glass-primary:hover { background: rgba(90,150,255,.32); }
-        @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-            .btn-glass { background: rgba(30,41,59,.88); }
-            .btn-glass-primary { background: rgba(37,99,235,.95); }
-        }
-        /* 液態玻璃圓形箭頭（輪播/區塊切換共用）*/
+        .btn-glass-primary:hover { background: #1bd9b7; border-color: #1bd9b7; }
+        /* 方形箭頭／切換鈕（輪播用）：實色深底＋細邊框，取代玻璃圓鈕 */
         .glass-arrow {
             height: 2.75rem; width: 2.75rem; display: inline-flex; align-items: center; justify-content: center;
-            border-radius: 9999px; color: #fff; cursor: pointer;
-            border: 1px solid rgba(255,255,255,.40);
-            background: rgba(255,255,255,.10);
-            -webkit-backdrop-filter: blur(18px) saturate(180%); backdrop-filter: blur(18px) saturate(180%);
-            box-shadow: inset 0 1px 1px rgba(255,255,255,.6), 0 4px 16px rgba(0,0,0,.25);
-            transition: transform .2s, background .2s, box-shadow .2s, opacity .2s;
+            border-radius: 0.5rem; color: #fff; cursor: pointer;
+            border: 1px solid rgba(255,255,255,.25);
+            background: rgba(10,14,20,.75);
+            transition: transform .15s ease, background .15s ease, border-color .15s ease;
         }
-        .glass-arrow:hover { background: rgba(255,255,255,.20); transform: translateY(-1px); }
+        .glass-arrow:hover { background: rgba(22,194,163,.25); border-color: #16c2a3; transform: translateY(-1px); }
         .glass-arrow:active { transform: translateY(0); }
         .glass-arrow:disabled { opacity: .35; cursor: not-allowed; transform: none; }
-        @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-            .glass-arrow { background: rgba(30,41,59,.9); }
-        }
+
+        /* ===== 扎實標題字排版（Hanken Grotesk）＝首頁／課程總覽／課程詳情的視覺主力 =====
+           英數緊縮字距、粗體，中文字元 fallback 回 Noto Sans TC 不受字距影響。*/
+        .text-tight-head { letter-spacing: -0.02em; }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
     </style>
     {% block extra_head %}{% endblock %}
 </head>

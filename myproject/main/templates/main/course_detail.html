@@ -9,7 +9,7 @@
 <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
     <!-- Hero：課程名稱與封面（有介紹影片時顯示影片封面，否則顯示封面圖） -->
-    <section class="relative rounded-3xl overflow-hidden mb-8 min-h-[440px] sm:min-h-[560px] flex items-end">
+    <section class="relative rounded-lg overflow-hidden mb-8 min-h-[440px] sm:min-h-[560px] flex items-end">
         {% if course.intro_video_file or course.intro_video_url %}
         <video class="absolute inset-0 w-full h-full object-cover" autoplay muted loop playsinline preload="auto">
             {% if course.intro_video_file %}<source src="{{ course.intro_video_file.url }}">
@@ -31,7 +31,7 @@
             </nav>
 
             {% if course.is_crowdfunding and course.is_funding_active %}
-            <span class="inline-flex items-center gap-1 bg-rose-600 text-white text-xs font-bold px-2.5 py-1 rounded-full mb-3"><i class="fas fa-fire"></i> 募資中</span>
+            <span class="inline-flex items-center gap-1 bg-rose-600 text-white text-xs font-bold px-2.5 py-1 rounded mb-3"><i class="fas fa-fire"></i> 募資中</span>
             {% endif %}
 
             <a href="{% url 'teacher_profile' course.teacher.id %}" class="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-medium mb-2">
@@ -41,7 +41,7 @@
                 {% if course.category %}<span class="text-white/60">{{ course.category.name }}｜</span>{% endif %}{{ course.teacher.profile.display_name }}
             </a>
 
-            <h1 class="text-3xl sm:text-4xl font-black tracking-wide mb-3 max-w-3xl drop-shadow">{{ course.title }}</h1>
+            <h1 class="font-grotesk text-tight-head text-3xl sm:text-4xl font-extrabold mb-3 max-w-3xl">{{ course.title }}</h1>
 
             <div class="flex items-center gap-2 mb-3">
                 {% if average_rating %}
@@ -83,7 +83,7 @@
         {% if course.intro_video_file or course.intro_video_url %}
         <!-- hero 右側播放鈕（大螢幕）-->
         <button type="button" data-intro-open class="hidden md:flex absolute right-10 top-1/2 -translate-y-1/2 flex-col items-center gap-2 text-white/90 hover:text-white group">
-            <span class="h-16 w-16 rounded-full bg-white/20 group-hover:bg-white/30 ring-2 ring-white/60 flex items-center justify-center text-2xl backdrop-blur transition"><i class="fas fa-play"></i></span>
+            <span class="h-16 w-16 rounded-full bg-black/50 group-hover:bg-electric border-2 border-white/70 group-hover:border-electric flex items-center justify-center text-2xl transition"><i class="fas fa-play"></i></span>
             <span class="text-sm font-medium">觀看介紹片</span>
         </button>
         {% endif %}
@@ -108,26 +108,26 @@
                 <div class="border-l border-jp-border h-8"></div>
                 <div>
                     <p class="text-jp-muted">學生人數</p>
-                    <p class="text-jp-text font-bold">{{ student_count }} 人</p>
+                    <p class="font-grotesk tabular-nums text-jp-text font-bold">{{ student_count }} 人</p>
                 </div>
                 <div>
                     <p class="text-jp-muted">課程內容</p>
-                    <p class="text-jp-text font-bold">{{ total_lessons }} 單元・{{ total_minutes }} 分鐘</p>
+                    <p class="font-grotesk tabular-nums text-jp-text font-bold">{{ total_lessons }} 單元・{{ total_minutes }} 分鐘</p>
                 </div>
                 <div>
                     <p class="text-jp-muted">開課時間</p>
-                    <p class="text-jp-text font-bold">{{ course.start_date|date:"Y-m-d"|default:"依購買後立即開通" }}</p>
+                    <p class="font-grotesk tabular-nums text-jp-text font-bold">{{ course.start_date|date:"Y-m-d"|default:"依購買後立即開通" }}</p>
                 </div>
                 <div>
                     <p class="text-jp-muted">觀看期限</p>
-                    <p class="text-jp-text font-bold">{% if course.access_duration_days %}{{ course.access_duration_days }} 天{% else %}無限{% endif %}</p>
+                    <p class="font-grotesk tabular-nums text-jp-text font-bold">{% if course.access_duration_days %}{{ course.access_duration_days }} 天{% else %}無限{% endif %}</p>
                 </div>
             </div>
 
             {% if preview_lessons %}
             <!-- 試看影片展示區 -->
             <div class="mb-8">
-                <h2 class="text-xl font-bold tracking-wide text-jp-text mb-4">課程試看</h2>
+                <h2 class="font-grotesk text-tight-head text-xl font-extrabold text-jp-text mb-4">課程試看</h2>
                 <div class="flex gap-4 overflow-x-auto no-scrollbar pb-2">
                     {% for lesson in preview_lessons %}
                     <div class="shrink-0 w-64">
@@ -162,10 +162,10 @@
 
             <!-- Tab: 課程介紹 -->
             <div data-panel="intro">
-                <h2 class="text-xl font-bold tracking-wide text-jp-text mb-4">課程簡介</h2>
+                <h2 class="font-grotesk text-tight-head text-xl font-extrabold text-jp-text mb-4">課程簡介</h2>
                 <div class="text-jp-text leading-relaxed whitespace-pre-line mb-8">{{ course.description }}</div>
                 {% if chapters %}
-                <h2 class="text-xl font-bold tracking-wide text-jp-text mb-4">你將會學到</h2>
+                <h2 class="font-grotesk text-tight-head text-xl font-extrabold text-jp-text mb-4">你將會學到</h2>
                 <ul class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-8">
                     {% for chapter in chapters %}{% for lesson in chapter.lessons.all %}
                     <li class="text-jp-text"><i class="fas fa-check text-jp-primary mr-2"></i>{{ lesson.title }}</li>
@@ -173,7 +173,7 @@
                 </ul>
                 {% endif %}
 
-                <h2 class="text-xl font-bold tracking-wide text-jp-text mb-4">關於講師</h2>
+                <h2 class="font-grotesk text-tight-head text-xl font-extrabold text-jp-text mb-4">關於講師</h2>
                 <div class="bg-jp-bg rounded-xl p-5 flex gap-4">
                     {% if course.teacher.profile.avatar %}
                     <img src="{{ course.teacher.profile.avatar.url }}" alt="{{ course.teacher.profile.display_name }}" class="w-14 h-14 rounded-full object-cover shrink-0">
@@ -194,7 +194,7 @@
 
             <!-- Tab: 章節規劃（手風琴摺疊） -->
             <div data-panel="curriculum" class="hidden">
-                <h2 class="text-xl font-bold tracking-wide text-jp-text mb-4">課程章節</h2>
+                <h2 class="font-grotesk text-tight-head text-xl font-extrabold text-jp-text mb-4">課程章節</h2>
                 {% if chapters %}
                 <div class="space-y-3" data-accordion>
                     {% for chapter in chapters %}
@@ -231,7 +231,7 @@
 
             <!-- Tab: 學生評價 -->
             <div data-panel="reviews" class="hidden">
-                <h2 class="text-xl font-bold tracking-wide text-jp-text mb-4">學生評價</h2>
+                <h2 class="font-grotesk text-tight-head text-xl font-extrabold text-jp-text mb-4">學生評價</h2>
                 {% if user.is_authenticated and can_review %}
                 <div class="bg-jp-bg rounded-xl p-5 mb-6">
                     <h3 class="font-medium text-jp-text mb-3">{% if my_review %}修改我的評價{% else %}我要評價{% endif %}</h3>
@@ -259,7 +259,7 @@
 
             <!-- Tab: 課程問答 -->
             <div data-panel="qa" class="hidden">
-                <h2 class="text-xl font-bold tracking-wide text-jp-text mb-6">問與答（{{ questions|length }}）</h2>
+                <h2 class="font-grotesk text-tight-head text-xl font-extrabold text-jp-text mb-6">問與答（{{ questions|length }}）</h2>
 
                 {% if user.is_authenticated %}
                 <form method="post" action="{% url 'add_question' course.id %}" class="mb-8">
@@ -327,7 +327,7 @@
             {% if can_see_announcements %}
             <!-- Tab: 課程公告 -->
             <div data-panel="announcements" class="hidden">
-                <h2 class="text-xl font-bold tracking-wide text-jp-text mb-4">課程公告</h2>
+                <h2 class="font-grotesk text-tight-head text-xl font-extrabold text-jp-text mb-4">課程公告</h2>
                 {% for a in announcements %}
                 <div class="border-b border-jp-border py-4">
                     <p class="font-medium text-jp-text">{{ a.title }}</p>
@@ -341,7 +341,7 @@
 
         <!-- 右：購買側欄 -->
         <div class="lg:col-span-1">
-            <div class="bg-jp-surface rounded-xl shadow-lg p-6 sticky top-24 border border-jp-border">
+            <div class="bg-jp-surface rounded-lg p-6 sticky top-24 border border-jp-border">
                 {% if course.image %}
                 <div class="aspect-video bg-jp-bg rounded-lg mb-4 overflow-hidden">
                     <img src="{{ course.image.url }}" alt="{{ course.title }}" class="w-full h-full object-cover">
@@ -350,14 +350,14 @@
                 <div class="mb-4">
                     {% if course.has_discount %}
                     <div class="flex items-baseline gap-2 flex-wrap">
-                        <span class="text-lg text-jp-muted line-through decoration-2">NT$ {{ course.price }}</span>
-                        <span class="text-3xl font-bold text-jp-accent">NT$ {{ course.get_effective_price }}</span>
+                        <span class="font-grotesk tabular-nums text-lg text-jp-muted line-through decoration-2">NT$ {{ course.price }}</span>
+                        <span class="font-grotesk tabular-nums text-3xl font-bold text-jp-accent">NT$ {{ course.get_effective_price }}</span>
                     </div>
                     {% if course.is_crowdfunding and course.is_funding_active %}
-                    <span class="inline-block mt-1 bg-accent-50 text-accent-600 text-xs font-bold px-2.5 py-1 rounded-full">早鳥優惠價，僅限募資期間</span>
+                    <span class="inline-block mt-1 bg-accent-50 text-accent-600 text-xs font-bold px-2.5 py-1 rounded">早鳥優惠價，僅限募資期間</span>
                     {% endif %}
                     {% else %}
-                    <span class="text-3xl font-bold text-jp-accent">NT$ {{ course.price }}</span>
+                    <span class="font-grotesk tabular-nums text-3xl font-bold text-jp-accent">NT$ {{ course.price }}</span>
                     {% endif %}
                 </div>
 
