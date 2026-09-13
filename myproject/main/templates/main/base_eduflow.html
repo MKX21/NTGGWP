@@ -42,9 +42,10 @@
                             text: '#ffffff',
                             muted: '#9a9a9a',
                         },
+                        // 呼應登入/註冊玻璃卡片的青綠漸層，讓導覽列高亮色與全站主色調一致
                         electric: {
-                            DEFAULT: '#005cff',
-                            hover: '#0047c4',
+                            DEFAULT: '#16c2a3',
+                            hover: '#0fa588',
                         },
                     },
                     fontFamily: { sans: ['"Noto Sans TC"', '"Inter"', 'system-ui', 'sans-serif'] },
@@ -77,24 +78,60 @@
             html { scroll-behavior: auto; }
             *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
         }
-        /* Django 表單控制項在 EduFlow 版型的統一樣式（與「編輯個人資料」一致）*/
+        /* Django 表單控制項在 EduFlow 版型的統一樣式（深色玻璃版，與登入/註冊頁呼應）*/
         .ef-form input:not([type=checkbox]):not([type=radio]):not([type=file]),
         .ef-form select, .ef-form textarea {
-            width: 100%; border: 1px solid #e2e8f0; border-radius: 0.7rem;
-            padding: 0.65rem 0.85rem; font-size: 0.95rem; background: #fff; color: #0f172a;
+            width: 100%; border: 1px solid #2a3242; border-radius: 0.7rem;
+            padding: 0.65rem 0.85rem; font-size: 0.95rem; background: #0f1420; color: #e8ecf8;
             transition: border-color .15s, box-shadow .15s;
         }
-        .ef-form input::placeholder, .ef-form textarea::placeholder { color: #94a3b8; }
+        .ef-form input::placeholder, .ef-form textarea::placeholder { color: #7c869c; }
         .ef-form input:focus, .ef-form select:focus, .ef-form textarea:focus {
-            outline: none; border-color: #a5b4fc; box-shadow: 0 0 0 3px rgba(99,102,241,.16);
+            outline: none; border-color: #16c2a3; box-shadow: 0 0 0 3px rgba(22,194,163,.20);
         }
         .ef-form textarea { resize: vertical; min-height: 6.5rem; }
-        .ef-form label { font-weight: 700; color: #334155; display: block; margin: 0.8rem 0 0.4rem; }
+        .ef-form label { font-weight: 700; color: #aab2c7; display: block; margin: 0.8rem 0 0.4rem; }
         .ef-form p { margin-bottom: 0.9rem; }
-        .ef-form ul.errorlist { color: #dc2626; font-size: 0.85rem; list-style: none; padding: 0; margin: 0.25rem 0; }
-        .ef-form .helptext { color: #94a3b8; font-size: 0.8rem; }
-        .ef-form input[type=file] { font-size: 0.9rem; }
-        .ef-form input[type=checkbox], .ef-form input[type=radio] { accent-color: #6366f1; width: 1rem; height: 1rem; vertical-align: middle; }
+        .ef-form ul.errorlist { color: #ff9b9b; font-size: 0.85rem; list-style: none; padding: 0; margin: 0.25rem 0; }
+        .ef-form .helptext { color: #7c869c; font-size: 0.8rem; }
+        .ef-form input[type=file] { font-size: 0.9rem; color: #aab2c7; }
+        .ef-form input[type=checkbox], .ef-form input[type=radio] { accent-color: #16c2a3; width: 1rem; height: 1rem; vertical-align: middle; }
+
+        /* ===== 全站深色玻璃：重映射舊版淺色版型遺留的 Tailwind utility class =====
+           大量模板沿用 bg-white / text-slate-* / border-slate-* 等淺色寫死的類別，
+           改成深色系一次覆蓋即可全站生效，不必逐一模板重寫 class。*/
+        .bg-white, .bg-gray-50, .bg-gray-100, .bg-slate-50 {
+            background-color: #12161f !important;
+        }
+        .bg-slate-100, .bg-slate-200, .bg-gray-200 {
+            background-color: #1b2130 !important;
+        }
+        .text-slate-900, .text-slate-800, .text-gray-900, .text-gray-800,
+        .text-slate-700, .text-gray-700 {
+            color: #e8ecf8 !important;
+        }
+        .text-slate-600, .text-gray-600, .text-slate-500, .text-gray-500,
+        .text-slate-400, .text-gray-400 {
+            color: #aab2c7 !important;
+        }
+        .border-slate-100, .border-slate-200, .border-gray-100, .border-gray-200 {
+            border-color: #242b38 !important;
+        }
+        /* 狀態色淺底改為半透明深色玻璃底，文字改用對應的亮色，維持可讀性 */
+        .bg-red-50 { background-color: rgba(248,113,113,.12) !important; }
+        .bg-green-50, .bg-emerald-50 { background-color: rgba(52,211,153,.12) !important; }
+        .bg-amber-50, .bg-yellow-50 { background-color: rgba(251,191,36,.12) !important; }
+        .bg-blue-50, .bg-indigo-50 { background-color: rgba(96,165,250,.12) !important; }
+        .bg-rose-50 { background-color: rgba(251,113,133,.12) !important; }
+        .hover\:bg-rose-50:hover { background-color: rgba(251,113,133,.18) !important; }
+        .text-rose-600 { color: #fda4af !important; }
+        /* brand-50/100 原本是淺色系最淺色階（卡片底色用），深色主題下改成半透明青綠玻璃底 */
+        .bg-brand-50, .bg-brand-100 { background-color: rgba(22,194,163,.14) !important; }
+        .hover\:bg-brand-50:hover, .hover\:bg-brand-100:hover { background-color: rgba(22,194,163,.22) !important; }
+        .text-red-600, .text-red-700 { color: #ff9b9b !important; }
+        .text-green-600, .text-green-700, .text-emerald-700 { color: #6ee7b7 !important; }
+        .text-amber-600, .text-amber-700 { color: #fcd34d !important; }
+        .text-blue-600, .text-blue-700, .text-indigo-600, .text-indigo-700 { color: #93c5fd !important; }
 
         /* ===== iOS 液態玻璃按鈕（Liquid Glass）===== */
         .btn-glass, .btn-glass-primary {
