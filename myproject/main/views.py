@@ -192,6 +192,20 @@ def home(request):
         ).order_by('funding_end_date')[:10]
     )
 
+    # 首頁「課程牆」3D 展示區：五欄各 8 張課程封面圖，各欄用不同起始位移
+    # 取值，避免每欄畫面一模一樣。圖片數不足時允許重複，只有完全沒有
+    # 課程封面圖時才整個區塊不顯示（模板用 {% if showcase_columns %} 判斷）。
+    showcase_columns = []
+    showcase_image_urls = [c.image.url for c in base_pub.exclude(image='') if c.image]
+    if showcase_image_urls:
+        SHOWCASE_COLUMNS = 5
+        SHOWCASE_IMAGES_PER_COLUMN = 8
+        n = len(showcase_image_urls)
+        showcase_columns = [
+            [showcase_image_urls[(col * 3 + i) % n] for i in range(SHOWCASE_IMAGES_PER_COLUMN)]
+            for col in range(SHOWCASE_COLUMNS)
+        ]
+
     from . import ai_assistant
 
     return render(request, 'main/home.html', {
@@ -209,6 +223,7 @@ def home(request):
         'latest_courses': latest_courses,
         'hero_courses': hero_courses,
         'funding_courses': funding_courses,
+        'showcase_columns': showcase_columns,
         'sort_options': [
             ('newest', '最新'),
             ('popular', '熱門'),

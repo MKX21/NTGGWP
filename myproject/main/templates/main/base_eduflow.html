@@ -218,6 +218,26 @@
             });
         });
 
+        // 頭像下拉選單：點頭像切換開關、點選單外或按 Esc 關閉
+        document.querySelectorAll('[data-dropdown-wrapper]').forEach((wrapper) => {
+            const toggle = wrapper.querySelector('[data-dropdown-toggle]');
+            const menu = wrapper.querySelector('[data-dropdown-menu]');
+            const caret = wrapper.querySelector('[data-dropdown-caret]');
+            if (!toggle || !menu) return;
+            const close = () => { menu.classList.add('hidden'); caret && caret.classList.remove('rotate-180'); };
+            const open = () => { menu.classList.remove('hidden'); caret && caret.classList.add('rotate-180'); };
+            toggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                menu.classList.contains('hidden') ? open() : close();
+            });
+            document.addEventListener('click', (e) => {
+                if (!wrapper.contains(e.target)) close();
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') close();
+            });
+        });
+
         // 手機側邊選單
         const mobileMenu = document.querySelector('[data-mobile-menu]');
         const openMobile = () => mobileMenu && mobileMenu.classList.remove('hidden');

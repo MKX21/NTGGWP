@@ -126,29 +126,114 @@
 </section>
 {% endif %}
 
-<!-- ============ 信任數字 ============ -->
-<section class="bg-satdark-bg">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div class="grid grid-cols-2 md:grid-cols-4 divide-x divide-satdark-border border-y border-satdark-border">
-            <div class="px-4 py-6 text-center">
-                <div class="font-grotesk tabular-nums text-3xl md:text-4xl font-extrabold text-satdark-text">{{ total_enrollments }}+</div>
-                <div class="text-sm text-satdark-muted mt-1">累積購課人次</div>
-            </div>
-            <div class="px-4 py-6 text-center">
-                <div class="font-grotesk tabular-nums text-3xl md:text-4xl font-extrabold text-satdark-text">{{ total_students }}+</div>
-                <div class="text-sm text-satdark-muted mt-1">累積學員</div>
-            </div>
-            <div class="px-4 py-6 text-center">
-                <div class="font-grotesk tabular-nums text-3xl md:text-4xl font-extrabold text-satdark-text">{{ total_teachers }}+</div>
-                <div class="text-sm text-satdark-muted mt-1">合作講師</div>
-            </div>
-            <div class="px-4 py-6 text-center">
-                <div class="font-grotesk tabular-nums text-3xl md:text-4xl font-extrabold text-satdark-text">{{ avg_all }}<span class="text-lg">/5</span></div>
-                <div class="text-sm text-satdark-muted mt-1">平均評價</div>
-            </div>
+<!-- ============ 課程牆（左）＋ 學員評語（右） ============ -->
+{% if showcase_columns %}
+<style>
+  /* 全部 class 加 eduflow-showcase 前綴隔離，避免跟站內其他樣式（.up/.down/section 等泛用名稱）打架。
+     尺寸改用 em 並讓 .eduflow-showcase-wrapper 的 font-size 隨螢幕寬度縮放，
+     這組 3D 位移數字彼此牽動，縮放字級是不破版最省事的做法（原設計用寫死 px）。
+     字級調校成適合「佔版面一半寬度」的欄位（約 560～570px），跟原本滿版展示的尺寸不同。 */
+  .eduflow-showcase-wrapper {
+    --column-height: 18.75em;
+    --image-height: 12.5em;
+    --row-gap: 0.5em;
+    --column-gap: 0.25em;
+    --number-of-images: 8;
+    font-size: 13px;
+    width: 43.75em;
+    max-width: 100%;
+    height: var(--column-height);
+    margin: 0 auto;
+    perspective: 1000px;
+    overflow: hidden;
+    position: relative;
+  }
+  @media (max-width: 1023px) { .eduflow-showcase-wrapper { font-size: 12px; } }
+  @media (max-width: 639px) { .eduflow-showcase-wrapper { font-size: 8px; } }
+  .eduflow-showcase-columns {
+    position: absolute;
+    width: 175%;
+    top: -18.75em;
+    right: -43.75em;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    transform: rotateX(45deg) rotateY(20deg) rotate(-25deg) translate3d(-6em, 8em, 8em);
+    transform-origin: 50%;
+    transform-style: preserve-3d;
+    -webkit-mask-image: linear-gradient(#0000 0%, #00000005 2.3%, #00000009 2.57%, #00000013 3.65%, #00000026 5.25%, #0000004d 7.5%, #000 15%);
+    mask-image: linear-gradient(#0000 0%, #00000005 2.3%, #00000009 2.57%, #00000013 3.65%, #00000026 5.25%, #0000004d 7.5%, #000 15%);
+  }
+  .eduflow-showcase-column {
+    display: flex;
+    flex-direction: column;
+    margin-left: var(--column-gap);
+    margin-right: var(--column-gap);
+  }
+  .eduflow-showcase-column div {
+    height: var(--image-height);
+    margin-bottom: var(--row-gap);
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center;
+  }
+  .eduflow-showcase-column:nth-child(1) { padding-top: 6.25em; }
+  .eduflow-showcase-column:nth-child(2) { padding-top: 3.125em; }
+  .eduflow-showcase-column:nth-child(4) { padding-top: 6.25em; }
+  .eduflow-showcase-column:nth-child(5) { padding-top: 3.125em; }
+  @keyframes eduflowShowcaseUp {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(calc(-1 * (((var(--image-height) + var(--row-gap)) * var(--number-of-images)) - var(--column-height)))); }
+  }
+  @keyframes eduflowShowcaseDown {
+    0% { transform: translateY(calc(-1 * (((var(--image-height) + var(--row-gap)) * var(--number-of-images)) - var(--column-height)))); }
+    100% { transform: translateY(0); }
+  }
+  .eduflow-showcase-column.scroll-up { animation: eduflowShowcaseUp 25s linear infinite alternate; }
+  .eduflow-showcase-column.scroll-down { animation: eduflowShowcaseDown 25s linear infinite alternate; }
+  @media (prefers-reduced-motion: reduce) {
+    .eduflow-showcase-column.scroll-up, .eduflow-showcase-column.scroll-down { animation: none; }
+  }
+</style>
+<section class="bg-satdark-bg py-16 overflow-hidden">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-2 gap-10 items-center">
+    <div>
+      <div class="mb-6">
+        <span class="inline-flex items-center gap-2 text-electric font-medium text-sm mb-2"><i class="fas fa-images"></i> 課程牆</span>
+        <h2 class="font-grotesk text-tight-head text-2xl md:text-3xl font-extrabold text-satdark-text">看看大家都在學什麼</h2>
+      </div>
+      <div class="eduflow-showcase-wrapper">
+        <div class="eduflow-showcase-columns">
+          {% for column in showcase_columns %}
+          <div class="eduflow-showcase-column {% cycle 'scroll-up' 'scroll-down' %}">
+            {% for url in column %}
+            <div style="background-image:url('{{ url }}')"></div>
+            {% endfor %}
+          </div>
+          {% endfor %}
         </div>
+      </div>
     </div>
+
+    <div class="bg-satdark-surface border border-satdark-border rounded-2xl p-8 lg:p-10">
+      <i class="fas fa-quote-left text-3xl text-electric/40 mb-4"></i>
+      <p class="font-display italic text-xl md:text-2xl text-satdark-text leading-relaxed mb-6">
+        照著課程重做論文排版的那個下午，我才知道原來目錄跟章節樣式可以一鍵套用。
+        口試前一天熬夜改格式的日子，總算在這門課上劃下句點。
+      </p>
+      <div class="flex items-center gap-3">
+        <span class="inline-flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-brand-700 to-brand-500 text-white font-bold">陳</span>
+        <div>
+          <p class="font-bold text-satdark-text">陳同學</p>
+          <p class="text-sm text-satdark-muted">企業管理系・已購買 Word 論文排版課程</p>
+        </div>
+        <div class="ml-auto text-amber-400 text-sm">
+          <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+        </div>
+      </div>
+    </div>
+  </div>
 </section>
+{% endif %}
 
 <!-- ============ 募資中課程 ============ -->
 {% if funding_courses %}
