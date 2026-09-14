@@ -63,6 +63,7 @@
                     <a href="{% url 'manage_withdrawals' %}" class="hidden lg:inline {% if is_home == 'home' %}text-satdark-muted hover:text-electric{% else %}text-jp-muted hover:text-jp-primary{% endif %} font-medium px-2">提領審核</a>
                     {% else %}
                     <a href="{% url 'my_courses' %}" class="hidden lg:inline {% if is_home == 'home' %}text-satdark-muted hover:text-electric{% else %}text-jp-muted hover:text-jp-primary{% endif %} font-medium px-2">我的課程</a>
+                    <a href="{% url 'my_favorites' %}" class="hidden lg:inline {% if is_home == 'home' %}text-satdark-muted hover:text-electric{% else %}text-jp-muted hover:text-jp-primary{% endif %} font-medium px-2">我的收藏</a>
                     <a href="{% url 'my_following' %}" class="hidden lg:inline {% if is_home == 'home' %}text-satdark-muted hover:text-electric{% else %}text-jp-muted hover:text-jp-primary{% endif %} font-medium px-2">我的追蹤</a>
                     {% if nav_can_teach %}
                     <a href="{% url 'teacher_dashboard' %}" class="hidden lg:inline {% if is_home == 'home' %}text-satdark-muted hover:text-electric{% else %}text-jp-muted hover:text-jp-primary{% endif %} font-medium px-2">進入教師專區</a>
@@ -156,6 +157,7 @@
             <a href="{% url 'manage_withdrawals' %}" class="px-3 py-3 rounded-lg hover:bg-white/5 text-satdark-text font-medium">提領審核</a>
             {% else %}
             <a href="{% url 'my_courses' %}" class="px-3 py-3 rounded-lg hover:bg-white/5 text-satdark-text font-medium">我的課程</a>
+            <a href="{% url 'my_favorites' %}" class="px-3 py-3 rounded-lg hover:bg-white/5 text-satdark-text font-medium">我的收藏</a>
             <a href="{% url 'my_following' %}" class="px-3 py-3 rounded-lg hover:bg-white/5 text-satdark-text font-medium">我的追蹤</a>
             <a href="{% url 'student_dashboard' %}" class="px-3 py-3 rounded-lg hover:bg-white/5 text-satdark-text font-medium">學生專區</a>
             {% if nav_can_teach %}
@@ -191,6 +193,7 @@
             <a href="{% url 'export_data_page' %}" class="px-3 py-3 rounded-lg hover:bg-jp-bg font-medium">資料匯出</a>
             {% else %}
             <a href="{% url 'my_courses' %}" class="px-3 py-3 rounded-lg hover:bg-jp-bg font-medium">我的課程</a>
+            <a href="{% url 'my_favorites' %}" class="px-3 py-3 rounded-lg hover:bg-jp-bg font-medium">我的收藏</a>
             <a href="{% url 'my_following' %}" class="px-3 py-3 rounded-lg hover:bg-jp-bg font-medium">我的追蹤</a>
             <a href="{% url 'student_dashboard' %}" class="px-3 py-3 rounded-lg hover:bg-jp-bg font-medium">學生專區</a>
             {% if nav_can_teach %}
