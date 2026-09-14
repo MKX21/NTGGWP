@@ -1306,3 +1306,191 @@ class TeacherBankAccount(models.Model):
     class Meta:
         verbose_name = "教師銀行帳戶"
         verbose_name_plural = "教師銀行帳戶"
+
+
+class MarketingRequest(models.Model):
+    STATUS_CHOICES = [
+        ('pending', '待處理'),
+        ('processing', '處理中'),
+        ('completed', '已完成'),
+        ('rejected', '已退回'),
+    ]
+
+    GOAL_CHOICES = [
+        ('exposure', '增加課程曝光'),
+        ('enrollment', '增加招生人數'),
+        ('new_course', '新課程宣傳'),
+        ('promotion', '限時促銷'),
+        ('other', '其他'),
+    ]
+
+    teacher = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='marketing_requests',
+        verbose_name='教師'
+    )
+
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name='marketing_requests',
+        verbose_name='課程'
+    )
+
+    goal = models.CharField(
+        max_length=30,
+        choices=GOAL_CHOICES,
+        verbose_name='行銷目的'
+    )
+
+    desired_start_date = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name='希望開始日期'
+    )
+
+    notes = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='補充需求'
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending',
+        verbose_name='申請狀態'
+    )
+
+    admin_note = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='後台備註'
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='申請時間'
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name='更新時間'
+    )
+
+    def __str__(self):
+        return f'{self.course.title} - {self.teacher.username} - {self.get_status_display()}'
+
+    class Meta:
+        verbose_name = 'AI 行銷申請'
+        verbose_name_plural = 'AI 行銷申請'
+        ordering = ['-created_at']
+
+
+class MarketingPlan(models.Model):
+    STATUS_CHOICES = [
+        ('draft', '草稿'),
+        ('reviewing', '待審核'),
+        ('approved', '已核准'),
+        ('rejected', '已退回'),
+    ]
+
+    marketing_request = models.OneToOneField(
+        MarketingRequest,
+        on_delete=models.CASCADE,
+        related_name='plan',
+        verbose_name='行銷申請',
+    )
+
+    target_audience = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='目標受眾'
+    )
+
+    course_selling_points = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='課程賣點'
+    )
+
+    marketing_strategy = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='行銷策略'
+    )
+
+    ad_headline = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='廣告標題'
+    )
+
+    ad_copy = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='廣告文案'
+    )
+
+    social_media_copy = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='社群貼文'
+    )
+
+    video_script = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='短影音腳本'
+    )
+
+    call_to_action = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        verbose_name='行動呼籲'
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='draft',
+        verbose_name='企劃狀態'
+    )
+
+    admin_note = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='管理員備註'
+    )
+
+    generated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='AI 生成時間'
+    )
+
+    reviewed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='審核時間'
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='建立時間'
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name='更新時間'
+    )
+
+    def __str__(self):
+        return f'{self.marketing_request.course.title} - AI 行銷企劃'
+
+    class Meta:
+        verbose_name = 'AI 行銷企劃'
+        verbose_name_plural = 'AI 行銷企劃'
+        ordering = ['-created_at']

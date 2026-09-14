@@ -1,0 +1,67 @@
+{% extends 'main/base_eduflow.html' %}
+{% block title %}行銷申請 | EduFlow{% endblock %}
+
+{% block content %}
+<main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-black text-slate-900">行銷申請</h1>
+      <p class="text-slate-500 mt-1">查看你提交給後台的課程行銷需求。</p>
+    </div>
+    <a href="{% url 'submit_marketing_request' %}" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-5 py-2.5 rounded-lg transition">新增申請</a>
+  </div>
+
+  <div class="space-y-4">
+    {% for item in marketing_requests %}
+    <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6">
+      <div class="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h2 class="text-lg font-black text-slate-900">{{ item.course.title }}</h2>
+          <p class="text-sm text-slate-500 mt-1">{{ item.get_goal_display }} / 申請於 {{ item.created_at|date:"Y/m/d H:i" }}</p>
+        </div>
+        <div class="flex items-center gap-2">
+          {% if item.status == 'pending' %}
+          <span class="bg-amber-50 text-amber-700 text-xs font-bold px-3 py-1 rounded-full">待處理</span>
+          {% elif item.status == 'processing' %}
+          <span class="bg-blue-50 text-blue-700 text-xs font-bold px-3 py-1 rounded-full">處理中</span>
+          {% elif item.status == 'completed' %}
+          <span class="bg-green-50 text-green-700 text-xs font-bold px-3 py-1 rounded-full">已完成</span>
+          {% else %}
+          <span class="bg-red-50 text-red-700 text-xs font-bold px-3 py-1 rounded-full">已退回</span>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if item.desired_start_date %}
+      <p class="text-sm text-slate-600 mt-4">希望開始日期：{{ item.desired_start_date|date:"Y/m/d" }}</p>
+      {% endif %}
+
+      {% if item.notes %}
+      <p class="text-sm text-slate-600 mt-2">補充需求：{{ item.notes }}</p>
+      {% endif %}
+
+      {% if item.admin_note %}
+      <div class="bg-slate-50 rounded-lg p-3 mt-4 text-sm text-slate-600">後台備註：{{ item.admin_note }}</div>
+      {% endif %}
+
+      <!-- 操作按鈕 -->
+      <div class="flex gap-3 mt-4">
+        <a href="{% url 'marketing_plan_detail' item.id %}" class="bg-brand-50 hover:bg-brand-100 text-brand-700 font-bold px-4 py-2 rounded-lg text-sm transition">
+          {% if item.status == 'completed' %}查看企劃{% else %}查看詳情{% endif %}
+        </a>
+
+        {% if item.status == 'pending' %}
+        <form method="post" action="{% url 'cancel_marketing_request' item.id %}" class="inline"
+              onsubmit="return confirm('確定要取消此行銷申請嗎？')">
+          {% csrf_token %}
+          <button type="submit" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-4 py-2 rounded-lg text-sm transition">取消申請</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% empty %}
+    <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-10 text-center text-slate-500">目前沒有行銷申請。</div>
+    {% endfor %}
+  </div>
+</main>
+{% endblock %}

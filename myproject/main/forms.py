@@ -17,6 +17,7 @@ from .models import (
     TeacherArticle,
     TeacherMaterial,
     TeacherBankAccount,
+    MarketingRequest,
 )
 
 
@@ -445,3 +446,27 @@ class MaterialForm(forms.ModelForm):
         }
 
 
+
+
+class MarketingRequestForm(forms.ModelForm):
+    class Meta:
+        model = MarketingRequest
+        fields = ['course', 'goal', 'desired_start_date', 'notes']
+        labels = {
+            'course': '申請課程',
+            'goal': '行銷目的',
+            'desired_start_date': '希望開始日期',
+            'notes': '補充需求',
+        }
+        help_texts = {
+            'notes': '可以簡單告訴後台希望強調的方向，不需要自行撰寫廣告內容。',
+        }
+        widgets = {
+            'desired_start_date': forms.DateInput(attrs={'type': 'date'}),
+            'notes': forms.Textarea(attrs={'rows': 5, 'placeholder': '例如：希望主要推廣給上班族。'}),
+        }
+
+    def __init__(self, *args, teacher=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if teacher is not None:
+            self.fields['course'].queryset = Course.objects.filter(teacher=teacher).order_by('-created_at')

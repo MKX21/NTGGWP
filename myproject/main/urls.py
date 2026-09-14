@@ -29,6 +29,12 @@ urlpatterns = [
     path('teacher/analytics/', views.teacher_analytics, name='teacher_analytics'),
     path('teacher/qna/', views.teacher_qna, name='teacher_qna'),
 
+    # AI 行銷企劃申請
+    path('teacher/marketing/apply/', views.submit_marketing_request, name='submit_marketing_request'),
+    path('teacher/marketing/', views.marketing_requests, name='marketing_requests'),
+    path('teacher/marketing/<int:request_id>/plan/', views.marketing_plan_detail, name='marketing_plan_detail'),
+    path('teacher/marketing/<int:request_id>/cancel/', views.cancel_marketing_request, name='cancel_marketing_request'),
+
     path('export-data/', views.export_data_page, name='export_data_page'),
     path('analytics/', views.platform_analytics, name='platform_analytics'),
     path('export/courses.csv', views.export_courses_csv, name='export_courses_csv'),

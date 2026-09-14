@@ -62,6 +62,8 @@ from .models import (
     TeacherMaterial,
     ColumnSubscription,
     TeacherBankAccount,
+    MarketingRequest,
+    MarketingPlan,
 )
 
 from .forms import (
@@ -81,6 +83,7 @@ from .forms import (
     ArticleForm,
     MaterialForm,
     TeacherBankAccountForm,
+    MarketingRequestForm,
 )
 
 from .payments import gateway
@@ -574,6 +577,120 @@ def teacher_dashboard(request):
     return render(request, 'main/teacher_dashboard.html', {
         'course_data': course_data
     })
+
+
+@login_required
+def submit_marketing_request(request):
+    try:
+        profile = request.user.profile
+        if profile.role != 'teacher' and not profile.is_teacher:
+            return redirect('home')
+    except Profile.DoesNotExist:
+        return redirect('home')
+
+    initial = {}
+    course_id = request.GET.get('course') or request.POST.get('course')
+    if course_id and request.method == 'GET':
+        try:
+            course = Course.objects.get(id=course_id, teacher=request.user)
+            initial['course'] = course
+        except Course.DoesNotExist:
+            pass
+
+    if request.method == 'POST':
+        form = MarketingRequestForm(request.POST, teacher=request.user)
+        if form.is_valid():
+            marketing_request = form.save(commit=False)
+            marketing_request.teacher = request.user
+            marketing_request.status = 'pending'
+            marketing_request.save()
+
+            Notification.objects.create(
+                user=request.user,
+                title='行銷申請已送出',
+                content=f'您的課程「{marketing_request.course.title}」行銷申請已送出，等待後台處理。'
+            )
+
+            return redirect('marketing_requests')
+    else:
+        form = MarketingRequestForm(teacher=request.user, initial=initial)
+
+    return render(request, 'main/marketing_request_form.html', {'form': form})
+
+
+@login_required
+def marketing_requests(request):
+    try:
+        profile = request.user.profile
+        if profile.role != 'teacher' and not profile.is_teacher:
+            return redirect('home')
+    except Profile.DoesNotExist:
+        return redirect('home')
+
+    requests = (
+        MarketingRequest.objects
+        .filter(teacher=request.user)
+        .select_related('course')
+        .order_by('-created_at')
+    )
+    return render(request, 'main/marketing_requests.html', {'marketing_requests': requests})
+
+
+@login_required
+def marketing_plan_detail(request, request_id):
+    """教師查看已核准的行銷企劃。"""
+    try:
+        profile = request.user.profile
+        if profile.role != 'teacher' and not profile.is_teacher:
+            return redirect('home')
+    except Profile.DoesNotExist:
+        return redirect('home')
+
+    mreq = get_object_or_404(
+        MarketingRequest,
+        id=request_id,
+        teacher=request.user,
+    )
+
+    try:
+        plan = mreq.plan
+    except MarketingPlan.DoesNotExist:
+        plan = None
+
+    return render(request, 'main/marketing_plan_detail.html', {
+        'marketing_request': mreq,
+        'plan': plan,
+    })
+
+
+@login_required
+def cancel_marketing_request(request, request_id):
+    """教師取消待處理的行銷申請。"""
+    try:
+        profile = request.user.profile
+        if profile.role != 'teacher' and not profile.is_teacher:
+            return redirect('home')
+    except Profile.DoesNotExist:
+        return redirect('home')
+
+    mreq = get_object_or_404(
+        MarketingRequest,
+        id=request_id,
+        teacher=request.user,
+    )
+
+    if request.method == 'POST' and mreq.status == 'pending':
+        mreq.status = 'rejected'
+        mreq.admin_note = '教師自行取消'
+        mreq.save(update_fields=['status', 'admin_note', 'updated_at'])
+
+        Notification.objects.create(
+            user=request.user,
+            title='行銷申請已取消',
+            content=f'您的課程「{mreq.course.title}」行銷申請已取消。'
+        )
+
+    return redirect('marketing_requests')
 
 
 @login_required

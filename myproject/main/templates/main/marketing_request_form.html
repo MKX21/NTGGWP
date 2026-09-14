@@ -1,0 +1,29 @@
+{% extends 'main/base_eduflow.html' %}
+{% block title %}申請課程行銷 | EduFlow{% endblock %}
+
+{% block content %}
+<main class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8">
+    <div class="flex items-center justify-between gap-4 mb-6">
+      <div>
+        <h1 class="text-2xl font-black text-slate-900">申請課程行銷</h1>
+        <p class="text-slate-500 mt-1">提交需求後，由後台負責行銷規劃與 AI 素材製作。</p>
+      </div>
+      <a href="{% url 'marketing_requests' %}" class="text-slate-600 hover:text-slate-900 font-bold">查看申請紀錄</a>
+    </div>
+
+    <div class="bg-slate-50 rounded-xl p-4 mb-6 text-sm text-slate-600">
+      你只需要告訴我們要推廣哪一門課程與行銷目的，不需要自行撰寫廣告文案或設定 AI。
+    </div>
+
+    <form method="post" class="ef-form">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="flex gap-3 mt-6">
+        <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-6 py-2.5 rounded-lg transition">提交行銷申請</button>
+        <a href="{% url 'teacher_dashboard' %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-6 py-2.5 rounded-lg transition">返回教師專區</a>
+      </div>
+    </form>
+  </div>
+</main>
+{% endblock %}

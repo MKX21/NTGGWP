@@ -1,0 +1,172 @@
+{% extends 'main/base_eduflow.html' %}
+{% block title %}行銷企劃 - {{ marketing_request.course.title }} | EduFlow{% endblock %}
+
+{% block content %}
+<main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+  <!-- 返回 -->
+  <a href="{% url 'marketing_requests' %}" class="inline-flex items-center text-sm text-slate-500 hover:text-slate-900 font-bold mb-6">
+    &larr; 返回行銷申請列表
+  </a>
+
+  <!-- 標題區 -->
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8 mb-6">
+    <div class="flex items-center justify-between gap-4 flex-wrap">
+      <div>
+        <h1 class="text-2xl font-black text-slate-900">{{ marketing_request.course.title }}</h1>
+        <p class="text-slate-500 mt-1">{{ marketing_request.get_goal_display }} / 申請於 {{ marketing_request.created_at|date:"Y/m/d H:i" }}</p>
+      </div>
+      {% if marketing_request.status == 'pending' %}
+      <span class="bg-amber-50 text-amber-700 text-xs font-bold px-3 py-1 rounded-full">待處理</span>
+      {% elif marketing_request.status == 'processing' %}
+      <span class="bg-blue-50 text-blue-700 text-xs font-bold px-3 py-1 rounded-full">處理中</span>
+      {% elif marketing_request.status == 'completed' %}
+      <span class="bg-green-50 text-green-700 text-xs font-bold px-3 py-1 rounded-full">已完成</span>
+      {% else %}
+      <span class="bg-red-50 text-red-700 text-xs font-bold px-3 py-1 rounded-full">已退回</span>
+      {% endif %}
+    </div>
+
+    {% if marketing_request.notes %}
+    <div class="mt-4 text-sm text-slate-600">
+      <span class="font-bold">補充需求：</span>{{ marketing_request.notes }}
+    </div>
+    {% endif %}
+
+    {% if marketing_request.admin_note %}
+    <div class="bg-slate-50 rounded-lg p-3 mt-4 text-sm text-slate-600">
+      <span class="font-bold">後台備註：</span>{{ marketing_request.admin_note }}
+    </div>
+    {% endif %}
+  </div>
+
+  {% if plan %}
+
+  {% if plan.status == 'approved' or plan.status == 'reviewing' %}
+
+  <!-- AI 企劃內容 -->
+  {% if plan.generated_at %}
+  <p class="text-xs text-slate-400 mb-4">AI 生成時間：{{ plan.generated_at|date:"Y/m/d H:i" }}
+    {% if plan.reviewed_at %} / 審核時間：{{ plan.reviewed_at|date:"Y/m/d H:i" }}{% endif %}
+  </p>
+  {% endif %}
+
+  <!-- 目標受眾 -->
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 mb-4">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-lg font-bold text-slate-900">目標受眾</h2>
+      <button onclick="copyText(this)" data-target="target-audience" class="text-xs text-brand-600 hover:text-brand-800 font-bold">複製</button>
+    </div>
+    <p id="target-audience" class="text-slate-700 text-sm leading-relaxed whitespace-pre-line">{{ plan.target_audience }}</p>
+  </div>
+
+  <!-- 課程賣點 -->
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 mb-4">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-lg font-bold text-slate-900">課程賣點</h2>
+      <button onclick="copyText(this)" data-target="selling-points" class="text-xs text-brand-600 hover:text-brand-800 font-bold">複製</button>
+    </div>
+    <p id="selling-points" class="text-slate-700 text-sm leading-relaxed whitespace-pre-line">{{ plan.course_selling_points }}</p>
+  </div>
+
+  <!-- 行銷策略 -->
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 mb-4">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-lg font-bold text-slate-900">行銷策略</h2>
+      <button onclick="copyText(this)" data-target="strategy" class="text-xs text-brand-600 hover:text-brand-800 font-bold">複製</button>
+    </div>
+    <p id="strategy" class="text-slate-700 text-sm leading-relaxed whitespace-pre-line">{{ plan.marketing_strategy }}</p>
+  </div>
+
+  <!-- 廣告標題 + 文案 -->
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 mb-4">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-lg font-bold text-slate-900">廣告標題 / 文案</h2>
+      <button onclick="copyText(this)" data-target="ad-copy" class="text-xs text-brand-600 hover:text-brand-800 font-bold">複製</button>
+    </div>
+    <div id="ad-copy">
+      <p class="text-slate-900 font-bold text-base mb-2">{{ plan.ad_headline }}</p>
+      <p class="text-slate-700 text-sm leading-relaxed whitespace-pre-line">{{ plan.ad_copy }}</p>
+    </div>
+  </div>
+
+  <!-- 社群貼文 -->
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 mb-4">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-lg font-bold text-slate-900">社群貼文</h2>
+      <button onclick="copyText(this)" data-target="social" class="text-xs text-brand-600 hover:text-brand-800 font-bold">複製</button>
+    </div>
+    <p id="social" class="text-slate-700 text-sm leading-relaxed whitespace-pre-line">{{ plan.social_media_copy }}</p>
+  </div>
+
+  <!-- 短影音腳本 -->
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 mb-4">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-lg font-bold text-slate-900">短影音腳本</h2>
+      <button onclick="copyText(this)" data-target="video" class="text-xs text-brand-600 hover:text-brand-800 font-bold">複製</button>
+    </div>
+    <p id="video" class="text-slate-700 text-sm leading-relaxed whitespace-pre-line">{{ plan.video_script }}</p>
+  </div>
+
+  <!-- CTA -->
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 mb-4">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-lg font-bold text-slate-900">行動呼籲 (CTA)</h2>
+      <button onclick="copyText(this)" data-target="cta" class="text-xs text-brand-600 hover:text-brand-800 font-bold">複製</button>
+    </div>
+    <p id="cta" class="text-brand-700 font-bold text-base">{{ plan.call_to_action }}</p>
+  </div>
+
+  {% if plan.admin_note %}
+  <div class="bg-slate-50 rounded-xl p-4 mt-4 text-sm text-slate-600">
+    <span class="font-bold">管理員備註：</span>{{ plan.admin_note }}
+  </div>
+  {% endif %}
+
+  {% elif plan.status == 'rejected' %}
+  <div class="bg-red-50 rounded-2xl ring-1 ring-red-100 p-8 text-center">
+    <p class="text-red-700 font-bold">此行銷企劃已退回</p>
+    {% if plan.admin_note %}
+    <p class="text-red-600 text-sm mt-2">退回原因：{{ plan.admin_note }}</p>
+    {% endif %}
+  </div>
+
+  {% else %}
+  <div class="bg-amber-50 rounded-2xl ring-1 ring-amber-100 p-8 text-center">
+    <p class="text-amber-700 font-bold">行銷企劃尚在準備中，請耐心等待。</p>
+  </div>
+  {% endif %}
+
+  {% else %}
+
+  <!-- 沒有企劃 -->
+  <div class="bg-slate-50 rounded-2xl ring-1 ring-slate-100 p-10 text-center text-slate-500">
+    {% if marketing_request.status == 'pending' %}
+    您的行銷申請正在等待後台處理，企劃生成後會通知您。
+    {% elif marketing_request.status == 'processing' %}
+    後台正在處理您的申請，AI 企劃生成後會通知您。
+    {% elif marketing_request.status == 'rejected' %}
+    此申請已退回，尚未生成企劃。
+    {% else %}
+    目前沒有可顯示的行銷企劃。
+    {% endif %}
+  </div>
+
+  {% endif %}
+
+</main>
+
+<script>
+function copyText(btn) {
+    const targetId = btn.dataset.target;
+    const el = document.getElementById(targetId);
+    if (!el) return;
+    const text = el.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '已複製';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+    });
+}
+</script>
+{% endblock %}

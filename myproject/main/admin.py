@@ -44,6 +44,8 @@ from .models import (
     UserBadge,
     ColumnSubscription,
     TeacherBankAccount,
+    MarketingRequest,
+    MarketingPlan,
 )
 
 # ===== 後台品牌 =====
@@ -778,7 +780,7 @@ _CUSTOM_GROUPS = [
     ('📚 課程管理', ['Course', 'CourseCategory', 'CourseChapter', 'CourseLesson', 'CourseAudit', 'CourseBundle', 'CourseAnnouncement']),
     ('🧾 交易管理', ['Order', 'OrderItem', 'Payment', 'Refund', 'Enrollment']),
     ('💰 分潤與提領', ['CourseSplitSetting', 'RevenueRecord', 'WithdrawalRequest', 'TeacherBankAccount']),
-    ('🎯 行銷管理', ['Coupon', 'UserCoupon', 'CouponUsage', 'Promotion', 'Cart']),
+    ('🎯 行銷管理', ['MarketingRequest', 'MarketingPlan', 'Coupon', 'UserCoupon', 'CouponUsage', 'Promotion', 'Cart']),
     ('📝 講師內容', ['TeacherColumn', 'TeacherArticle', 'TeacherMaterial', 'ColumnSubscription']),
     ('👥 會員與互動', ['Profile', 'TeacherFollow', 'UserBadge', 'LearningRecord', 'LessonProgress', 'Favorite', 'Review', 'Notification', 'CourseQuestion', 'CourseAnswer', 'CourseComment']),
 ]
@@ -848,3 +850,319 @@ def _grouped_get_app_list(self, request, app_label=None):
 
 
 admin.AdminSite.get_app_list = _grouped_get_app_list
+
+
+@admin.register(MarketingRequest)
+class MarketingRequestAdmin(admin.ModelAdmin):
+    list_display = (
+        'course',
+        'teacher',
+        'goal_display',
+        'status_badge',
+        'desired_start_date',
+        'created_at',
+    )
+
+    list_filter = (
+        'status',
+        'goal',
+        'desired_start_date',
+        'created_at',
+    )
+
+    search_fields = (
+        'course__title',
+        'teacher__username',
+        'teacher__email',
+        'notes',
+        'admin_note',
+    )
+
+    readonly_fields = (
+        'created_at',
+        'updated_at',
+    )
+
+    list_select_related = (
+        'course',
+        'teacher',
+    )
+
+    list_per_page = 25
+
+    fieldsets = (
+        (
+            '申請資訊',
+            {
+                'fields': (
+                    'course',
+                    'teacher',
+                    'goal',
+                    'desired_start_date',
+                    'notes',
+                )
+            }
+        ),
+        (
+            '後台處理',
+            {
+                'fields': (
+                    'status',
+                    'admin_note',
+                )
+            }
+        ),
+        (
+            '時間',
+            {
+                'fields': (
+                    'created_at',
+                    'updated_at',
+                )
+            }
+        ),
+    )
+
+    @admin.display(description='行銷目的')
+    def goal_display(self, obj):
+        return obj.get_goal_display()
+
+    @admin.display(description='申請狀態')
+    def status_badge(self, obj):
+        return status_badge(
+            obj.status,
+            obj.get_status_display()
+        )
+
+    @admin.action(description='標記為處理中')
+    def mark_processing(self, request, queryset):
+        count = queryset.filter(
+            status='pending'
+        ).update(
+            status='processing',
+            updated_at=timezone.now(),
+        )
+        self.message_user(
+            request,
+            f'已將 {count} 筆行銷申請標記為處理中。'
+        )
+
+    @admin.action(description='標記為已完成')
+    def mark_completed(self, request, queryset):
+        count = queryset.filter(
+            status='processing'
+        ).update(
+            status='completed',
+            updated_at=timezone.now(),
+        )
+        self.message_user(
+            request,
+            f'已將 {count} 筆行銷申請標記為已完成。'
+        )
+
+    @admin.action(description='退回行銷申請')
+    def mark_rejected(self, request, queryset):
+        count = queryset.exclude(
+            status='completed'
+        ).update(
+            status='rejected',
+            updated_at=timezone.now(),
+        )
+        self.message_user(
+            request,
+            f'已退回 {count} 筆行銷申請。'
+        )
+
+    @admin.action(description='AI 生成行銷企劃')
+    def generate_ai_plan(self, request, queryset):
+        from .ai_marketing import create_or_update_plan
+        success_count = 0
+        fail_messages = []
+        for mreq in queryset.filter(status__in=['pending', 'processing']):
+            ok, msg, plan = create_or_update_plan(mreq)
+            if ok:
+                success_count += 1
+                Notification.objects.create(
+                    user=mreq.teacher,
+                    title='行銷企劃已生成',
+                    content=f'您的課程「{mreq.course.title}」的 AI 行銷企劃已生成，等待管理員審核。'
+                )
+            else:
+                fail_messages.append(f'{mreq.course.title}: {msg}')
+
+        if success_count:
+            self.message_user(
+                request,
+                f'已成功為 {success_count} 筆申請生成 AI 行銷企劃。'
+            )
+        for fm in fail_messages:
+            self.message_user(request, f'生成失敗 - {fm}', level='error')
+
+    actions = [
+        'mark_processing',
+        'mark_completed',
+        'mark_rejected',
+        'generate_ai_plan',
+    ]
+
+
+@admin.register(MarketingPlan)
+class MarketingPlanAdmin(admin.ModelAdmin):
+    list_display = (
+        'course_title',
+        'teacher',
+        'status_badge',
+        'generated_at',
+        'reviewed_at',
+    )
+
+    list_filter = (
+        'status',
+        'generated_at',
+        'reviewed_at',
+    )
+
+    search_fields = (
+        'marketing_request__course__title',
+        'marketing_request__teacher__username',
+        'target_audience',
+        'marketing_strategy',
+        'ad_headline',
+        'ad_copy',
+    )
+
+    readonly_fields = (
+        'generated_at',
+        'created_at',
+        'updated_at',
+    )
+
+    list_select_related = (
+        'marketing_request',
+        'marketing_request__course',
+        'marketing_request__teacher',
+    )
+
+    list_per_page = 25
+
+    fieldsets = (
+        (
+            '基本資訊',
+            {
+                'fields': (
+                    'marketing_request',
+                    'status',
+                )
+            }
+        ),
+        (
+            'AI 行銷分析',
+            {
+                'fields': (
+                    'target_audience',
+                    'course_selling_points',
+                    'marketing_strategy',
+                )
+            }
+        ),
+        (
+            'AI 廣告內容',
+            {
+                'fields': (
+                    'ad_headline',
+                    'ad_copy',
+                    'social_media_copy',
+                    'video_script',
+                    'call_to_action',
+                )
+            }
+        ),
+        (
+            '管理員審核',
+            {
+                'fields': (
+                    'admin_note',
+                    'reviewed_at',
+                )
+            }
+        ),
+        (
+            '系統資訊',
+            {
+                'fields': (
+                    'generated_at',
+                    'created_at',
+                    'updated_at',
+                )
+            }
+        ),
+    )
+
+    actions = [
+        'approve_plans',
+        'reject_plans',
+        'regenerate_plans',
+    ]
+
+    @admin.display(description='課程')
+    def course_title(self, obj):
+        return obj.marketing_request.course.title
+
+    @admin.display(description='教師')
+    def teacher(self, obj):
+        return obj.marketing_request.teacher.username
+
+    @admin.display(description='企劃狀態')
+    def status_badge(self, obj):
+        return status_badge(
+            obj.status,
+            obj.get_status_display()
+        )
+
+    @admin.action(description='核准選取的 AI 行銷企劃')
+    def approve_plans(self, request, queryset):
+        count = 0
+        for plan in queryset.filter(status__in=['reviewing', 'draft']):
+            plan.status = 'approved'
+            plan.reviewed_at = timezone.now()
+            plan.save(update_fields=['status', 'reviewed_at', 'updated_at'])
+            plan.marketing_request.status = 'completed'
+            plan.marketing_request.save(update_fields=['status', 'updated_at'])
+            Notification.objects.create(
+                user=plan.marketing_request.teacher,
+                title='行銷企劃已核准',
+                content=f'您的課程「{plan.marketing_request.course.title}」的 AI 行銷企劃已核准，請至行銷申請頁面查看完整內容。'
+            )
+            count += 1
+        self.message_user(request, f'已核准 {count} 份 AI 行銷企劃。')
+
+    @admin.action(description='退回選取的 AI 行銷企劃')
+    def reject_plans(self, request, queryset):
+        count = 0
+        for plan in queryset.exclude(status='approved'):
+            plan.status = 'rejected'
+            plan.reviewed_at = timezone.now()
+            plan.save(update_fields=['status', 'reviewed_at', 'updated_at'])
+            plan.marketing_request.status = 'rejected'
+            plan.marketing_request.save(update_fields=['status', 'updated_at'])
+            note = plan.admin_note or '（未填寫原因）'
+            Notification.objects.create(
+                user=plan.marketing_request.teacher,
+                title='行銷企劃已退回',
+                content=f'您的課程「{plan.marketing_request.course.title}」的行銷企劃已退回。備註：{note}'
+            )
+            count += 1
+        self.message_user(request, f'已退回 {count} 份 AI 行銷企劃。')
+
+    @admin.action(description='重新生成 AI 行銷企劃')
+    def regenerate_plans(self, request, queryset):
+        from .ai_marketing import create_or_update_plan
+        success_count = 0
+        for plan in queryset:
+            ok, msg, _ = create_or_update_plan(plan.marketing_request)
+            if ok:
+                success_count += 1
+            else:
+                self.message_user(request, f'重新生成失敗: {msg}', level='error')
+        if success_count:
+            self.message_user(request, f'已重新生成 {success_count} 份 AI 行銷企劃。')

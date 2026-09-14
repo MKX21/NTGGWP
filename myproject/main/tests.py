@@ -42,6 +42,7 @@ from .models import (
     Refund,
     RevenueRecord,
     Review,
+    TeacherBankAccount,
     WithdrawalRequest,
 )
 from .transitions import (
@@ -783,6 +784,13 @@ class RevenueAndWithdrawalViewTests(BaseFixture):
         super().setUp()
         self.order = self.buy(self.student, self.course)
         self.record = RevenueRecord.objects.get(order_item=self.order.items.get())
+        # 提領流程要求先綁定完整的收款銀行帳戶，測試帳號需要有一組才能申請提領。
+        TeacherBankAccount.objects.create(
+            teacher=self.teacher,
+            bank_name='測試銀行',
+            account_name='測試講師',
+            account_number='1234567890',
+        )
 
     def test_non_teacher_cannot_see_my_revenue(self):
         self.client.login(username='student', password='pw')
