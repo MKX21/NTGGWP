@@ -64,6 +64,7 @@ from .models import (
     TeacherBankAccount,
     MarketingRequest,
     MarketingPlan,
+    VMAccessRequest,
 )
 
 from .forms import (
@@ -84,6 +85,7 @@ from .forms import (
     MaterialForm,
     TeacherBankAccountForm,
     MarketingRequestForm,
+    VMAccessRequestForm,
 )
 
 from .payments import gateway
@@ -691,6 +693,46 @@ def cancel_marketing_request(request, request_id):
         )
 
     return redirect('marketing_requests')
+
+
+@login_required
+def request_vm_access(request):
+    """學生申請 Mac 用虛擬機：只能挑自己實際購買過的課程。"""
+    has_purchase = Enrollment.objects.filter(student=request.user).exists()
+    if not has_purchase:
+        return render(request, 'main/vm_request_form.html', {
+            'form': None,
+            'no_purchase': True,
+        })
+
+    if request.method == 'POST':
+        form = VMAccessRequestForm(request.POST, student=request.user)
+        if form.is_valid():
+            vm_request = form.save(commit=False)
+            vm_request.student = request.user
+            vm_request.status = 'pending'
+            vm_request.save()
+
+            Notification.objects.create(
+                user=request.user,
+                title='虛擬機申請已送出',
+                content=f'你申請的「{vm_request.course.title}」虛擬機使用申請已送出，等待管理員確認購課紀錄後核發。'
+            )
+
+            return redirect('my_vm_requests')
+    else:
+        form = VMAccessRequestForm(student=request.user)
+
+    return render(request, 'main/vm_request_form.html', {'form': form})
+
+
+@login_required
+def my_vm_requests(request):
+    """學生查看自己的虛擬機申請與核發資訊。"""
+    vm_requests = VMAccessRequest.objects.filter(
+        student=request.user
+    ).select_related('course').order_by('-created_at')
+    return render(request, 'main/vm_requests.html', {'vm_requests': vm_requests})
 
 
 @login_required

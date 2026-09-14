@@ -1494,3 +1494,55 @@ class MarketingPlan(models.Model):
         verbose_name = 'AI 行銷企劃'
         verbose_name_plural = 'AI 行銷企劃'
         ordering = ['-created_at']
+
+
+class VMAccessRequest(models.Model):
+    """學生申請 Mac 用虛擬機（用於執行課程所需但 Mac 沒有的軟體）。
+
+    流程：學生提出申請 → 管理員確認申請人確實購買過課程 → 後台填入虛擬機
+    連線資訊並核准 → 系統通知學生。核准與填入連線資訊綁在一起（見
+    VMAccessRequestAdminForm），不能只改狀態卻沒有實際的連線資訊，
+    否則學生點進去會看到空的核發內容。
+    """
+    STATUS_CHOICES = [
+        ('pending', '待審核'),
+        ('approved', '已核發'),
+        ('rejected', '已拒絕'),
+    ]
+
+    student = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='vm_access_requests', verbose_name='申請學生'
+    )
+    course = models.ForeignKey(
+        Course, on_delete=models.CASCADE, related_name='vm_access_requests', verbose_name='購買課程'
+    )
+    reason = models.TextField(
+        blank=True, default='', verbose_name='申請原因',
+        help_text='例如：課程需要的軟體只有 Windows 版本，Mac 無法安裝。'
+    )
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='申請狀態'
+    )
+
+    # 核發資訊：管理員審核通過時填入，核准前留空
+    vm_url = models.CharField(max_length=255, blank=True, default='', verbose_name='虛擬機網址')
+    vm_username = models.CharField(max_length=100, blank=True, default='', verbose_name='虛擬機帳號')
+    vm_password = models.CharField(max_length=100, blank=True, default='', verbose_name='虛擬機密碼')
+
+    admin_note = models.TextField(blank=True, default='', verbose_name='後台備註')
+
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='申請時間')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新時間')
+    approved_at = models.DateTimeField(null=True, blank=True, verbose_name='核發時間')
+
+    def is_fulfilled(self):
+        """是否已經真的填好核發資訊，而不是只改了狀態。"""
+        return bool(self.vm_url and self.vm_username and self.vm_password)
+
+    def __str__(self):
+        return f'{self.student.username} - {self.course.title} - {self.get_status_display()}'
+
+    class Meta:
+        verbose_name = 'Mac 虛擬機申請'
+        verbose_name_plural = 'Mac 虛擬機申請'
+        ordering = ['-created_at']

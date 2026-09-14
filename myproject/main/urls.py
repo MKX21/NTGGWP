@@ -64,6 +64,10 @@ urlpatterns = [
     path('profile/edit/', views.edit_profile, name='edit_profile'),
     path('my-courses/', views.my_courses, name='my_courses'),
 
+    # Mac 虛擬機申請
+    path('vm/apply/', views.request_vm_access, name='request_vm_access'),
+    path('vm/', views.my_vm_requests, name='my_vm_requests'),
+
     path('create-course/', views.create_course, name='create_course'),
 
     # 購物車

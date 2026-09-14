@@ -1,0 +1,38 @@
+{% extends 'main/base_eduflow.html' %}
+{% block title %}申請 Mac 虛擬機 | EduFlow{% endblock %}
+
+{% block content %}
+<main class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8">
+    <div class="flex items-center justify-between gap-4 mb-6">
+      <div>
+        <h1 class="text-2xl font-black text-slate-900">申請 Mac 虛擬機</h1>
+        <p class="text-slate-500 mt-1">課程需要用到 Mac 沒有的軟體時，可以申請我們提供的虛擬機使用。</p>
+      </div>
+      <a href="{% url 'my_vm_requests' %}" class="text-slate-600 hover:text-slate-900 font-bold">查看申請紀錄</a>
+    </div>
+
+    {% if no_purchase %}
+    <div class="bg-amber-50 rounded-xl p-6 text-center text-amber-700">
+      你目前還沒有購買任何課程，購課後才能申請虛擬機。
+      <div class="mt-4">
+        <a href="{% url 'course_catalog' %}" class="inline-block bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-5 py-2.5 rounded-lg transition">瀏覽課程</a>
+      </div>
+    </div>
+    {% else %}
+    <div class="bg-slate-50 rounded-xl p-4 mb-6 text-sm text-slate-600">
+      提交申請後，我們會先確認你購買紀錄，核發虛擬機連線資訊需要一點處理時間，完成後會用站內通知告訴你。
+    </div>
+
+    <form method="post" class="ef-form">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="flex gap-3 mt-6">
+        <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-6 py-2.5 rounded-lg transition">提交申請</button>
+        <a href="{% url 'my_courses' %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-6 py-2.5 rounded-lg transition">返回我的課程</a>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+</main>
+{% endblock %}

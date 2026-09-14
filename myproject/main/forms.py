@@ -18,6 +18,7 @@ from .models import (
     TeacherMaterial,
     TeacherBankAccount,
     MarketingRequest,
+    VMAccessRequest,
 )
 
 
@@ -470,3 +471,27 @@ class MarketingRequestForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if teacher is not None:
             self.fields['course'].queryset = Course.objects.filter(teacher=teacher).order_by('-created_at')
+
+
+class VMAccessRequestForm(forms.ModelForm):
+    class Meta:
+        model = VMAccessRequest
+        fields = ['course', 'reason']
+        labels = {
+            'course': '哪一門課程需要用到虛擬機',
+            'reason': '申請原因（選填）',
+        }
+        help_texts = {
+            'reason': '例如：課程需要的軟體只有 Windows 版本，Mac 無法安裝。',
+        }
+        widgets = {
+            'reason': forms.Textarea(attrs={'rows': 4, 'placeholder': '簡單說明你的使用情境，方便我們核發。'}),
+        }
+
+    def __init__(self, *args, student=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if student is not None:
+            # 只能挑自己實際購買過的課程，避免申請跟自己無關的課程。
+            self.fields['course'].queryset = Course.objects.filter(
+                enrollment__student=student
+            ).distinct().order_by('-created_at')

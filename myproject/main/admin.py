@@ -46,6 +46,7 @@ from .models import (
     TeacherBankAccount,
     MarketingRequest,
     MarketingPlan,
+    VMAccessRequest,
 )
 
 # ===== 後台品牌 =====
@@ -783,6 +784,7 @@ _CUSTOM_GROUPS = [
     ('🎯 行銷管理', ['MarketingRequest', 'MarketingPlan', 'Coupon', 'UserCoupon', 'CouponUsage', 'Promotion', 'Cart']),
     ('📝 講師內容', ['TeacherColumn', 'TeacherArticle', 'TeacherMaterial', 'ColumnSubscription']),
     ('👥 會員與互動', ['Profile', 'TeacherFollow', 'UserBadge', 'LearningRecord', 'LessonProgress', 'Favorite', 'Review', 'Notification', 'CourseQuestion', 'CourseAnswer', 'CourseComment']),
+    ('🖥️ 虛擬機服務', ['VMAccessRequest']),
 ]
 
 _ORDER_INDEX = {
@@ -1203,3 +1205,91 @@ class MarketingPlanAdmin(admin.ModelAdmin):
                 self.message_user(request, f'重新生成失敗: {msg}', level='error')
         if success_count:
             self.message_user(request, f'已重新生成 {success_count} 份 AI 行銷企劃。')
+
+
+class VMAccessRequestAdminForm(forms.ModelForm):
+    class Meta:
+        model = VMAccessRequest
+        fields = '__all__'
+
+    def clean(self):
+        cleaned = super().clean()
+        # 「已核發」代表學生點進去就看得到可用的網址/帳號/密碼，所以狀態改成
+        # approved 時必須三個欄位都填好，否則跟行銷企劃那次一樣，會出現
+        # 學生點進去卻是空白核發內容的矛盾狀態。
+        if cleaned.get('status') == 'approved':
+            missing = [
+                label for field, label in (
+                    ('vm_url', '虛擬機網址'),
+                    ('vm_username', '虛擬機帳號'),
+                    ('vm_password', '虛擬機密碼'),
+                )
+                if not (cleaned.get(field) or '').strip()
+            ]
+            if missing:
+                raise forms.ValidationError(
+                    f'標記為已核發前，請先填寫：{"、".join(missing)}。'
+                )
+        return cleaned
+
+
+@admin.register(VMAccessRequest)
+class VMAccessRequestAdmin(admin.ModelAdmin):
+    form = VMAccessRequestAdminForm
+
+    list_display = ('student', 'course', 'status_badge', 'created_at', 'approved_at')
+    list_filter = ('status', 'created_at')
+    search_fields = ('student__username', 'student__email', 'course__title')
+    list_select_related = ('student', 'course')
+    list_per_page = 25
+    readonly_fields = ('created_at', 'updated_at', 'approved_at')
+    actions = ['reject_requests']
+
+    fieldsets = (
+        ('申請資訊（先確認申請人確實購買過此課程）', {
+            'fields': ('student', 'course', 'reason'),
+        }),
+        ('核發虛擬機連線資訊', {
+            'fields': ('vm_url', 'vm_username', 'vm_password'),
+            'description': '三個欄位都填好、狀態改成「已核發」並儲存後，系統會自動通知學生。',
+        }),
+        ('後台處理', {
+            'fields': ('status', 'admin_note'),
+        }),
+        ('時間', {
+            'fields': ('created_at', 'updated_at', 'approved_at'),
+        }),
+    )
+
+    @admin.display(description='申請狀態')
+    def status_badge(self, obj):
+        return status_badge(obj.status, obj.get_status_display())
+
+    def save_model(self, request, obj, form, change):
+        was_approved = False
+        if change and obj.pk:
+            was_approved = VMAccessRequest.objects.filter(
+                pk=obj.pk, status='approved'
+            ).exists()
+
+        if obj.status == 'approved' and not obj.approved_at:
+            obj.approved_at = timezone.now()
+
+        super().save_model(request, obj, form, change)
+
+        if obj.status == 'approved' and not was_approved:
+            Notification.objects.create(
+                user=obj.student,
+                title='虛擬機已核發',
+                content=(
+                    f'你申請的「{obj.course.title}」虛擬機已核發，'
+                    f'請至「我的虛擬機」頁面查看連線資訊。'
+                )
+            )
+
+    @admin.action(description='退回選取的申請')
+    def reject_requests(self, request, queryset):
+        count = queryset.exclude(status='approved').update(
+            status='rejected', updated_at=timezone.now()
+        )
+        self.message_user(request, f'已退回 {count} 筆虛擬機申請。')
