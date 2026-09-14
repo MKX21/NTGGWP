@@ -228,6 +228,11 @@ GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-3.8-flash')
 AI_PROVIDER = os.environ.get('AI_PROVIDER', '')
 
+# AI 行銷企劃（main.ai_marketing）用的 Gemini 模型獨立設定，不共用上面的
+# GEMINI_MODEL：行銷企劃輸出內容長很多，且新一代思考模型（如 gemini-3.6-flash）
+# 不接受 AI 助教那邊用的 thinking_budget=0，兩邊需求不同，分開設定才不會互相影響。
+GEMINI_MARKETING_MODEL = os.environ.get('GEMINI_MARKETING_MODEL', 'gemini-3.6-flash')
+
 # 沒有這行時 makemigrations 會依環境的 Django 版本猜預設值，導致每個模型的
 # id 欄位在不同機器上跑出不同的遷移。既有的遷移檔全部是 BigAutoField，
 # 明確設定與資料庫現況一致，避免產生不相干的 alter id 遷移。

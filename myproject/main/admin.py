@@ -852,8 +852,32 @@ def _grouped_get_app_list(self, request, app_label=None):
 admin.AdminSite.get_app_list = _grouped_get_app_list
 
 
+class MarketingRequestAdminForm(forms.ModelForm):
+    class Meta:
+        model = MarketingRequest
+        fields = '__all__'
+
+    def clean(self):
+        cleaned = super().clean()
+        # 「已完成」代表老師點進去看得到企劃內容，所以在編輯頁手動把狀態改成
+        # 已完成時，也要跟批次動作 mark_completed 一樣先檢查有沒有已核准的企劃，
+        # 否則老師點進去只會看到空白的「目前沒有可顯示的行銷企劃」。
+        if cleaned.get('status') == 'completed' and self.instance.pk:
+            has_approved_plan = MarketingPlan.objects.filter(
+                marketing_request=self.instance, status='approved'
+            ).exists()
+            if not has_approved_plan:
+                raise forms.ValidationError(
+                    '這筆申請還沒有已核准的企劃，無法標記為已完成。'
+                    '請先用「AI 生成行銷企劃」產生，並在 AI 行銷企劃列表核准。'
+                )
+        return cleaned
+
+
 @admin.register(MarketingRequest)
 class MarketingRequestAdmin(admin.ModelAdmin):
+    form = MarketingRequestAdminForm
+
     list_display = (
         'course',
         'teacher',
@@ -949,9 +973,15 @@ class MarketingRequestAdmin(admin.ModelAdmin):
 
     @admin.action(description='標記為已完成')
     def mark_completed(self, request, queryset):
-        count = queryset.filter(
-            status='processing'
-        ).update(
+        # 「已完成」代表老師已經能看到企劃內容，所以只能套用在已核准企劃的申請上，
+        # 避免像手動改狀態那樣，跳過生成／核准企劃卻把申請標記完成，
+        # 造成老師點進去卻「目前沒有可顯示的行銷企劃」的空狀態。
+        eligible = queryset.filter(
+            status='processing',
+            plan__status='approved',
+        )
+        skipped = queryset.filter(status='processing').exclude(id__in=eligible).count()
+        count = eligible.update(
             status='completed',
             updated_at=timezone.now(),
         )
@@ -959,6 +989,13 @@ class MarketingRequestAdmin(admin.ModelAdmin):
             request,
             f'已將 {count} 筆行銷申請標記為已完成。'
         )
+        if skipped:
+            self.message_user(
+                request,
+                f'{skipped} 筆申請尚未有已核准的企劃，請先用「AI 生成行銷企劃」產生，'
+                f'並在 AI 行銷企劃列表核准後，才能標記為已完成。',
+                level='warning',
+            )
 
     @admin.action(description='退回行銷申請')
     def mark_rejected(self, request, queryset):

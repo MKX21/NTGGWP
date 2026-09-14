@@ -1,13 +1,19 @@
 """
 AI 行銷企劃生成模組
 -------------------
-使用 Anthropic Claude API 分析課程資料，自動產生行銷企劃。
+分析課程資料，自動產生行銷企劃。支援 Anthropic Claude 與 Google Gemini
+雙後端，選用邏輯與 ai_assistant 一致：兩個金鑰都沒設定時回傳「未啟用」
+訊息；同時設定時可用 AI_PROVIDER 明確指定，沒指定就優先用 Gemini。
 獨立於 ai_assistant，不會影響學生端 AI 客服功能。
 """
 import json
 import logging
+import time
+
 from django.conf import settings
 from django.utils import timezone
+
+from .ai_assistant import _active_provider
 
 logger = logging.getLogger(__name__)
 
@@ -115,23 +121,103 @@ def _build_prompt(course_data):
     return system_prompt, user_prompt
 
 
+def _call_claude(system_prompt, user_prompt):
+    """回傳 (reply_text, error_message)；成功時 error_message 為 None。"""
+    try:
+        import anthropic
+    except ImportError:
+        logger.error("anthropic 套件未安裝")
+        return None, "伺服器未安裝 anthropic 套件，請執行 pip install anthropic。"
+
+    try:
+        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        message = client.messages.create(
+            model=getattr(settings, "AI_ASSISTANT_MODEL", "claude-opus-5"),
+            max_tokens=4096,
+            system=system_prompt,
+            messages=[
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+        reply_text = "".join(
+            block.text for block in message.content if hasattr(block, "text")
+        )
+    except anthropic.AuthenticationError:
+        return None, "API 金鑰驗證失敗，請檢查 ANTHROPIC_API_KEY。"
+    except anthropic.RateLimitError:
+        return None, "API 呼叫頻率超出限制，請稍後再試。"
+    except Exception as e:
+        logger.error(f"Anthropic API 呼叫失敗: {e}")
+        return None, f"API 呼叫失敗：{e}"
+
+    return reply_text, None
+
+
+def _call_gemini(system_prompt, user_prompt):
+    """回傳 (reply_text, error_message)；成功時 error_message 為 None。
+
+    要求模型直接輸出 JSON（response_mime_type），比要求 Claude 純文字
+    JSON 更穩定，不太需要再剝 markdown 圍欄。
+    """
+    try:
+        from google import genai
+        from google.genai import types
+        from google.genai import errors as genai_errors
+    except ImportError:
+        logger.error("google-genai 套件未安裝")
+        return None, "伺服器未安裝 google-genai 套件，請執行 pip install google-genai。"
+
+    client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    # 行銷企劃內容比一般問答長很多，且不強制關閉思考（新一代思考模型如
+    # gemini-3.6-flash 不接受 AI 助教那邊用的 thinking_budget=0），所以用獨立的
+    # GEMINI_MARKETING_MODEL 設定，並給充足的輸出上限，讓內部思考與最終 JSON
+    # 都有空間，避免被截斷成空字串。
+    model = getattr(settings, "GEMINI_MARKETING_MODEL", "gemini-3.6-flash")
+    config = types.GenerateContentConfig(
+        system_instruction=system_prompt,
+        max_output_tokens=8192,
+        response_mime_type="application/json",
+    )
+
+    response = None
+    for attempt in (1, 2):
+        try:
+            response = client.models.generate_content(
+                model=model, contents=user_prompt, config=config
+            )
+            break
+        except genai_errors.APIError as exc:
+            code = getattr(exc, "code", None)
+            # 429/503 通常是暫時忙碌，重試一次就好，不要浪費額度一直重試。
+            if code in (429, 503) and attempt == 1:
+                time.sleep(1.5)
+                continue
+            if code == 401:
+                return None, "API 金鑰驗證失敗，請檢查 GEMINI_API_KEY。"
+            if code == 429:
+                return None, "API 呼叫頻率超出限制，請稍後再試。"
+            if code == 503:
+                return None, "AI 服務目前忙碌中，請稍後再試。"
+            logger.error(f"Gemini API 呼叫失敗: {exc}")
+            return None, f"API 呼叫失敗：{getattr(exc, 'message', None) or exc}"
+        except Exception as e:
+            logger.error(f"Gemini API 呼叫失敗: {e}")
+            return None, f"API 呼叫失敗：{e}"
+
+    return (getattr(response, "text", "") or ""), None
+
+
 def generate_marketing_plan(marketing_request):
     """
-    呼叫 Anthropic Claude API 生成行銷企劃。
+    呼叫目前設定的 AI 後端（Claude 或 Gemini）生成行銷企劃。
 
     回傳值：(success: bool, result: dict or str)
     - 成功：(True, {MarketingPlan 欄位字典})
     - 失敗：(False, "錯誤訊息")
     """
-    api_key = getattr(settings, "ANTHROPIC_API_KEY", "")
-    if not api_key:
-        return False, "未設定 ANTHROPIC_API_KEY，請在環境變數中設定。"
-
-    try:
-        import anthropic
-    except ImportError:
-        logger.error("anthropic 套件未安裝")
-        return False, "伺服器未安裝 anthropic 套件，請執行 pip install anthropic。"
+    provider = _active_provider()
+    if provider is None:
+        return False, "AI 行銷企劃尚未啟用，請設定 ANTHROPIC_API_KEY 或 GEMINI_API_KEY。"
 
     # 收集資料
     try:
@@ -142,30 +228,12 @@ def generate_marketing_plan(marketing_request):
 
     system_prompt, user_prompt = _build_prompt(course_data)
 
-    # 呼叫 API
-    try:
-        client = anthropic.Anthropic(api_key=api_key)
-        message = client.messages.create(
-            model=getattr(settings, "AI_ASSISTANT_MODEL", "claude-opus-5"),
-            max_tokens=4096,
-            system=system_prompt,
-            messages=[
-                {"role": "user", "content": user_prompt},
-            ],
-        )
-
-        reply_text = ""
-        for block in message.content:
-            if hasattr(block, "text"):
-                reply_text += block.text
-
-    except anthropic.AuthenticationError:
-        return False, "API 金鑰驗證失敗，請檢查 ANTHROPIC_API_KEY。"
-    except anthropic.RateLimitError:
-        return False, "API 呼叫頻率超出限制，請稍後再試。"
-    except Exception as e:
-        logger.error(f"Anthropic API 呼叫失敗: {e}")
-        return False, f"API 呼叫失敗：{e}"
+    if provider == "gemini":
+        reply_text, error = _call_gemini(system_prompt, user_prompt)
+    else:
+        reply_text, error = _call_claude(system_prompt, user_prompt)
+    if error:
+        return False, error
 
     # 解析 JSON
     try:
