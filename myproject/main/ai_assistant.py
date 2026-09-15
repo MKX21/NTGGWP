@@ -1,25 +1,3 @@
-"""AI 課程助教：以單堂課程的公開資訊為依據，回答已購買學員的提問。
-
-設計原則：
-- 金鑰或 SDK 未就緒時回傳友善訊息，不讓其他功能壞掉（懶載入 SDK）。
-- 只把「這堂課」的資訊餵給模型，避免答非所問；找不到答案就誠實說明。
-- 支援兩種後端，用哪一種由 .env 決定：
-    - 設定 GEMINI_API_KEY → 用 Google Gemini（模型可用 GEMINI_MODEL 覆寫，預設 gemini-3.8-flash）
-    - 設定 ANTHROPIC_API_KEY → 用 Claude（模型可用 AI_ASSISTANT_MODEL 覆寫，預設 claude-opus-5）
-    - 兩個都設定時，用 AI_PROVIDER=gemini 或 AI_PROVIDER=anthropic 明確指定；
-      沒指定就優先用 Gemini。
-
-本檔也提供「課程問答」（CourseQuestion/CourseAnswer）的延伸功能：
-- auto_answer_question：學生發問後，自動以 AI 助教身分產生一則回答。
-這是盡力而為 —— 沒設金鑰、SDK 未安裝或呼叫失敗時安靜地回傳 None，
-不影響提問／回答本身的既有流程。
-
-另外提供 answer_platform_question：首頁用的平台助手，回答平台 FAQ（定價／
-折扣／退款／課程上架規則等）並根據目前上架課程做推薦，不綁定單一課程。
-
-多輪對話：ask_ai / ask_platform_ai 的前端會保留對話歷史，每次送出時附帶
-最近的對話紀錄（上限 MAX_HISTORY_TURNS 輪），讓 AI 能延續語境回答追問。
-"""
 import logging
 import time
 
@@ -28,22 +6,11 @@ from django.utils.html import escape as html_escape
 
 AI_BOT_USERNAME = 'ai_assistant'
 
-# 多輪對話：最多保留幾輪歷史（一問一答算一輪）
 MAX_HISTORY_TURNS = 5
-# 單次輸入上限（字元數），超過截斷以控制 API 成本
 MAX_QUESTION_LENGTH = 500
 
 logger = logging.getLogger(__name__)
 
-
-# =========================
-# 常見問題（FAQ）—— 零 API 流量消耗
-# =========================
-# 命中就直接回傳固定答案，完全不呼叫任何 AI 後端：
-# 不用等模型回應、不吃 token 額度，也不受供應商限流（429）影響。
-# 前端（首頁／課程頁的 AI 助手面板）會把這份清單渲染成快速按鈕；
-# views.py 的 ask_ai / ask_platform_ai 則在呼叫模型「之前」用 match_platform_faq
-# 比對使用者手動輸入的文字，命中一樣直接回覆、不送出 API 請求。
 PLATFORM_FAQS = [
     {
         'id': 'watch-course',
@@ -217,12 +184,7 @@ PLATFORM_FAQS = [
     },
 ]
 
-
 def match_platform_faq(question):
-    """比對使用者輸入是否命中預設 FAQ，命中回傳該筆 FAQ dict，否則回傳 None。
-
-    純字串比對，不呼叫任何 AI 後端；供 views.py 在呼叫模型之前先攔截用。
-    """
     text = (question or '').strip().lower()
     if not text:
         return None
@@ -232,15 +194,12 @@ def match_platform_faq(question):
                 return faq
     return None
 
-
 def build_course_faq(course):
-    """根據課程的實際資料，動態產生該課程專屬的快速問答按鈕。"""
     from .models import CourseLesson, Enrollment, Review
     from django.db.models import Avg, Sum
 
     faqs = []
 
-    # 課程時長
     total_minutes = CourseLesson.objects.filter(
         chapter__course=course
     ).aggregate(total=Sum('duration_minutes'))['total'] or 0
@@ -256,7 +215,6 @@ def build_course_faq(course):
             ),
         })
 
-    # 學生數與評價
     student_count = Enrollment.objects.filter(course=course).count()
     avg = Review.objects.filter(course=course).aggregate(a=Avg('rating'))['a']
     review_count = Review.objects.filter(course=course).count()
@@ -273,7 +231,6 @@ def build_course_faq(course):
             'answer': '，'.join(parts) + '。',
         })
 
-    # 價格
     effective = course.get_effective_price()
     if effective < course.price:
         faqs.append({
@@ -288,13 +245,10 @@ def build_course_faq(course):
 
     return faqs
 
-
 class _AIError(Exception):
-    """內部用：包一則已經是繁體中文、可直接顯示給使用者的錯誤訊息。"""
-
+    pass
 
 def _active_provider():
-    """回傳目前應該使用的後端：'gemini' / 'anthropic' / None（都沒設定）。"""
     forced = (getattr(settings, 'AI_PROVIDER', '') or '').strip().lower()
     if forced in ('gemini', 'anthropic'):
         return forced
@@ -304,13 +258,10 @@ def _active_provider():
         return 'anthropic'
     return None
 
-
 def is_enabled():
     return _active_provider() is not None
 
-
 def build_course_context(course):
-    """把課程的標題、簡介、講師與章節單元整理成給模型的背景文字。"""
     from .models import CourseLesson, Enrollment, Review
     from django.db.models import Avg, Sum
 
@@ -325,14 +276,12 @@ def build_course_context(course):
         lines.append(f'分類：{course.category.name}')
     lines.append(f'難度：{course.get_level_display()}')
 
-    # 價格資訊
     effective = course.get_effective_price()
     if effective < course.price:
         lines.append(f'價格：原價 NT${course.price}，目前售價 NT${effective}')
     else:
         lines.append(f'價格：NT${course.price}')
 
-    # 統計資訊（讓 AI 能回答「有多少人上過」等問題）
     student_count = Enrollment.objects.filter(course=course).count()
     lines.append(f'已購買學生數：{student_count} 人')
 
@@ -358,9 +307,7 @@ def build_course_context(course):
             lines.append(f'    - 單元：{lesson.title} {dur}{preview}')
     return '\n'.join(lines)
 
-
 def build_platform_context():
-    """把平台使用須知與目前上架課程整理成給模型的背景文字（首頁平台助手用）。"""
     from .models import Course
 
     lines = ['=== 平台使用須知 ===']
@@ -407,31 +354,21 @@ def build_platform_context():
         lines.append(f'- 「{c.title}」（分類：{cat}，{price_text}，難度：{c.get_level_display()}）：{desc}')
     return '\n'.join(lines)
 
-
 def _truncate_question(question):
-    """截斷過長的問題以控制 API token 成本。"""
     question = (question or '').strip()
     if len(question) > MAX_QUESTION_LENGTH:
         question = question[:MAX_QUESTION_LENGTH] + '...'
     return question
 
-
 def _build_messages(question, history=None):
-    """把對話歷史轉換成 API 需要的 messages 格式。
-
-    history 格式：[{'role': 'user'|'ai', 'text': str}, ...]
-    只保留最近 MAX_HISTORY_TURNS 輪（一問一答算一輪）。
-    """
     messages = []
 
     if history:
-        # 取最近 N 輪（每輪 = 一個 user + 一個 ai）
         recent = history[-(MAX_HISTORY_TURNS * 2):]
         for entry in recent:
             role = 'user' if entry.get('role') == 'user' else 'assistant'
             text = (entry.get('text') or '').strip()
             if text:
-                # 安全截斷歷史訊息
                 if len(text) > MAX_QUESTION_LENGTH:
                     text = text[:MAX_QUESTION_LENGTH] + '...'
                 messages.append({'role': role, 'content': text})
@@ -439,13 +376,7 @@ def _build_messages(question, history=None):
     messages.append({'role': 'user', 'content': question})
     return messages
 
-
 def answer_platform_question(question, history=None):
-    """回傳 {'ok': bool, 'answer'/'error': str, 'suggestions': list}。
-    首頁平台助手：FAQ + 課程推薦，不綁定單一課程。
-
-    history: 前端送來的對話歷史，用於多輪對話。
-    """
     if not is_enabled():
         return {'ok': False, 'error': 'AI 助教尚未啟用（管理者尚未設定 API 金鑰）。'}
 
@@ -478,16 +409,10 @@ def answer_platform_question(question, history=None):
     if not answer:
         return {'ok': True, 'answer': '（没有產生回覆，請再試一次）', 'suggestions': []}
 
-    # 解析建議追問
     answer_text, suggestions = _parse_suggestions(answer)
     return {'ok': True, 'answer': answer_text, 'suggestions': suggestions}
 
-
 def answer_course_question(course, question, history=None):
-    """回傳 {'ok': bool, 'answer'/'error': str, 'suggestions': list}。
-
-    history: 前端送來的對話歷史，用於多輪對話。
-    """
     if not is_enabled():
         return {'ok': False, 'error': 'AI 助教尚未啟用（管理者尚未設定 API 金鑰）。'}
 
@@ -519,24 +444,16 @@ def answer_course_question(course, question, history=None):
     answer_text, suggestions = _parse_suggestions(answer)
     return {'ok': True, 'answer': answer_text, 'suggestions': suggestions}
 
-
 def _parse_suggestions(text):
-    """從 AI 回覆中解析建議追問。
-
-    回傳 (answer_text, suggestions_list)。
-    """
     if '|||' not in text:
         return text.strip(), []
 
     parts = text.split('|||')
     answer_text = parts[0].strip()
     suggestions = [s.strip() for s in parts[1:] if s.strip()]
-    # 最多取 3 個建議
     return answer_text, suggestions[:3]
 
-
 def _call_claude(system, messages):
-    """呼叫 Claude API。messages 是完整的對話歷史（含最新問題）。"""
     try:
         import anthropic
     except ImportError:
@@ -546,7 +463,6 @@ def _call_claude(system, messages):
         client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
         model = getattr(settings, 'AI_ASSISTANT_MODEL', 'claude-opus-5')
 
-        # 把 messages 轉成 Anthropic 格式
         api_messages = []
         for msg in messages:
             api_messages.append({
@@ -564,7 +480,7 @@ def _call_claude(system, messages):
         raise _AIError('AI 助教目前使用量較高，請稍後再試。')
     except anthropic.AuthenticationError:
         raise _AIError('AI 助教金鑰無效，請聯絡管理者。')
-    except Exception as exc:  # noqa: BLE001 - 對外一律回傳友善訊息
+    except Exception as exc:
         logger.warning('Claude API error: %s', exc)
         raise _AIError(f'AI 助教暫時無法使用（{type(exc).__name__}）。')
 
@@ -573,9 +489,7 @@ def _call_claude(system, messages):
     text = ''.join(b.text for b in response.content if getattr(b, 'type', None) == 'text')
     return text.strip()
 
-
 def _call_gemini(system, messages):
-    """呼叫 Gemini API。messages 是完整的對話歷史（含最新問題）。"""
     try:
         from google import genai
         from google.genai import types
@@ -588,12 +502,9 @@ def _call_gemini(system, messages):
     config = types.GenerateContentConfig(
         system_instruction=system,
         max_output_tokens=1024,
-        # 這是簡短的問答助教，不需要深度推理；關掉思考可以省成本、
-        # 也避免思考把整個 token 預算吃完導致沒有輸出文字。
         thinking_config=types.ThinkingConfig(thinking_budget=0),
     )
 
-    # 將多輪歷史轉成 Gemini 的 contents 格式
     contents = []
     for msg in messages:
         role = 'user' if msg['role'] == 'user' else 'model'
@@ -611,7 +522,6 @@ def _call_gemini(system, messages):
             break
         except genai_errors.APIError as exc:
             code = getattr(exc, 'code', None)
-            # 503/429 常是模型暫時忙碌，重試一次就好，不要浪費額度一直重試。
             if code in (429, 503) and attempt == 1:
                 time.sleep(1.5)
                 continue
@@ -622,7 +532,7 @@ def _call_gemini(system, messages):
             if code == 503:
                 raise _AIError('AI 服務目前忙碌中，請稍後再試。')
             raise _AIError(f'AI 助教暫時無法使用（{getattr(exc, "message", None) or type(exc).__name__}）。')
-        except Exception as exc:  # noqa: BLE001 - 對外一律回傳友善訊息
+        except Exception as exc:
             logger.warning('Gemini API error: %s', exc)
             raise _AIError(f'AI 助教暫時無法使用（{type(exc).__name__}）。')
 
@@ -634,13 +544,7 @@ def _call_gemini(system, messages):
 
     return (getattr(response, 'text', '') or '').strip()
 
-
 def _call_model(system, messages):
-    """呼叫目前設定的 AI 後端，回傳純文字回覆。
-
-    messages: [{'role': 'user'|'assistant', 'content': str}, ...]
-    沒有可用後端或呼叫失敗都拋 _AIError。
-    """
     provider = _active_provider()
     if provider == 'gemini':
         return _call_gemini(system, messages)
@@ -648,9 +552,7 @@ def _call_model(system, messages):
         return _call_claude(system, messages)
     raise _AIError('AI 助教尚未啟用（管理者尚未設定 API 金鑰）。')
 
-
 def get_ai_bot_user():
-    """取得（必要時建立）代表 AI 助教回答的系統帳號。"""
     from django.contrib.auth.models import User
     from .models import Profile
 
@@ -664,9 +566,7 @@ def get_ai_bot_user():
     Profile.objects.get_or_create(user=user, defaults={'role': 'student'})
     return user
 
-
 def generate_answer_draft(question):
-    """針對一則 CourseQuestion 產生 AI 建議回答文字；無法產生時回傳 None（不拋例外）。"""
     if not is_enabled():
         return None
 
@@ -685,14 +585,11 @@ def generate_answer_draft(question):
         answer = _call_model(system, messages)
     except _AIError:
         return None
-    # auto_answer 不需要建議追問，直接去掉
     if answer and '|||' in answer:
         answer = answer.split('|||')[0].strip()
     return answer or None
 
-
 def auto_answer_question(question):
-    """為學生的提問自動建立一則 AI 回答（CourseAnswer）。成功回傳該筆回答，失敗回傳 None。"""
     answer_text = generate_answer_draft(question)
     if not answer_text:
         return None

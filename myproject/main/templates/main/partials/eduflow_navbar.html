@@ -1,4 +1,4 @@
-<!-- ============ 頂部公告列（可關閉） ============ -->
+
 <div id="announcement-bar" class="bg-electric text-white text-sm">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-10 flex items-center justify-center gap-3">
         <i class="fas fa-bullhorn text-accent-400"></i>
@@ -11,12 +11,11 @@
     </div>
 </div>
 
-<!-- ============ 導覽列 ============ -->
 <nav id="navbar" class="bg-black border-b border-satdark-border sticky top-0 z-50 transition-shadow" style="box-shadow: 0 1px 0 0 #000">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16 items-center gap-4">
 
-            <!-- Logo + 課程 -->
+
             <div class="flex items-center gap-8">
                 <a href="{% url 'home' %}" class="flex items-center gap-2 text-2xl font-display italic font-semibold tracking-wide text-satdark-text shrink-0">
                     <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-700 to-brand-500 text-white text-lg not-italic font-sans">
@@ -27,24 +26,24 @@
                 <a href="{% url 'course_catalog' %}" class="hidden lg:inline text-satdark-muted hover:text-electric font-medium">課程</a>
             </div>
 
-            <!-- 右側動作區 -->
+
             <div class="flex items-center gap-1 sm:gap-3">
                 <button type="button" data-search-toggle class="p-2 text-satdark-muted hover:text-electric transition" aria-label="搜尋">
                     <i class="fas fa-search text-lg"></i>
                 </button>
                 {% if user.is_authenticated %}
-                    <!-- 通知 -->
+
                     <a href="{% url 'notifications' %}" class="relative p-2 text-satdark-muted hover:text-electric transition" aria-label="通知">
                         <i class="fas fa-bell text-lg"></i>
                         {% if nav_unread_count %}<span class="absolute -top-0.5 -right-0.5 bg-jp-accent text-white text-[10px] font-bold rounded-full h-4 min-w-4 px-1 flex items-center justify-center">{{ nav_unread_count }}</span>{% endif %}
                     </a>
-                    <!-- 購物車 -->
+
                     <a href="{% url 'view_cart' %}" class="relative p-2 text-satdark-muted hover:text-electric transition" aria-label="購物車">
                         <i class="fas fa-shopping-cart text-lg"></i>
                         {% if nav_cart_count %}<span class="absolute -top-0.5 -right-0.5 bg-jp-accent text-white text-[10px] font-bold rounded-full h-4 min-w-4 px-1 flex items-center justify-center">{{ nav_cart_count }}</span>{% endif %}
                     </a>
 
-                    <!-- 頭像下拉選單 -->
+
                     <div class="relative hidden sm:block" data-dropdown-wrapper>
                         <button type="button" data-dropdown-toggle class="flex items-center gap-1.5 pl-1 pr-1.5 py-1 rounded-full hover:bg-white/10 transition">
                             {% if nav_avatar_url %}
@@ -108,12 +107,12 @@
                     <a href="{% url 'register' %}" class="bg-electric text-white hover:bg-electric-hover px-4 py-2 rounded-lg font-medium transition">免費註冊</a>
                 {% endif %}
 
-                <!-- 手機漢堡 -->
+
                 <button data-mobile-toggle class="lg:hidden p-2 text-satdark-text" aria-label="開啟選單"><i class="fas fa-bars text-xl"></i></button>
             </div>
         </div>
 
-        <!-- 展開式搜尋列 -->
+
         <div data-search-panel class="hidden border-t border-satdark-border py-3">
             <form action="{% url 'course_catalog' %}" method="get" class="relative max-w-lg mx-auto" role="search">
                 <input type="text" name="q" value="{{ request.GET.q }}" placeholder="搜尋課程、老師、關鍵字…" autofocus
@@ -125,7 +124,6 @@
     </div>
 </nav>
 
-<!-- ============ 手機側邊選單 ============ -->
 <div data-mobile-menu class="fixed inset-0 z-[60] hidden lg:hidden">
     <div data-mobile-close class="absolute inset-0 bg-jp-text/50 backdrop-blur-sm"></div>
     <aside class="absolute right-0 top-0 h-full w-80 max-w-[85%] bg-satdark-surface shadow-2xl p-6 flex flex-col gap-1 overflow-y-auto">

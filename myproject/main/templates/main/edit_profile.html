@@ -22,7 +22,7 @@
       {% csrf_token %}
       {% if form.non_field_errors %}<div class="bg-rose-50 text-rose-600 text-sm rounded-lg px-4 py-2">{{ form.non_field_errors }}</div>{% endif %}
 
-      <!-- 帳號資訊 -->
+
       <div>
         <label class="fld">帳號名稱</label>
         {{ form.username }}
@@ -40,7 +40,7 @@
 
       <hr class="border-slate-100">
 
-      <!-- 大頭貼 -->
+
       <div>
         <label class="fld">大頭貼</label>
         <div class="flex items-center gap-4">
@@ -65,7 +65,7 @@
         </div>
       </div>
 
-      <!-- 講師頁封面 -->
+
       <div>
         <label class="fld">講師頁封面</label>
         <div class="w-full aspect-[16/6] rounded-xl overflow-hidden bg-slate-100 ring-1 ring-slate-200 mb-3">
@@ -92,7 +92,7 @@
 
       <hr class="border-slate-100">
 
-      <!-- 講師資訊 -->
+
       <div>
         <label class="fld">講師稱號</label>
         {{ form.headline }}

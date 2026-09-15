@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="bg-satdark-bg">
-<!-- ============ Hero 推薦課程輪播 ============ -->
+
 {% if hero_courses %}
 <header class="relative overflow-hidden bg-black border-b border-satdark-border" data-hero-carousel>
     <div class="relative h-[68vh] min-h-[420px] max-h-[720px]">
@@ -30,12 +30,12 @@
         </a>
         {% endfor %}
 
-        <!-- 右下角切換按鈕（自動輪播，也可手動選擇） -->
+
         <div class="absolute bottom-6 right-6 flex items-center gap-3 z-10">
             <button type="button" data-hero-prev aria-label="上一張" class="glass-arrow"><i class="fas fa-chevron-left"></i></button>
             <button type="button" data-hero-next aria-label="下一張" class="glass-arrow"><i class="fas fa-chevron-right"></i></button>
         </div>
-        <!-- 左下角頁標 -->
+
         <div class="absolute bottom-7 left-6 sm:left-12 flex items-center gap-2 z-10" data-hero-dots>
             {% for course in hero_courses %}
             <button type="button" data-hero-dot class="h-2 rounded-full transition-all {% if forloop.first %}w-6 bg-white{% else %}w-2 bg-white/40{% endif %}" aria-label="第 {{ forloop.counter }} 張"></button>
@@ -84,7 +84,6 @@
 })();
 </script>
 
-<!-- ============ 繼續學習（已登入且有進行中課程時顯示，Hahow 核心功能） ============ -->
 {% if continue_learning %}
 <section class="bg-satdark-bg">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -122,7 +121,6 @@
 </section>
 {% endif %}
 
-<!-- ============ 課程／講師 瀏覽入口 ============ -->
 <section class="bg-satdark-bg">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div class="grid sm:grid-cols-2 gap-6">
@@ -146,7 +144,6 @@
     </div>
 </section>
 
-<!-- ============ 熱門分類 ============ -->
 {% if categories %}
 <section class="bg-satdark-bg">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-2 mb-4 py-8">
@@ -162,7 +159,6 @@
 </section>
 {% endif %}
 
-<!-- ============ 平台數據（動態跳動計數器） ============ -->
 <section class="bg-satdark-bg border-y border-satdark-border">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 text-center">
@@ -186,13 +182,9 @@
     </div>
 </section>
 
-<!-- ============ 課程牆（左）＋ 學員評語（右） ============ -->
 {% if showcase_columns %}
 <style>
-  /* 全部 class 加 eduflow-showcase 前綴隔離，避免跟站內其他樣式（.up/.down/section 等泛用名稱）打架。
-     尺寸改用 em 並讓 .eduflow-showcase-wrapper 的 font-size 隨螢幕寬度縮放，
-     這組 3D 位移數字彼此牽動，縮放字級是不破版最省事的做法（原設計用寫死 px）。
-     字級調校成適合「佔版面五分之三寬度」的欄位（約 610～630px）。 */
+
   .eduflow-showcase-wrapper {
     --column-height: 18.75em;
     --image-height: 12.5em;
@@ -253,9 +245,7 @@
   @media (prefers-reduced-motion: reduce) {
     .eduflow-showcase-column.scroll-up, .eduflow-showcase-column.scroll-down { animation: none; }
   }
-  /* 引言下方的刻度線分隔符：跟登入／註冊頁的 glass-sep 同一套視覺語彙，
-     不是隨手加一條 <hr>，是刻意重複使用的簽名元素，讓評語區不會長得像
-     隨便一個 UI 套件庫的 testimonial card。 */
+
   .eduflow-quote-rule {
     height: 7px;
     width: 7rem;
@@ -301,7 +291,6 @@
 </section>
 {% endif %}
 
-<!-- ============ 募資中課程 ============ -->
 {% if funding_courses %}
 <section id="funding" class="bg-satdark-bg">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -325,7 +314,6 @@
 </section>
 {% endif %}
 
-<!-- ============ 熱門課程 ============ -->
 {% if popular_courses %}
 <section class="bg-satdark-bg">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -352,7 +340,6 @@
 </section>
 {% endif %}
 
-<!-- ============ 最新課程 ============ -->
 {% if latest_courses %}
 <section id="latest" class="bg-satdark-bg">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -379,10 +366,9 @@
 </section>
 {% endif %}
 
-<!-- ============ 主題故事區塊（依分類策展） ============ -->
 {% for section in theme_sections %}
 {% if forloop.first %}
-<!-- 精選主題：滿版背景圖版本 -->
+
 <section class="relative bg-satdark-bg overflow-hidden">
     <div class="absolute inset-0">
         <img src="/media/course_images/160b786c6e4742258a442916e658d0cc.jpg" alt="" class="w-full h-full object-cover opacity-40">
@@ -425,7 +411,6 @@
 {% endif %}
 {% endfor %}
 
-<!-- ============ 查看全部課程 CTA ============ -->
 <section class="bg-satdark-bg">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-4">
         <a href="{% url 'course_catalog' %}" class="block text-center bg-satdark-surface border border-satdark-border hover:border-electric rounded-xl py-6 font-medium text-satdark-text transition">
@@ -434,7 +419,6 @@
     </div>
 </section>
 
-<!-- ============ 為什麼選擇 EduFlow ============ -->
 <section class="bg-satdark-bg">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div class="text-center max-w-2xl mx-auto mb-12">
@@ -466,7 +450,6 @@
     </div>
 </section>
 
-<!-- ============ 成為講師 CTA ============ -->
 <section class="bg-satdark-bg">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div class="relative overflow-hidden rounded-lg bg-satdark-surface border border-satdark-border text-white px-8 py-12 md:p-14">
@@ -486,7 +469,7 @@
 </div>
 
 {% if user.is_authenticated %}
-<!-- AI 平台助手（浮動視窗）：平台 FAQ + 課程推薦，不綁定單一課程 -->
+
 <div class="fixed bottom-24 right-6 z-40" data-platform-ai-assistant>
   <button data-platform-ai-toggle class="relative flex items-center gap-2 h-14 pl-4 pr-5 rounded-full bg-jp-primary hover:bg-jp-primaryHover text-white shadow-lg transition" aria-label="AI 平台助手，點我提問">
     <span class="absolute inset-0 rounded-full bg-jp-primary animate-ping opacity-40 pointer-events-none" data-platform-ai-ping></span>
@@ -514,7 +497,6 @@
 </div>
 {{ platform_faqs|json_script:"platform-faqs-data" }}
 <script>
-// 數字跳動動畫（IntersectionObserver 觸發，進入畫面時才開始）
 (function () {
     var counters = document.querySelectorAll('[data-counter]');
     if (!counters.length) return;
@@ -560,7 +542,6 @@
     const faqDataEl = document.getElementById('platform-faqs-data');
     const FAQS = faqDataEl ? JSON.parse(faqDataEl.textContent) : [];
 
-    // 多輪對話：保留對話歷史，每次送出時附帶給後端
     const chatHistory = [];
 
     root.querySelector('[data-platform-ai-toggle]').addEventListener('click', () => {
@@ -571,7 +552,6 @@
     });
     root.querySelector('[data-platform-ai-close]').addEventListener('click', () => panel.classList.add('hidden'));
 
-    // 常見問題快速按鈕：直接用本機資料顯示問答，完全不打 API、不消耗額度。
     root.querySelectorAll('[data-platform-ai-faq] [data-faq-id]').forEach((btn) => {
         btn.addEventListener('click', () => {
             const faq = FAQS.find((f) => f.id === btn.dataset.faqId);
@@ -611,8 +591,6 @@
         log.scrollTop = log.scrollHeight;
     }
 
-    // 防重複發送：送出後鎖住輸入框／按鈕，回覆後再強制冷卻 1 秒才解鎖，
-    // 避免使用者連點或頻繁送出觸發後端 API 的 429（限流）錯誤。
     function setBusy(isBusy, label) {
         busy = isBusy;
         input.disabled = isBusy;

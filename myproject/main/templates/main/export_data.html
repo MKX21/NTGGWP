@@ -30,7 +30,7 @@
       {% endfor %}
     </div>
     {% empty %}
-    <!-- 若 view 未提供 export_groups，退回列出所有匯出連結 -->
+
     <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <a href="{% url 'export_courses_csv' %}" class="bg-slate-50 hover:bg-slate-100 rounded-xl p-4 font-bold text-slate-800 transition">課程 courses.csv</a>
       <a href="{% url 'export_enrollments_csv' %}" class="bg-slate-50 hover:bg-slate-100 rounded-xl p-4 font-bold text-slate-800 transition">購課 enrollments.csv</a>

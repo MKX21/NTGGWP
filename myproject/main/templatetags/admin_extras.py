@@ -8,10 +8,8 @@ from main.models import (
 
 register = template.Library()
 
-
 @register.simple_tag
 def platform_stats():
-    """後台首頁營運數據卡片資料（可點擊跳到對應清單）。"""
     total_courses = Course.objects.count()
     published = Course.objects.filter(is_published=True).count()
     students = Enrollment.objects.values('student').distinct().count()

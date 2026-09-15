@@ -1,6 +1,4 @@
-"""全站共用的模板 context（導覽列購物車數量、未讀通知數、角色、分類）。"""
 from .models import CartItem, Enrollment, Notification, Profile, CourseCategory
-
 
 def nav_context(request):
     data = {

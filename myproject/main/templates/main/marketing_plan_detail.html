@@ -4,12 +4,12 @@
 {% block content %}
 <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
-  <!-- 返回 -->
+
   <a href="{% url 'marketing_requests' %}" class="inline-flex items-center text-sm text-slate-500 hover:text-slate-900 font-bold mb-6">
     &larr; 返回行銷申請列表
   </a>
 
-  <!-- 標題區 -->
+
   <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8 mb-6">
     <div class="flex items-center justify-between gap-4 flex-wrap">
       <div>
@@ -44,14 +44,14 @@
 
   {% if plan.status == 'approved' or plan.status == 'reviewing' %}
 
-  <!-- AI 企劃內容 -->
+
   {% if plan.generated_at %}
   <p class="text-xs text-slate-400 mb-4">AI 生成時間：{{ plan.generated_at|date:"Y/m/d H:i" }}
     {% if plan.reviewed_at %} / 審核時間：{{ plan.reviewed_at|date:"Y/m/d H:i" }}{% endif %}
   </p>
   {% endif %}
 
-  <!-- 目標受眾 -->
+
   <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 mb-4">
     <div class="flex items-center justify-between mb-3">
       <h2 class="text-lg font-bold text-slate-900">目標受眾</h2>
@@ -60,7 +60,7 @@
     <p id="target-audience" class="text-slate-700 text-sm leading-relaxed whitespace-pre-line">{{ plan.target_audience }}</p>
   </div>
 
-  <!-- 課程賣點 -->
+
   <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 mb-4">
     <div class="flex items-center justify-between mb-3">
       <h2 class="text-lg font-bold text-slate-900">課程賣點</h2>
@@ -69,7 +69,7 @@
     <p id="selling-points" class="text-slate-700 text-sm leading-relaxed whitespace-pre-line">{{ plan.course_selling_points }}</p>
   </div>
 
-  <!-- 行銷策略 -->
+
   <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 mb-4">
     <div class="flex items-center justify-between mb-3">
       <h2 class="text-lg font-bold text-slate-900">行銷策略</h2>
@@ -78,7 +78,7 @@
     <p id="strategy" class="text-slate-700 text-sm leading-relaxed whitespace-pre-line">{{ plan.marketing_strategy }}</p>
   </div>
 
-  <!-- 廣告標題 + 文案 -->
+
   <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 mb-4">
     <div class="flex items-center justify-between mb-3">
       <h2 class="text-lg font-bold text-slate-900">廣告標題 / 文案</h2>
@@ -90,7 +90,7 @@
     </div>
   </div>
 
-  <!-- 社群貼文 -->
+
   <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 mb-4">
     <div class="flex items-center justify-between mb-3">
       <h2 class="text-lg font-bold text-slate-900">社群貼文</h2>
@@ -99,7 +99,7 @@
     <p id="social" class="text-slate-700 text-sm leading-relaxed whitespace-pre-line">{{ plan.social_media_copy }}</p>
   </div>
 
-  <!-- 短影音腳本 -->
+
   <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 mb-4">
     <div class="flex items-center justify-between mb-3">
       <h2 class="text-lg font-bold text-slate-900">短影音腳本</h2>
@@ -108,7 +108,7 @@
     <p id="video" class="text-slate-700 text-sm leading-relaxed whitespace-pre-line">{{ plan.video_script }}</p>
   </div>
 
-  <!-- CTA -->
+
   <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 mb-4">
     <div class="flex items-center justify-between mb-3">
       <h2 class="text-lg font-bold text-slate-900">行動呼籲 (CTA)</h2>
@@ -139,7 +139,7 @@
 
   {% else %}
 
-  <!-- 沒有企劃 -->
+
   <div class="bg-slate-50 rounded-2xl ring-1 ring-slate-100 p-10 text-center text-slate-500">
     {% if marketing_request.status == 'pending' %}
     您的行銷申請正在等待後台處理，企劃生成後會通知您。

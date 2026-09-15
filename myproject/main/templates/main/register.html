@@ -3,7 +3,7 @@
 
 {% block content %}
 <style>
-  /* ===== 玻璃質感（僅作用於註冊頁，與登入頁同款）===== */
+
   .glass-login {
     --g-text: #e8ecf8;
     --g-muted: #aab2c7;
@@ -13,7 +13,7 @@
     place-items: center;
     padding: 2.5rem 1rem;
     color: var(--g-text);
-    /* 背景圖 + 深色遮罩：遮罩壓深亮部（天空/草地），確保玻璃卡片上的淺色文字仍可讀，跟登入頁同一張圖 */
+
     background:
       linear-gradient(180deg, hsl(180 25% 5% / 0.62), hsl(200 30% 4% / 0.78)),
       url('/media/site/auth-bg.jpg') center 65% / cover no-repeat;
@@ -30,7 +30,7 @@
   }
   .glass-card h1 { color: #fff; }
   .glass-card .g-sub, .glass-card .g-muted { color: var(--g-muted); }
-  /* Django form.as_p 的欄位也套深色 */
+
   .glass-card .ef-form label { color: var(--g-muted); font-weight: 600; }
   .glass-card .ef-form p { margin: 0 0 .9rem; }
   .glass-card .ef-form input:not([type=checkbox]):not([type=radio]):not([type=file]),
@@ -68,7 +68,7 @@
   .glass-oauth:hover { background: hsl(0 0% 100% / 0.1); }
   .glass-link { color: hsl(172 70% 62%); }
   .glass-link:hover { text-decoration: underline; }
-  /* 分隔線：刻度線，與登入頁同款 */
+
   .glass-sep {
     height: 7px;
     background-image: linear-gradient(90deg, hsl(0 0% 100% / .3) 1px, transparent 1px);

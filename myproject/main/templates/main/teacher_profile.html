@@ -2,7 +2,7 @@
 {% block title %}{{ teacher.profile.display_name }} ｜ 講師頁 | EduFlow{% endblock %}
 
 {% block content %}
-<!-- 封面 banner -->
+
 <div class="relative">
   {% if profile.cover_image %}
   <div class="h-56 sm:h-72 w-full bg-center bg-cover" style="background-image:url('{{ profile.cover_image.url }}')"></div>
@@ -11,7 +11,7 @@
   {% endif %}
 
   <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-    <!-- 講師資訊卡：頭像跨在 banner 上 -->
+
     <div class="relative -mt-20 sm:-mt-24 mb-8">
       <div class="flex flex-col sm:flex-row sm:items-end gap-5">
         {% if profile.avatar %}
@@ -77,9 +77,9 @@
       </div>
     </div>
 
-    <!-- 內容區：左側分類 + 右側內容 -->
+
     <div class="flex flex-col lg:flex-row gap-8 pb-12">
-      <!-- 左側內容分類 -->
+
       <aside class="lg:w-56 shrink-0">
         <h3 class="text-sm font-bold text-slate-400 mb-3 px-2">內容分類</h3>
         <nav class="flex lg:flex-col gap-1 overflow-x-auto">
@@ -93,7 +93,7 @@
         </nav>
       </aside>
 
-      <!-- 右側內容 -->
+
       <div class="flex-1 min-w-0">
         {% if active_tab == 'course' %}
         <div class="flex items-center justify-between mb-5">
@@ -178,7 +178,7 @@
         {% else %}<p class="text-slate-500">尚無教材。</p>{% endif %}
         {% endif %}
 
-        <!-- 學生評價 -->
+
         <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-7 mt-8">
           <h2 class="text-xl font-black text-slate-900 mb-4">學生評價</h2>
           {% if recent_reviews %}

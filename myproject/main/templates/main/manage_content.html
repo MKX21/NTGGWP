@@ -8,7 +8,7 @@
     <a href="{% url 'teacher_dashboard' %}" class="text-jp-primary hover:underline font-medium">← 回教師專區</a>
   </div>
 
-  <!-- 新增章節 -->
+
   <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 mb-5">
     <h2 class="text-lg font-black text-slate-900 mb-3">新增章節</h2>
     <form method="post" action="{% url 'add_chapter' course.id %}">
@@ -75,7 +75,7 @@
   <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8 text-center text-slate-500">尚未建立任何章節，請先於上方新增。</div>
   {% endfor %}
 
-  <!-- 課程公告 -->
+
   <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 mt-5">
     <h2 class="text-lg font-black text-slate-900 mb-3">課程公告</h2>
     <form method="post" action="{% url 'add_announcement' course.id %}" class="mb-4">

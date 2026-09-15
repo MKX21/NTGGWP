@@ -10,7 +10,6 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
-    # 支援 Range 請求的媒體服務（影片可正常播放/拖曳）
     urlpatterns += [
         re_path(r'^media/(?P<path>.*)$', main_views.serve_media),
     ]

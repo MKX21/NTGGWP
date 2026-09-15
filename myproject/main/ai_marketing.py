@@ -1,11 +1,3 @@
-"""
-AI 行銷企劃生成模組
--------------------
-分析課程資料，自動產生行銷企劃。支援 Anthropic Claude 與 Google Gemini
-雙後端，選用邏輯與 ai_assistant 一致：兩個金鑰都沒設定時回傳「未啟用」
-訊息；同時設定時可用 AI_PROVIDER 明確指定，沒指定就優先用 Gemini。
-獨立於 ai_assistant，不會影響學生端 AI 客服功能。
-"""
 import json
 import logging
 import time
@@ -17,13 +9,10 @@ from .ai_assistant import _active_provider
 
 logger = logging.getLogger(__name__)
 
-
 def _collect_course_data(marketing_request):
-    """收集課程的完整資料，作為 AI 分析的輸入。"""
     course = marketing_request.course
     teacher = marketing_request.teacher
 
-    # 章節與單元
     chapters = course.chapters.prefetch_related("lessons").order_by("sort_order")
     chapter_list = []
     for ch in chapters:
@@ -33,17 +22,14 @@ def _collect_course_data(marketing_request):
             "lessons": [ls.title for ls in lessons],
         })
 
-    # 評價
     from main.models import Review, Enrollment
     from django.db.models import Avg, Count
     review_agg = Review.objects.filter(course=course).aggregate(
         avg=Avg("rating"), cnt=Count("id")
     )
 
-    # 學生數
     student_count = Enrollment.objects.filter(course=course).count()
 
-    # 價格
     effective_price = course.get_effective_price()
 
     data = {
@@ -71,9 +57,7 @@ def _collect_course_data(marketing_request):
 
     return data
 
-
 def _build_prompt(course_data):
-    """建構給 Claude 的 system prompt 和 user prompt。"""
     system_prompt = (
         "你是一位專業的線上課程行銷企劃師，專精於繁體中文線上教育市場。"
         "你的任務是根據課程資料，產生完整的行銷企劃。"
@@ -120,9 +104,7 @@ def _build_prompt(course_data):
 
     return system_prompt, user_prompt
 
-
 def _call_claude(system_prompt, user_prompt):
-    """回傳 (reply_text, error_message)；成功時 error_message 為 None。"""
     try:
         import anthropic
     except ImportError:
@@ -152,13 +134,7 @@ def _call_claude(system_prompt, user_prompt):
 
     return reply_text, None
 
-
 def _call_gemini(system_prompt, user_prompt):
-    """回傳 (reply_text, error_message)；成功時 error_message 為 None。
-
-    要求模型直接輸出 JSON（response_mime_type），比要求 Claude 純文字
-    JSON 更穩定，不太需要再剝 markdown 圍欄。
-    """
     try:
         from google import genai
         from google.genai import types
@@ -168,10 +144,6 @@ def _call_gemini(system_prompt, user_prompt):
         return None, "伺服器未安裝 google-genai 套件，請執行 pip install google-genai。"
 
     client = genai.Client(api_key=settings.GEMINI_API_KEY)
-    # 行銷企劃內容比一般問答長很多，且不強制關閉思考（新一代思考模型如
-    # gemini-3.6-flash 不接受 AI 助教那邊用的 thinking_budget=0），所以用獨立的
-    # GEMINI_MARKETING_MODEL 設定，並給充足的輸出上限，讓內部思考與最終 JSON
-    # 都有空間，避免被截斷成空字串。
     model = getattr(settings, "GEMINI_MARKETING_MODEL", "gemini-3.6-flash")
     config = types.GenerateContentConfig(
         system_instruction=system_prompt,
@@ -188,7 +160,6 @@ def _call_gemini(system_prompt, user_prompt):
             break
         except genai_errors.APIError as exc:
             code = getattr(exc, "code", None)
-            # 429/503 通常是暫時忙碌，重試一次就好，不要浪費額度一直重試。
             if code in (429, 503) and attempt == 1:
                 time.sleep(1.5)
                 continue
@@ -206,20 +177,11 @@ def _call_gemini(system_prompt, user_prompt):
 
     return (getattr(response, "text", "") or ""), None
 
-
 def generate_marketing_plan(marketing_request):
-    """
-    呼叫目前設定的 AI 後端（Claude 或 Gemini）生成行銷企劃。
-
-    回傳值：(success: bool, result: dict or str)
-    - 成功：(True, {MarketingPlan 欄位字典})
-    - 失敗：(False, "錯誤訊息")
-    """
     provider = _active_provider()
     if provider is None:
         return False, "AI 行銷企劃尚未啟用，請設定 ANTHROPIC_API_KEY 或 GEMINI_API_KEY。"
 
-    # 收集資料
     try:
         course_data = _collect_course_data(marketing_request)
     except Exception as e:
@@ -235,7 +197,6 @@ def generate_marketing_plan(marketing_request):
     if error:
         return False, error
 
-    # 解析 JSON
     try:
         cleaned = reply_text.strip()
         if cleaned.startswith("```"):
@@ -249,7 +210,6 @@ def generate_marketing_plan(marketing_request):
         logger.error(f"AI 回覆 JSON 解析失敗: {e}\n回覆內容: {reply_text[:500]}")
         return False, f"AI 回覆格式解析失敗，請重新生成。"
 
-    # 驗證必要欄位
     required_fields = [
         "target_audience", "course_selling_points", "marketing_strategy",
         "ad_headline", "ad_copy", "social_media_copy",
@@ -261,13 +221,7 @@ def generate_marketing_plan(marketing_request):
 
     return True, plan_data
 
-
 def create_or_update_plan(marketing_request):
-    """
-    生成 AI 行銷企劃並寫入資料庫。
-
-    回傳值：(success: bool, message: str, plan: MarketingPlan or None)
-    """
     from main.models import MarketingPlan
 
     success, result = generate_marketing_plan(marketing_request)
@@ -277,7 +231,6 @@ def create_or_update_plan(marketing_request):
 
     plan_data = result
 
-    # 建立或更新 MarketingPlan
     plan, created = MarketingPlan.objects.get_or_create(
         marketing_request=marketing_request,
         defaults={"status": "reviewing"},
@@ -295,7 +248,6 @@ def create_or_update_plan(marketing_request):
     plan.generated_at = timezone.now()
     plan.save()
 
-    # 更新 MarketingRequest 狀態
     marketing_request.status = "processing"
     marketing_request.save(update_fields=["status", "updated_at"])
 

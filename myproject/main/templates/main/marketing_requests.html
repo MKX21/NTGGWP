@@ -44,7 +44,7 @@
       <div class="bg-slate-50 rounded-lg p-3 mt-4 text-sm text-slate-600">後台備註：{{ item.admin_note }}</div>
       {% endif %}
 
-      <!-- 操作按鈕 -->
+
       <div class="flex gap-3 mt-4">
         <a href="{% url 'marketing_plan_detail' item.id %}" class="bg-brand-50 hover:bg-brand-100 text-brand-700 font-bold px-4 py-2 rounded-lg text-sm transition">
           {% if item.status == 'completed' %}查看企劃{% else %}查看詳情{% endif %}

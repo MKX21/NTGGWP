@@ -27,7 +27,6 @@ from main.models import (
     CourseAudit,
 )
 
-
 def create_user(username, email, password, role=None, is_superuser=False):
     user, created = User.objects.get_or_create(
         username=username,
@@ -56,12 +55,7 @@ def create_user(username, email, password, role=None, is_superuser=False):
 
     return user
 
-
 print("開始建立測試資料...")
-
-# =========================
-# 1. 建立使用者
-# =========================
 
 admin = create_user(
     username="admin_demo",
@@ -105,10 +99,6 @@ student3 = create_user(
     role="student"
 )
 
-# =========================
-# 2. 課程分類
-# =========================
-
 cat_programming, _ = CourseCategory.objects.get_or_create(
     name="程式設計",
     defaults={"description": "Python、Django、網頁開發與資料庫相關課程"}
@@ -123,10 +113,6 @@ cat_business, _ = CourseCategory.objects.get_or_create(
     name="商業管理",
     defaults={"description": "創業、營運、資料分析與商業決策"}
 )
-
-# =========================
-# 3. 課程
-# =========================
 
 course_data = [
     {
@@ -188,10 +174,6 @@ for item in course_data:
         course.save()
 
     courses.append(course)
-
-# =========================
-# 4. 課程章節與單元
-# =========================
 
 for course in courses:
     chapter1, _ = CourseChapter.objects.get_or_create(
@@ -260,10 +242,6 @@ for course in courses:
         }
     )
 
-# =========================
-# 5. 優惠券與促銷活動
-# =========================
-
 now = timezone.now()
 
 coupon1, _ = Coupon.objects.get_or_create(
@@ -315,19 +293,11 @@ for student in [student1, student2, student3]:
         defaults={"status": "unused"}
     )
 
-# =========================
-# 6. 購物車
-# =========================
-
 cart1, _ = Cart.objects.get_or_create(user=student1)
 CartItem.objects.get_or_create(cart=cart1, course=courses[1])
 
 cart2, _ = Cart.objects.get_or_create(user=student2)
 CartItem.objects.get_or_create(cart=cart2, course=courses[2])
-
-# =========================
-# 7. 建立訂單、購課紀錄、付款紀錄
-# =========================
 
 purchase_plan = [
     (student1, courses[0], coupon1),
@@ -387,10 +357,6 @@ for student, course, coupon in purchase_plan:
         course=course
     )
 
-# =========================
-# 8. 學習紀錄
-# =========================
-
 for student in [student1, student2, student3]:
     enrollments = Enrollment.objects.filter(student=student)
 
@@ -407,10 +373,6 @@ for student in [student1, student2, student3]:
                     "minutes": lesson.duration_minutes if lesson.duration_minutes > 0 else 30,
                 }
             )
-
-# =========================
-# 9. 收藏與評價
-# =========================
 
 Favorite.objects.get_or_create(user=student1, course=courses[1])
 Favorite.objects.get_or_create(user=student2, course=courses[2])
@@ -442,10 +404,6 @@ Review.objects.get_or_create(
         "comment": "首頁設計和使用者流程講得很清楚。",
     }
 )
-
-# =========================
-# 10. 通知、問答、審核
-# =========================
 
 for student in [student1, student2, student3]:
     Notification.objects.get_or_create(

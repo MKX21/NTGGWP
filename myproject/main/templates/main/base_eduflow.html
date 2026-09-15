@@ -11,19 +11,15 @@
             theme: {
                 extend: {
                     colors: {
-                        // 全站深色玻璃配色：brand 改為青綠(teal)色階以呼應登入/註冊頁的玻璃質感，
-                        // 直接改色階數值即可讓全站沿用 brand/jp 語意色名的元件自動套用新配色。
                         brand: {
                             50: '#e6fbf6', 100: '#c3f4e9', 200: '#8fe9d6', 300: '#54d8be',
                             400: '#22c2a5', 500: '#0fa88d', 600: '#0c8f78', 700: '#0b7362',
                             800: '#0d5b4f', 900: '#0c4a41',
                         },
-                        // 暖琥珀色作為深色底上的對比點綴（價格、標籤、通知），與青綠主色互補
                         accent: {
                             50: '#fff7ed', 100: '#ffedd5', 300: '#fdba74',
                             400: '#fbbf24', 500: '#f59e0b', 600: '#d97706',
                         },
-                        // 深色玻璃語意色（背景/卡片/邊框/文字/主色），全站元件直接引用
                         jp: {
                             bg: '#0a0e14',
                             surface: '#12161f',
@@ -34,7 +30,6 @@
                             primaryHover: '#0fa588',
                             accent: '#fbbf24',
                         },
-                        // sat.cool 風格深色主題，僅首頁使用，不影響其他頁面既有的 jp/brand 色階
                         satdark: {
                             bg: '#030303',
                             surface: '#17191c',
@@ -42,7 +37,6 @@
                             text: '#ffffff',
                             muted: '#9a9a9a',
                         },
-                        // 呼應登入/註冊玻璃卡片的青綠漸層，讓導覽列高亮色與全站主色調一致
                         electric: {
                             DEFAULT: '#16c2a3',
                             hover: '#0fa588',
@@ -50,13 +44,8 @@
                     },
                     fontFamily: {
                         sans: ['"Noto Sans TC"', '"Inter"', 'system-ui', 'sans-serif'],
-                        // 簽名字體：僅覆蓋拉丁字母／數字（logo、標題裡的英數、金額、大數字），
-                        // 中文字元會自動 fallback 回 Noto Sans TC，形成中英文混排的層次感。
                         display: ['"Fraunces"', '"Noto Sans TC"', 'serif'],
-                        // 票根／通行證數據感的等寬字，用於登入註冊頁的票券資訊列
                         ticket: ['"IBM Plex Mono"', 'monospace'],
-                        // 扎實無襯線標題字（首頁／課程總覽／課程詳情用）：僅覆蓋拉丁字母與數字，
-                        // 中文字元自動 fallback 回 Noto Sans TC。取代玻璃風的視覺主力字體。
                         grotesk: ['"Hanken Grotesk"', '"Noto Sans TC"', 'sans-serif'],
                     },
                     keyframes: {
@@ -88,7 +77,7 @@
             html { scroll-behavior: auto; }
             *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
         }
-        /* Django 表單控制項在 EduFlow 版型的統一樣式（深色玻璃版，與登入/註冊頁呼應）*/
+
         .ef-form input:not([type=checkbox]):not([type=radio]):not([type=file]),
         .ef-form select, .ef-form textarea {
             width: 100%; border: 1px solid #2a3242; border-radius: 0.7rem;
@@ -107,9 +96,7 @@
         .ef-form input[type=file] { font-size: 0.9rem; color: #aab2c7; }
         .ef-form input[type=checkbox], .ef-form input[type=radio] { accent-color: #16c2a3; width: 1rem; height: 1rem; vertical-align: middle; }
 
-        /* ===== 全站深色玻璃：重映射舊版淺色版型遺留的 Tailwind utility class =====
-           大量模板沿用 bg-white / text-slate-* / border-slate-* 等淺色寫死的類別，
-           改成深色系一次覆蓋即可全站生效，不必逐一模板重寫 class。*/
+
         .bg-white, .bg-gray-50, .bg-gray-100, .bg-slate-50 {
             background-color: #12161f !important;
         }
@@ -127,7 +114,7 @@
         .border-slate-100, .border-slate-200, .border-gray-100, .border-gray-200 {
             border-color: #242b38 !important;
         }
-        /* 狀態色淺底改為半透明深色玻璃底，文字改用對應的亮色，維持可讀性 */
+
         .bg-red-50 { background-color: rgba(248,113,113,.12) !important; }
         .bg-green-50, .bg-emerald-50 { background-color: rgba(52,211,153,.12) !important; }
         .bg-amber-50, .bg-yellow-50 { background-color: rgba(251,191,36,.12) !important; }
@@ -135,7 +122,7 @@
         .bg-rose-50 { background-color: rgba(251,113,133,.12) !important; }
         .hover\:bg-rose-50:hover { background-color: rgba(251,113,133,.18) !important; }
         .text-rose-600 { color: #fda4af !important; }
-        /* brand-50/100 原本是淺色系最淺色階（卡片底色用），深色主題下改成半透明青綠玻璃底 */
+
         .bg-brand-50, .bg-brand-100 { background-color: rgba(22,194,163,.14) !important; }
         .hover\:bg-brand-50:hover, .hover\:bg-brand-100:hover { background-color: rgba(22,194,163,.22) !important; }
         .text-red-600, .text-red-700 { color: #ff9b9b !important; }
@@ -143,9 +130,7 @@
         .text-amber-600, .text-amber-700 { color: #fcd34d !important; }
         .text-blue-600, .text-blue-700, .text-indigo-600, .text-indigo-700 { color: #93c5fd !important; }
 
-        /* ===== 扎實直角按鈕（取代玻璃質感）=====
-           拿掉 backdrop-filter／漸層光暈／圓角膠囊，改成實色填底＋細邊框＋小圓角，
-           呼應 Kajabi 那種篤定、無多餘裝飾的介面語彙。 */
+
         .btn-glass, .btn-glass-primary {
             position: relative; display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
             border-radius: 0.5rem; font-weight: 700; cursor: pointer;
@@ -153,17 +138,17 @@
         }
         .btn-glass:hover, .btn-glass-primary:hover { transform: translateY(-1px); }
         .btn-glass:active, .btn-glass-primary:active { transform: translateY(0); }
-        /* 次要按鈕：透明底＋白色細邊框 */
+
         .btn-glass {
             color: #fff; background: transparent; border: 1px solid rgba(255,255,255,.35);
         }
         .btn-glass:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.55); }
-        /* 主要按鈕：實色青綠填底 */
+
         .btn-glass-primary {
             color: #04110f; background: #16c2a3; border: 1px solid #16c2a3;
         }
         .btn-glass-primary:hover { background: #1bd9b7; border-color: #1bd9b7; }
-        /* 方形箭頭／切換鈕（輪播用）：實色深底＋細邊框，取代玻璃圓鈕 */
+
         .glass-arrow {
             height: 2.75rem; width: 2.75rem; display: inline-flex; align-items: center; justify-content: center;
             border-radius: 0.5rem; color: #fff; cursor: pointer;
@@ -175,8 +160,7 @@
         .glass-arrow:active { transform: translateY(0); }
         .glass-arrow:disabled { opacity: .35; cursor: not-allowed; transform: none; }
 
-        /* ===== 扎實標題字排版（Hanken Grotesk）＝首頁／課程總覽／課程詳情的視覺主力 =====
-           英數緊縮字距、粗體，中文字元 fallback 回 Noto Sans TC 不受字距影響。*/
+
         .text-tight-head { letter-spacing: -0.02em; }
         .tabular-nums { font-variant-numeric: tabular-nums; }
     </style>
@@ -190,14 +174,13 @@
 
     {% include 'main/partials/eduflow_footer.html' %}
 
-    <!-- 回到頂部按鈕 -->
+
     <button data-back-to-top class="fixed bottom-6 right-6 z-40 h-12 w-12 rounded-full bg-jp-primary text-white shadow-lg shadow-brand-600/30 hover:bg-jp-primaryHover transition opacity-0 invisible" aria-label="回到頂部">
         <i class="fas fa-arrow-up"></i>
     </button>
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // 可關閉元素（公告列）
         document.querySelectorAll('[data-close]').forEach((btn) => {
             btn.addEventListener('click', () => {
                 const t = document.querySelector(btn.dataset.close);
@@ -205,7 +188,6 @@
             });
         });
 
-        // 導覽列搜尋：點圖示展開/收合搜尋列
         document.querySelectorAll('[data-search-toggle]').forEach((btn) => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('[data-search-panel]').forEach((panel) => {
@@ -218,7 +200,6 @@
             });
         });
 
-        // 頭像下拉選單：點頭像切換開關、點選單外或按 Esc 關閉
         document.querySelectorAll('[data-dropdown-wrapper]').forEach((wrapper) => {
             const toggle = wrapper.querySelector('[data-dropdown-toggle]');
             const menu = wrapper.querySelector('[data-dropdown-menu]');
@@ -238,7 +219,6 @@
             });
         });
 
-        // 手機側邊選單
         const mobileMenu = document.querySelector('[data-mobile-menu]');
         const openMobile = () => mobileMenu && mobileMenu.classList.remove('hidden');
         const closeMobile = () => mobileMenu && mobileMenu.classList.add('hidden');
@@ -246,7 +226,6 @@
         document.querySelectorAll('[data-mobile-close]').forEach((b) => b.addEventListener('click', closeMobile));
         mobileMenu && mobileMenu.querySelectorAll('a').forEach((a) => a.addEventListener('click', closeMobile));
 
-        // 橫向輪播
         document.querySelectorAll('[data-carousel]').forEach((track) => {
             const name = track.dataset.carousel;
             const prevBtn = document.querySelector(`[data-carousel-prev="${name}"]`);
@@ -265,7 +244,6 @@
             updateButtons();
         });
 
-        // 捲動：Navbar 陰影 + 回到頂部顯隱
         const navbar = document.getElementById('navbar');
         const backToTop = document.querySelector('[data-back-to-top]');
         const onScroll = () => {

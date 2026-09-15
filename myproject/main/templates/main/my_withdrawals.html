@@ -16,7 +16,7 @@
     </div>
   </div>
 
-  <!-- 收款帳戶狀態 -->
+
   {% if has_bank_account %}
   <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-5 mb-6 flex items-center justify-between gap-4 flex-wrap">
     <div class="text-sm text-slate-600"><i class="fas fa-building-columns text-brand-600 mr-2"></i>收款帳戶：{{ bank_account.bank_name }} ・ 戶名 {{ bank_account.account_name }} ・ 帳號 {{ bank_account.account_number }}</div>
@@ -29,7 +29,7 @@
   </div>
   {% endif %}
 
-  <!-- 申請表單 -->
+
   <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8 mb-6">
     <div class="text-sm text-slate-500 mb-1">目前可提領餘額</div>
     <div class="text-3xl font-black text-accent-600 mb-5">NT$ {{ available_balance }}</div>
@@ -59,7 +59,7 @@
     {% endif %}
   </div>
 
-  <!-- 申請紀錄 -->
+
   <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-7">
     <h2 class="text-lg font-black text-slate-900 mb-4">申請紀錄</h2>
     {% if withdrawals %}

@@ -36,3 +36,4 @@ myproject/media/lesson_materials/
 # EB CLI 部署暫存(每次 eb deploy 產生,不進 git)
 .elasticbeanstalk/app_versions/
 .elasticbeanstalk/logs/
+.claude/

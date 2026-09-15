@@ -29,16 +29,16 @@
 
 {% block content %}
 <main class="max-w-2xl mx-auto px-4 py-14">
-  <!-- 成功卡片 -->
+
   <div class="bg-jp-surface rounded-2xl border border-jp-border shadow-sm overflow-hidden">
-    <!-- 頂部慶祝區 -->
+
     <div class="bg-gradient-to-br from-green-500/20 to-brand-500/20 py-10 text-center">
       <div class="text-7xl success-pop mb-3">🎉</div>
       <h1 class="text-3xl font-black text-green-400 success-pop-delay mb-2">購買成功！</h1>
       <p class="text-jp-muted success-pop-delay">課程已開通，立即開始你的學習旅程</p>
     </div>
 
-    <!-- 訂單明細 -->
+
     <div class="p-7">
       <h2 class="font-bold text-jp-text mb-3">訂單明細</h2>
       <div class="divide-y divide-jp-border text-sm">
@@ -66,7 +66,7 @@
         </div>
       </div>
 
-      <!-- CTA 按鈕 -->
+
       <div class="mt-6 space-y-3">
         {% for item in items %}
         <a href="{% url 'watch_course' item.course.id %}" class="flex items-center justify-between w-full bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-6 py-3.5 rounded-xl transition group">
@@ -79,7 +79,7 @@
     </div>
   </div>
 
-  <!-- 推薦更多課程 -->
+
   {% if recommended_courses %}
   <div class="mt-8">
     <h2 class="font-grotesk text-tight-head text-xl font-extrabold text-jp-text mb-4">接下來，你可能也想學</h2>
@@ -108,7 +108,6 @@
 
 {% block extra_js %}
 <script>
-// 紙花慶祝動畫
 (function () {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   var colors = ['#16c2a3', '#fbbf24', '#ec4899', '#3b82f6', '#10b981', '#f59e0b'];

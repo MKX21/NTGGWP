@@ -1,15 +1,3 @@
-"""測試。
-
-    python manage.py test main --settings=myproject.settings_test
-
-分三部分：
-
-* `PricingRuleTests` 打的是 internal seam `checkout._price_lines` —— 純計算，
-  用未存檔的 model 實例就能跑，不需要資料庫。
-* `QuoteBasketTests` 打結帳的對外 interface。
-* 其餘類別是**回歸測試**：每一個都對應一個真實存在過的漏洞，
-  註解說明它防的是什麼。
-"""
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth.models import User
 from django.contrib.messages.storage.fallback import FallbackStorage
@@ -52,10 +40,8 @@ from .transitions import (
     reject_withdrawal,
 )
 
-
 def make_course(price, discount_price=None, early_bird_price=None,
                 is_crowdfunding=False, funding_days=30, pk=1):
-    """未存檔的 Course，只用來餵純計算。"""
     now = timezone.now()
     return Course(
         id=pk,
@@ -68,7 +54,6 @@ def make_course(price, discount_price=None, early_bird_price=None,
         funding_end_date=now + timezone.timedelta(days=funding_days) if is_crowdfunding else None,
     )
 
-
 def make_promotion(discount_type, discount_value):
     return Promotion(
         name='測試促銷', discount_type=discount_type, discount_value=discount_value,
@@ -76,7 +61,6 @@ def make_promotion(discount_type, discount_value):
         start_date=timezone.now() - timezone.timedelta(days=1),
         end_date=timezone.now() + timezone.timedelta(days=30),
     )
-
 
 def make_coupon(discount_type, discount_value, min_spend=0):
     return Coupon(
@@ -87,9 +71,7 @@ def make_coupon(discount_type, discount_value, min_spend=0):
         end_date=timezone.now() + timezone.timedelta(days=30),
     )
 
-
 class PricingRuleTests(SimpleTestCase):
-    """定價規則。不碰資料庫。"""
 
     def test_no_discount_pays_unit_price(self):
         quote = _price_lines([make_course(1800)], {}, None)
@@ -108,7 +90,6 @@ class PricingRuleTests(SimpleTestCase):
         self.assertEqual(quote.total, 1530)
 
     def test_promotion_over_one_hundred_percent_cannot_go_negative(self):
-        """discount_value=150（%）不該折出負數金額 —— 由疊加結構保證，不靠事後夾值。"""
         course = make_course(1000)
         promo_map = {course.id: make_promotion('percent', 150)}
 
@@ -118,9 +99,8 @@ class PricingRuleTests(SimpleTestCase):
         self.assertEqual(quote.total, 0)
 
     def test_coupon_min_spend_measured_after_promotion(self):
-        """促銷後低於 min_spend → 券不生效，並回報原因。"""
         course = make_course(1000)
-        promo_map = {course.id: make_promotion('percent', 50)}   # → 小計 500
+        promo_map = {course.id: make_promotion('percent', 50)}
         coupon = make_coupon('amount', 100, min_spend=600)
 
         quote = _price_lines([course], promo_map, coupon)
@@ -131,7 +111,6 @@ class PricingRuleTests(SimpleTestCase):
         self.assertEqual(quote.total, 500)
 
     def test_coupon_allocated_across_lines_sums_exactly(self):
-        """最大餘額法：逐項 paid_amount 加總必須精確等於實付總額。"""
         courses = [
             make_course(1000, pk=1),
             make_course(1000, pk=2),
@@ -145,33 +124,28 @@ class PricingRuleTests(SimpleTestCase):
         self.assertEqual(sum(line.coupon_discount for line in quote.lines), 100)
         self.assertEqual(sum(line.paid_amount for line in quote.lines), quote.total)
         self.assertEqual(quote.total, 2900)
-        # 100 分給 3 項：34 / 33 / 33，不是 33/33/33 少了 1 元
         self.assertEqual(
             sorted(line.coupon_discount for line in quote.lines), [33, 33, 34]
         )
 
     def test_early_bird_and_promotion_stack(self):
-        """募資期間的早鳥價之上，促銷再疊加（決策 4b）。"""
         course = make_course(2000, early_bird_price=1600, is_crowdfunding=True)
         promo_map = {course.id: make_promotion('percent', 10)}
 
         quote = _price_lines([course], promo_map, None)
 
-        self.assertEqual(quote.subtotal, 1600)      # 售價＝早鳥價
-        self.assertEqual(quote.promo_total, 160)    # 促銷作用於售價
+        self.assertEqual(quote.subtotal, 1600)
+        self.assertEqual(quote.promo_total, 160)
         self.assertEqual(quote.total, 1440)
 
     def test_early_bird_ignored_outside_funding_window(self):
-        """非募資課程的早鳥價不生效 —— get_effective_price 的 guard。"""
         course = make_course(2000, early_bird_price=1600, is_crowdfunding=False)
 
         quote = _price_lines([course], {}, None)
 
         self.assertEqual(quote.total, 2000)
 
-
 class QuoteBasketTests(TestCase):
-    """對外 interface。需要資料庫。"""
 
     def setUp(self):
         self.user = User.objects.create_user(username='student', password='x')
@@ -225,16 +199,14 @@ class QuoteBasketTests(TestCase):
         items = list(order.items.all())
         self.assertEqual(len(items), 2)
         self.assertEqual(sum(item.paid_amount for item in items), order.final_price)
-        self.assertEqual(order.original_price, 3000)                 # Σ 售價
-        self.assertEqual(order.discount_amount, 450 + 100)           # 促銷 + 券
+        self.assertEqual(order.original_price, 3000)
+        self.assertEqual(order.discount_amount, 450 + 100)
         self.assertEqual(order.final_price, 2450)
-        # price 保留購買當下售價，不含折扣
         self.assertEqual(sorted(item.price for item in items), [1000, 2000])
         self.assertEqual(order.payments.count(), 1)
         self.assertEqual(order.payments.first().amount, 2450)
 
     def test_place_order_then_finalize_enrolls_and_notifies(self):
-        """seed_data 與付款流程共用的組合：成立訂單 → 付款成功 → 開通。"""
         from .transitions import fulfill_order
 
         order = place_order(self.user, quote_basket(self.user, [self.course_a]))
@@ -251,20 +223,13 @@ class QuoteBasketTests(TestCase):
         )
         self.assertEqual(Notification.objects.filter(user=self.user).count(), 1)
 
-        # 冪等：重複呼叫不會多開一次課、也不會多發一則通知
         fulfill_order(order)
         self.assertEqual(
             Enrollment.objects.filter(student=self.user, course=self.course_a).count(), 1
         )
         self.assertEqual(Notification.objects.filter(user=self.user).count(), 1)
 
-
-# =========================================================================
-# 以下為回歸測試：每一個都對應一個真實存在過的漏洞
-# =========================================================================
-
 class BaseFixture(TestCase):
-    """共用的最小資料：一位學生、一位講師、一位管理員、一門已上架課程。"""
 
     def setUp(self):
         self.student = User.objects.create_user(username='student', password='pw')
@@ -289,19 +254,12 @@ class BaseFixture(TestCase):
         )
 
     def buy(self, user, course):
-        """走正式流程買一門課：成立訂單 → 付款完成 → 開通。
-
-        付款那一步要自己標記 —— place_order 建立的 Payment 是 pending，
-        真實流程由 views._mark_payment_paid 改成 paid 之後才呼叫 fulfill_order。
-        """
         order = place_order(user, quote_basket(user, [course]))
         order.payments.update(status='paid', paid_at=timezone.now())
         fulfill_order(order)
         return order
 
-
 class RefundRevokesAccessTests(BaseFixture):
-    """漏洞：退款核准只改 Order.status，學生退了錢課還在。"""
 
     def setUp(self):
         super().setUp()
@@ -330,7 +288,6 @@ class RefundRevokesAccessTests(BaseFixture):
             list(self.order.payments.values_list('status', flat=True)), ['refunded'])
 
     def test_pending_payment_is_also_reversed(self):
-        """換過付款方式而留下的 pending 付款，退款後不該變成孤兒。"""
         Payment.objects.create(
             order=self.order, amount=self.order.final_price,
             status='pending', method='atm',
@@ -342,7 +299,6 @@ class RefundRevokesAccessTests(BaseFixture):
             set(self.order.payments.values_list('status', flat=True)), {'refunded'})
 
     def test_approve_refund_keeps_learning_history_and_review(self):
-        """撤銷的是存取權，不是歷史 —— 看過就是看過，評價不追溯竄改。"""
         approve_refund(self.refund)
 
         self.assertEqual(
@@ -358,9 +314,7 @@ class RefundRevokesAccessTests(BaseFixture):
 
         self.assertEqual(Notification.objects.filter(user=self.student).count(), n)
 
-
 class AdminUsesSameTransitionTests(BaseFixture):
-    """漏洞：admin 的 bulk action 是另一套狀態機，與前台行為不同。"""
 
     def _request(self):
         request = RequestFactory().post('/')
@@ -391,7 +345,6 @@ class AdminUsesSameTransitionTests(BaseFixture):
         )
 
     def test_admin_publish_goes_through_audit(self):
-        """後台批次上架必須留下審核紀錄，不能是繞過 CourseAudit 的旁路。"""
         from .admin import CourseAdmin
 
         draft = Course.objects.create(
@@ -413,9 +366,7 @@ class AdminUsesSameTransitionTests(BaseFixture):
             '課程上架沒有通知講師',
         )
 
-
 class UnpublishedCourseGateTests(BaseFixture):
-    """漏洞：未上架/待審核的課程直接打網址就能瀏覽並購買。"""
 
     def setUp(self):
         super().setUp()
@@ -439,7 +390,6 @@ class UnpublishedCourseGateTests(BaseFixture):
         self.assertTrue(response.context['is_preview'])
 
     def test_admin_can_preview_for_audit(self):
-        """管理員必須看得到內容才能審核 —— 原本是盲審。"""
         self.client.login(username='admin', password='pw')
         self.assertEqual(
             self.client.get(reverse('course_detail', args=[self.draft.id])).status_code,
@@ -447,7 +397,6 @@ class UnpublishedCourseGateTests(BaseFixture):
         )
 
     def test_enrolled_student_keeps_access_after_course_unpublished(self):
-        """付過錢的人不該因為課程下架就吃 404。"""
         self.buy(self.student, self.course)
         self.course.is_published = False
         self.course.save()
@@ -472,14 +421,11 @@ class UnpublishedCourseGateTests(BaseFixture):
         self.assertEqual(CartItem.objects.count(), 0)
 
     def test_even_teacher_cannot_purchase_own_unpublished_course(self):
-        """預覽權不等於購買權。"""
         self.client.login(username='teacher', password='pw')
         self.assertEqual(
             self.client.get(reverse('checkout', args=[self.draft.id])).status_code, 404)
 
-
 class VideoAuthorizationTests(BaseFixture):
-    """漏洞：/media/course_videos/*.mp4 任何人知道網址就能直接下載。"""
 
     def test_non_enrolled_user_cannot_reach_video(self):
         self.client.login(username='other', password='pw')
@@ -495,7 +441,6 @@ class VideoAuthorizationTests(BaseFixture):
         self.assertIn('/login/', response.url)
 
     def test_serve_media_refuses_course_videos(self):
-        """即使 DEBUG 下掛載了 /media/，影片也不從那裡直出。"""
         from django.http import Http404
 
         from .views import serve_media
@@ -504,9 +449,7 @@ class VideoAuthorizationTests(BaseFixture):
         with self.assertRaises(Http404):
             serve_media(request, 'course_videos/x.mp4')
 
-
 class StateChangingEndpointsTests(BaseFixture):
-    """漏洞：四個會改資料庫的 endpoint 接受 GET（GET 不受 CSRF 保護）。"""
 
     def setUp(self):
         super().setUp()
@@ -541,13 +484,10 @@ class StateChangingEndpointsTests(BaseFixture):
         self.assertEqual(coupon.usercoupon_set.count(), 0)
 
     def test_post_still_works(self):
-        """防的是 GET，正常的 POST 表單不能被誤傷。"""
         self.client.post(reverse('add_to_cart', args=[self.course.id]))
         self.assertEqual(CartItem.objects.count(), 1)
 
-
 class OpenRedirectTests(BaseFixture):
-    """漏洞：toggle_favorite 的 next 未經驗證就 redirect。"""
 
     def setUp(self):
         super().setUp()
@@ -570,9 +510,7 @@ class OpenRedirectTests(BaseFixture):
 
         self.assertEqual(response.url, target)
 
-
 class PasswordResetFlowTests(TestCase):
-    """漏洞：缺 password_reset_confirm，送出重設表單會 NoReverseMatch 500。"""
 
     def test_confirm_and_complete_urls_exist(self):
         self.assertTrue(
@@ -589,9 +527,7 @@ class PasswordResetFlowTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, reverse('password_reset_done'))
 
-
 class RevenueSplitCalculationTests(SimpleTestCase):
-    """RevenueRecord.recompute() 是純計算，未存檔的實例就能跑，不需要資料庫。"""
 
     def test_default_split_with_no_marketing_cost(self):
         record = RevenueRecord(
@@ -605,7 +541,6 @@ class RevenueSplitCalculationTests(SimpleTestCase):
         self.assertEqual(record.company_amount, 300)
 
     def test_marketing_cost_is_shared_by_its_own_ratio_not_the_split_ratio(self):
-        """行銷成本負擔比例是獨立的一組比例，不該被誤用分潤比例去分攤成本。"""
         record = RevenueRecord(
             gross_amount=1000, marketing_cost=200,
             teacher_split_percent=70, company_split_percent=30,
@@ -613,12 +548,10 @@ class RevenueSplitCalculationTests(SimpleTestCase):
         )
         record.recompute()
 
-        # 毛額分潤：講師700 / 公司300；成本各半：講師100 / 公司100
         self.assertEqual(record.teacher_amount, 600)
         self.assertEqual(record.company_amount, 200)
 
     def test_amounts_always_sum_to_gross_minus_marketing_cost(self):
-        """不管比例怎麼取整，兩邊加總都必須精確等於淨額，不能有錢憑空消失。"""
         for gross, cost, t_split, t_share in [
             (999, 137, 70, 50), (1, 0, 33, 10), (12345, 6789, 1, 99), (0, 0, 70, 50),
         ]:
@@ -635,7 +568,6 @@ class RevenueSplitCalculationTests(SimpleTestCase):
             )
 
     def test_marketing_cost_larger_than_share_can_go_negative(self):
-        """行銷成本異常偏高時如實呈現負值（該方倒貼），而不是報錯或被夾成 0。"""
         record = RevenueRecord(
             gross_amount=100, marketing_cost=1000,
             teacher_split_percent=70, company_split_percent=30,
@@ -645,7 +577,6 @@ class RevenueSplitCalculationTests(SimpleTestCase):
 
         self.assertEqual(record.teacher_amount, 70 - 500)
         self.assertEqual(record.company_amount, 30 - 500)
-
 
 class CourseSplitSettingTests(TestCase):
     def test_for_course_falls_back_to_default_without_writing_a_row(self):
@@ -671,9 +602,7 @@ class CourseSplitSettingTests(TestCase):
         with self.assertRaises(ValidationError):
             setting.clean()
 
-
 class RevenueRecordFulfillmentTests(BaseFixture):
-    """收支分潤紀錄要跟著 fulfill_order / approve_refund 這唯一的狀態轉換入口走。"""
 
     def test_fulfill_order_creates_revenue_record_with_default_split(self):
         order = self.buy(self.student, self.course)
@@ -701,7 +630,7 @@ class RevenueRecordFulfillmentTests(BaseFixture):
     def test_fulfill_order_does_not_duplicate_revenue_record(self):
         order = self.buy(self.student, self.course)
 
-        fulfill_order(order)  # 冪等：訂單已是 paid，重複呼叫不該重複建立
+        fulfill_order(order)
 
         self.assertEqual(
             RevenueRecord.objects.filter(order_item=order.items.get()).count(), 1)
@@ -718,7 +647,6 @@ class RevenueRecordFulfillmentTests(BaseFixture):
         record = RevenueRecord.objects.get(order_item=order.items.get())
         self.assertEqual(record.status, 'reversed')
         self.assertIsNotNone(record.reversed_at)
-
 
 class WithdrawalRequestTests(BaseFixture):
     def setUp(self):
@@ -743,7 +671,6 @@ class WithdrawalRequestTests(BaseFixture):
             WithdrawalRequest.objects.create(teacher=self.teacher, amount=1)
 
     def test_reversed_revenue_is_excluded_from_balance(self):
-        """漏洞防範：課程被退款後，講師不該還能提領那筆已經沖銷的分潤。"""
         refund = Refund.objects.create(
             order=self.order, user=self.student, amount=self.order.final_price,
             reason='測試', status='pending',
@@ -758,7 +685,7 @@ class WithdrawalRequestTests(BaseFixture):
 
         complete_withdrawal(withdrawal)
         n = Notification.objects.filter(user=self.teacher).count()
-        complete_withdrawal(withdrawal)  # 冪等：已完成的不該重複發通知
+        complete_withdrawal(withdrawal)
 
         withdrawal.refresh_from_db()
         self.assertEqual(withdrawal.status, 'completed')
@@ -776,15 +703,12 @@ class WithdrawalRequestTests(BaseFixture):
         self.assertEqual(
             WithdrawalRequest.available_balance(self.teacher), self.record.teacher_amount)
 
-
 class RevenueAndWithdrawalViewTests(BaseFixture):
-    """對外 view：講師查收支／申請提領，管理員後台審核。"""
 
     def setUp(self):
         super().setUp()
         self.order = self.buy(self.student, self.course)
         self.record = RevenueRecord.objects.get(order_item=self.order.items.get())
-        # 提領流程要求先綁定完整的收款銀行帳戶，測試帳號需要有一組才能申請提領。
         TeacherBankAccount.objects.create(
             teacher=self.teacher,
             bank_name='測試銀行',
@@ -847,7 +771,6 @@ class RevenueAndWithdrawalViewTests(BaseFixture):
         self.assertEqual(withdrawal.status, 'completed')
 
     def test_process_withdrawal_ignores_get(self):
-        """一致於其餘會改資料庫的 endpoint：GET 不受 CSRF 保護，不該被拿來核准提領。"""
         withdrawal = WithdrawalRequest.objects.create(
             teacher=self.teacher, amount=self.record.teacher_amount)
         self.client.login(username='admin', password='pw')
@@ -857,9 +780,7 @@ class RevenueAndWithdrawalViewTests(BaseFixture):
         withdrawal.refresh_from_db()
         self.assertEqual(withdrawal.status, 'pending')
 
-
 class WithdrawalNotificationEmailTests(BaseFixture):
-    """管理員核准/拒絕提領時，講師要收到站內通知，有留 email 的話還要收到信。"""
 
     def setUp(self):
         super().setUp()
@@ -898,13 +819,11 @@ class WithdrawalNotificationEmailTests(BaseFixture):
 
     def test_idempotent_complete_does_not_resend_email(self):
         complete_withdrawal(self.withdrawal)
-        complete_withdrawal(self.withdrawal)  # 已是 completed，第二次應該直接返回
+        complete_withdrawal(self.withdrawal)
 
         self.assertEqual(len(mail.outbox), 1)
 
     def test_admin_action_and_custom_view_share_the_same_email_behavior(self):
-        """後台 django admin 的批次動作跟自訂 manage_withdrawals 頁面，
-        都只是呼叫 transitions.complete_withdrawal，寄信行為不該有兩套。"""
         from .admin import WithdrawalRequestAdmin
         from .models import WithdrawalRequest as WR
 
@@ -921,9 +840,7 @@ class WithdrawalNotificationEmailTests(BaseFixture):
         self.assertEqual(self.withdrawal.status, 'completed')
         self.assertEqual(len(mail.outbox), 1)
 
-
 class RevenueAndWithdrawalCsvExportTests(BaseFixture):
-    """收支紀錄／提領紀錄頁面的 CSV 匯出：權限、內容正確性、不能看到別人的資料。"""
 
     def setUp(self):
         super().setUp()
@@ -932,7 +849,6 @@ class RevenueAndWithdrawalCsvExportTests(BaseFixture):
         self.withdrawal = WithdrawalRequest.objects.create(
             teacher=self.teacher, amount=self.record.teacher_amount)
 
-        # 另一位講師的資料：確保匯出不會外洩非本人的收支/提領紀錄。
         self.other_teacher = User.objects.create_user(username='other_teacher', password='pw')
         Profile.objects.create(user=self.other_teacher, role='teacher')
         other_course = Course.objects.create(
@@ -1000,9 +916,6 @@ class RevenueAndWithdrawalCsvExportTests(BaseFixture):
         self.assertNotIn('other_teacher', body)
 
     def test_csv_has_exactly_one_bom_not_one_per_row(self):
-        """漏洞：charset=utf-8-sig 時 HttpResponse 逐次 write() 各自編碼，
-        csv.writer 每 writerow() 一次就多一個 BOM，Excel 開出來每一列都錯位。
-        BOM 只能出現在檔案最開頭一次。"""
         self.client.login(username='teacher', password='pw')
 
         response = self.client.get(reverse('export_my_revenue_csv'))
@@ -1010,5 +923,4 @@ class RevenueAndWithdrawalCsvExportTests(BaseFixture):
         bom = '﻿'.encode('utf-8')
         self.assertEqual(response.content.count(bom), 1)
         self.assertTrue(response.content.startswith(bom))
-        # 表頭緊接在 BOM 後面，中間不該夾著任何多餘的 BOM。
         self.assertTrue(response.content[len(bom):].startswith(b'record_id,'))

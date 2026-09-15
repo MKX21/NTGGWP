@@ -8,7 +8,7 @@
 </style>
 <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
-    <!-- Hero：課程名稱與封面（有介紹影片時顯示影片封面，否則顯示封面圖） -->
+
     <section class="relative rounded-lg overflow-hidden mb-8 min-h-[440px] sm:min-h-[560px] flex items-end">
         {% if course.intro_video_file or course.intro_video_url %}
         <video class="absolute inset-0 w-full h-full object-cover" autoplay muted loop playsinline preload="auto">
@@ -81,7 +81,7 @@
         </div>
 
         {% if course.intro_video_file or course.intro_video_url %}
-        <!-- hero 右側播放鈕（大螢幕）-->
+
         <button type="button" data-intro-open class="hidden md:flex absolute right-10 top-1/2 -translate-y-1/2 flex-col items-center gap-2 text-white/90 hover:text-white group">
             <span class="h-16 w-16 rounded-full bg-black/50 group-hover:bg-electric border-2 border-white/70 group-hover:border-electric flex items-center justify-center text-2xl transition"><i class="fas fa-play"></i></span>
             <span class="text-sm font-medium">觀看介紹片</span>
@@ -91,7 +91,7 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-        <!-- 左：課程資訊 -->
+
         <div class="lg:col-span-2">
             <div class="flex flex-wrap items-center gap-6 mb-8 text-sm">
                 <a href="{% url 'teacher_profile' course.teacher.id %}" class="flex items-center group">
@@ -131,7 +131,7 @@
             </div>
 
             {% if preview_lessons %}
-            <!-- 試看影片展示區 -->
+
             <div class="mb-8">
                 <h2 class="font-grotesk text-tight-head text-xl font-extrabold text-jp-text mb-4">課程試看</h2>
                 <div class="flex gap-4 overflow-x-auto no-scrollbar pb-2">
@@ -151,7 +151,7 @@
             </div>
             {% endif %}
 
-            <!-- Tabs -->
+
             <div class="border-b border-jp-border mb-6">
                 <div class="flex space-x-8 overflow-x-auto no-scrollbar" data-tabs>
                     <button data-tab="intro" class="border-b-2 border-jp-primary py-4 text-jp-primary font-medium whitespace-nowrap">課程介紹</button>
@@ -166,7 +166,7 @@
                 </div>
             </div>
 
-            <!-- Tab: 課程介紹 -->
+
             <div data-panel="intro">
                 <h2 class="font-grotesk text-tight-head text-xl font-extrabold text-jp-text mb-4">課程簡介</h2>
                 <div class="text-jp-text leading-relaxed whitespace-pre-line mb-8">{{ course.description }}</div>
@@ -198,7 +198,7 @@
                 </div>
             </div>
 
-            <!-- Tab: 章節規劃（手風琴摺疊） -->
+
             <div data-panel="curriculum" class="hidden">
                 <h2 class="font-grotesk text-tight-head text-xl font-extrabold text-jp-text mb-4">課程章節</h2>
                 {% if chapters %}
@@ -235,12 +235,12 @@
                 {% else %}<p class="text-jp-muted">目前尚未建立課程章節。</p>{% endif %}
             </div>
 
-            <!-- Tab: 學生評價 -->
+
             <div data-panel="reviews" class="hidden">
                 <h2 class="font-grotesk text-tight-head text-xl font-extrabold text-jp-text mb-4">學生評價</h2>
 
                 {% if rating_distribution %}
-                <!-- Hahow 風格：評分總覽 + 分布長條圖 -->
+
                 <div class="flex flex-col sm:flex-row gap-6 mb-6 p-5 bg-jp-bg rounded-xl border border-jp-border">
                     <div class="text-center sm:text-left shrink-0">
                         <div class="font-grotesk text-5xl font-black text-jp-accent tabular-nums">{{ average_rating }}</div>
@@ -285,7 +285,7 @@
                 {% empty %}<p class="text-jp-muted">目前尚無學生評價。</p>{% endfor %}
             </div>
 
-            <!-- Tab: 課程問答 -->
+
             <div data-panel="qa" class="hidden">
                 <h2 class="font-grotesk text-tight-head text-xl font-extrabold text-jp-text mb-6">問與答（{{ questions|length }}）</h2>
 
@@ -353,7 +353,7 @@
             </div>
 
             {% if can_see_announcements %}
-            <!-- Tab: 課程公告 -->
+
             <div data-panel="announcements" class="hidden">
                 <h2 class="font-grotesk text-tight-head text-xl font-extrabold text-jp-text mb-4">課程公告</h2>
                 {% for a in announcements %}
@@ -367,7 +367,7 @@
             {% endif %}
         </div>
 
-        <!-- 右：購買側欄 -->
+
         <div class="lg:col-span-1">
             <div class="bg-jp-surface rounded-lg p-6 sticky top-24 border border-jp-border">
                 {% if course.image %}
@@ -400,7 +400,7 @@
                     </div>
                     <div class="text-sm text-jp-muted mb-4"><i class="fas fa-user-group mr-1"></i>{{ course.funding_backers_count }} / {{ course.funding_goal }} 人已贊助</div>
 
-                    <!-- 募資倒數 -->
+
                     <div data-funding-countdown data-end="{{ course.funding_end_date|date:'c' }}">
                         <div class="flex items-center gap-1.5 text-rose-600 font-bold text-sm mb-2"><i class="fas fa-clock"></i> 募資倒數</div>
                         <div class="grid grid-cols-4 gap-2 text-center">
@@ -472,7 +472,7 @@
                     <p><i class="fas fa-shield-halved mr-2 text-jp-primary"></i> 7 天不滿意退款保障</p>
                 </div>
 
-                <!-- 分享按鈕（Hahow 風格） -->
+
                 <div class="mt-6 pt-5 border-t border-jp-border">
                     <p class="text-xs text-jp-muted font-medium mb-3">分享這堂課</p>
                     <div class="flex gap-2">
@@ -495,7 +495,7 @@
 </main>
 
 {% if course.intro_video_file or course.intro_video_url %}
-<!-- 課程介紹影片放大 modal -->
+
 <div data-intro-modal class="hidden fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
   <div class="relative w-full max-w-4xl">
     <button data-intro-close class="absolute -top-10 right-0 text-white/80 hover:text-white text-2xl" aria-label="關閉"><i class="fas fa-times"></i></button>
@@ -510,7 +510,7 @@
 {% endif %}
 
 {% if related_courses %}
-<!-- 你可能也會喜歡（Hahow 風格推薦） -->
+
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
     <h2 class="font-grotesk text-tight-head text-2xl font-extrabold text-jp-text mb-5">你可能也會喜歡</h2>
     <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -541,7 +541,7 @@
 {% endif %}
 
 {% if already_purchased or is_course_teacher or user.is_superuser %}
-<!-- AI 課程助教（浮動視窗） -->
+
 <div class="fixed bottom-6 right-6 z-40" data-ai-assistant>
   <button data-ai-toggle class="relative flex items-center gap-2 h-14 pl-4 pr-5 rounded-full bg-jp-primary hover:bg-jp-primaryHover text-white shadow-lg transition" aria-label="AI 課程助教，點我提問">
     <span class="absolute inset-0 rounded-full bg-jp-primary animate-ping opacity-40 pointer-events-none" data-ai-ping></span>
@@ -591,7 +591,6 @@ document.querySelectorAll('[data-tabs] [data-tab]').forEach((btn) => {
     });
 });
 
-// 章節手風琴：預設展開第一章，其餘收合，點擊標題個別切換
 document.querySelectorAll('[data-accordion]').forEach((accordion) => {
     const items = accordion.querySelectorAll('[data-accordion-item]');
     items.forEach((item, idx) => {
@@ -609,7 +608,6 @@ document.querySelectorAll('[data-accordion]').forEach((accordion) => {
     });
 });
 
-// 募資倒數（天 時 分 秒，每秒更新，數字變動有跳動動畫；支援頁面多個倒數區）
 document.querySelectorAll('[data-funding-countdown]').forEach((root) => {
     const end = new Date(root.dataset.end);
     if (isNaN(end)) return;
@@ -646,7 +644,6 @@ document.querySelectorAll('[data-funding-countdown]').forEach((root) => {
     const timer = setInterval(tick, 1000);
 });
 
-// 課程介紹影片放大 modal
 (function () {
     const modal = document.querySelector('[data-intro-modal]');
     if (!modal) return;
@@ -659,7 +656,6 @@ document.querySelectorAll('[data-funding-countdown]').forEach((root) => {
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
 })();
 
-// AI 課程助教
 (function () {
     const root = document.querySelector('[data-ai-assistant]');
     if (!root) return;
@@ -679,10 +675,8 @@ document.querySelectorAll('[data-funding-countdown]').forEach((root) => {
     const COURSE_FAQS = courseFaqEl ? JSON.parse(courseFaqEl.textContent) : [];
     const ALL_FAQS = FAQS.concat(COURSE_FAQS);
 
-    // 多輪對話：保留對話歷史
     const chatHistory = [];
 
-    // 動態渲染課程專屬 FAQ 按鈕（如果有的話）
     const faqBar = root.querySelector('[data-ai-faq]');
     if (faqBar && COURSE_FAQS.length > 0) {
         COURSE_FAQS.forEach((faq) => {
@@ -707,7 +701,6 @@ document.querySelectorAll('[data-funding-countdown]').forEach((root) => {
     });
     root.querySelector('[data-ai-close]').addEventListener('click', () => panel.classList.add('hidden'));
 
-    // 常見問題快速按鈕：直接用本機資料顯示問答，完全不打 API、不消耗額度。
     root.querySelectorAll('[data-ai-faq] [data-faq-id]').forEach((btn) => {
         btn.addEventListener('click', () => {
             const faq = ALL_FAQS.find((f) => f.id === btn.dataset.faqId);
@@ -795,7 +788,6 @@ document.querySelectorAll('[data-funding-countdown]').forEach((root) => {
         sendQuestion(input.value.trim());
     });
 
-    // 複製連結按鈕
     var copyBtn = document.querySelector('[data-copy-url]');
     if (copyBtn) {
         copyBtn.addEventListener('click', function () {

@@ -33,7 +33,7 @@
     </div>
   </div>
 
-  <!-- 連續學習 streak -->
+
   <div class="bg-gradient-to-br from-orange-500 to-rose-500 rounded-2xl shadow-sm p-8 mt-6 text-white">
     <div class="flex items-center justify-between flex-wrap gap-4">
       <div>
@@ -51,7 +51,7 @@
     </div>
   </div>
 
-  <!-- 成就徽章 -->
+
   <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8 mt-6">
     <h2 class="text-xl font-black text-slate-900 mb-5">成就徽章</h2>
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -73,7 +73,7 @@
     </div>
   </div>
 
-  <!-- 學習日曆熱力圖 -->
+
   <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8 mt-6">
     <h2 class="text-xl font-black text-slate-900 mb-2">學習日曆</h2>
     <p class="text-slate-500 text-sm mb-4">過去一年的每日學習紀錄，顏色越深代表學習時間越長。</p>
@@ -105,15 +105,12 @@
   var ROWS = 7; // Mon-Sun
   var DAY_LABELS = ['', '一', '', '三', '', '五', ''];
 
-  // 算出起始日（去年今天往前推到那一週的週一）
   var today = new Date('{{ heatmap_today }}');
   var startDate = new Date('{{ heatmap_year_ago }}');
-  // 調整到週一開始
   var startDay = startDate.getDay();
   var mondayOffset = (startDay === 0) ? -6 : 1 - startDay;
   startDate.setDate(startDate.getDate() + mondayOffset);
 
-  // 計算所有天
   var days = [];
   var d = new Date(startDate);
   while (d <= today) {
@@ -126,7 +123,6 @@
   var svgW = LABEL_W + WEEKS * STEP;
   var svgH = ROWS * STEP + 20; // extra for month labels
 
-  // 色階
   function color(mins) {
     if (!mins || mins <= 0) return '#1b2130';
     if (mins < 10) return '#065f46';
@@ -137,14 +133,12 @@
 
   var svg = '<svg width="' + svgW + '" height="' + svgH + '" xmlns="http://www.w3.org/2000/svg">';
 
-  // 星期標籤
   for (var r = 0; r < ROWS; r++) {
     if (DAY_LABELS[r]) {
       svg += '<text x="0" y="' + (20 + r * STEP + CELL - 2) + '" fill="#aab2c7" font-size="10" font-family="sans-serif">' + DAY_LABELS[r] + '</text>';
     }
   }
 
-  // 月份標籤追蹤
   var lastMonth = -1;
   var MONTHS = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
 
@@ -157,7 +151,6 @@
     var x = LABEL_W + col * STEP;
     var y = 20 + row * STEP;
 
-    // 月份標籤
     if (row === 0 && date.getMonth() !== lastMonth && date.getDate() <= 7) {
       lastMonth = date.getMonth();
       svg += '<text x="' + x + '" y="12" fill="#aab2c7" font-size="10" font-family="sans-serif">' + MONTHS[date.getMonth()] + '</text>';

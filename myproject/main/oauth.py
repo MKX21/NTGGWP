@@ -1,4 +1,3 @@
-"""Google / LINE 快速登入（OAuth 2.0）用的授權網址組合與 code 交換工具。"""
 import re
 import secrets
 
@@ -17,20 +16,16 @@ LINE_AUTH_URL = 'https://access.line.me/oauth2/v2.1/authorize'
 LINE_TOKEN_URL = 'https://api.line.me/oauth2/v2.1/token'
 LINE_VERIFY_URL = 'https://api.line.me/oauth2/v2.1/verify'
 
-OAUTH_TIMEOUT = 10  # 秒
-
+OAUTH_TIMEOUT = 10
 
 class OAuthError(Exception):
-    """交換 code 或取得使用者資料失敗時拋出，callback view 會導回登入頁並顯示錯誤。"""
-
+    pass
 
 def new_state():
     return secrets.token_urlsafe(24)
 
-
 def _callback_uri(request, view_name):
     return request.build_absolute_uri(reverse(view_name))
-
 
 def build_google_auth_url(request, state):
     params = {
@@ -44,9 +39,7 @@ def build_google_auth_url(request, state):
     query = '&'.join(f'{k}={requests.utils.quote(str(v))}' for k, v in params.items())
     return f'{GOOGLE_AUTH_URL}?{query}'
 
-
 def fetch_google_profile(request, code):
-    """用 authorization code 換 access token，再取得 sub/email/name。回傳 (provider_id, email, name)。"""
     token_resp = requests.post(GOOGLE_TOKEN_URL, data={
         'client_id': settings.GOOGLE_OAUTH_CLIENT_ID,
         'client_secret': settings.GOOGLE_OAUTH_CLIENT_SECRET,
@@ -76,7 +69,6 @@ def fetch_google_profile(request, code):
 
     return provider_id, info.get('email') or '', info.get('name') or ''
 
-
 def build_line_auth_url(request, state):
     params = {
         'response_type': 'code',
@@ -88,9 +80,7 @@ def build_line_auth_url(request, state):
     query = '&'.join(f'{k}={requests.utils.quote(str(v))}' for k, v in params.items())
     return f'{LINE_AUTH_URL}?{query}'
 
-
 def fetch_line_profile(request, code):
-    """用 code 換 token，並透過 LINE 的 verify 端點解出 id_token 內的 sub/email/name。"""
     token_resp = requests.post(LINE_TOKEN_URL, data={
         'grant_type': 'authorization_code',
         'code': code,
@@ -119,7 +109,6 @@ def fetch_line_profile(request, code):
 
     return provider_id, claims.get('email') or '', claims.get('name') or ''
 
-
 def _unique_username(base):
     base = re.sub(r'[^\w.@+-]', '', base) or 'user'
     base = base[:120]
@@ -130,9 +119,7 @@ def _unique_username(base):
         username = f'{base}{suffix}'
     return username
 
-
 def get_or_create_user(provider, provider_id, email, display_name):
-    """依 provider_id 找回帳號；找不到再用 email 綁定既有帳號；都沒有就建立新的學生帳號。"""
     field = f'{provider}_id'
 
     profile = Profile.objects.filter(**{field: provider_id}).select_related('user').first()

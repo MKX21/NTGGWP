@@ -5,7 +5,7 @@
 <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
-    <!-- 播放器 -->
+
     <div class="lg:col-span-2">
       <div class="bg-white rounded-2xl overflow-hidden ring-1 ring-slate-100 shadow-sm">
         <div class="video-box bg-black aspect-video flex items-center justify-center">
@@ -28,7 +28,7 @@
           <div class="text-slate-500 mb-4">影片長度 {{ lesson.duration_minutes }} 分鐘{% if lesson.is_free_preview %} ・ <span class="text-green-600 font-medium">免費試看</span>{% endif %}</div>
           {% if lesson.content %}<div class="text-slate-700 leading-relaxed whitespace-pre-line">{{ lesson.content }}</div>{% endif %}
 
-          <!-- 播放速度控制 -->
+
           <div class="mt-4 flex items-center gap-2 flex-wrap" id="speedControls" style="display:none;">
             <span class="text-sm text-slate-400 mr-1"><i class="fas fa-gauge-high"></i> 播放速度</span>
             <button type="button" data-speed="0.5" class="speed-btn text-xs px-2.5 py-1 rounded-lg border border-slate-200 text-slate-500 hover:border-brand-300 hover:text-jp-primary transition">0.5x</button>
@@ -72,7 +72,7 @@
             <a href="{% url 'course_detail' course.id %}" class="ml-auto text-jp-primary hover:underline font-medium text-sm">回課程頁</a>
           </div>
 
-          <!-- 上一堂 / 下一堂 -->
+
           <div class="mt-4 flex items-center gap-3">
             {% if prev_lesson_id %}
             <a href="{% url 'watch_lesson' prev_lesson_id %}" class="flex-1 flex items-center justify-center gap-2 border border-slate-200 hover:border-brand-300 text-slate-600 hover:text-jp-primary rounded-lg py-2.5 font-medium text-sm transition"><i class="fas fa-chevron-left"></i> 上一堂</a>
@@ -92,7 +92,7 @@
       </div>
     </div>
 
-    <!-- 側欄課綱 -->
+
     <aside>
       <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-5 lg:sticky lg:top-24 max-h-[calc(100vh-120px)] overflow-y-auto no-scrollbar">
         <h2 class="text-lg font-black text-slate-900 mb-2">課程內容</h2>
@@ -205,7 +205,6 @@
     });
     window.addEventListener("pagehide", flush);
 
-    // ===== 播放速度控制 =====
     var speedCtrl = document.getElementById("speedControls");
     if (speedCtrl) speedCtrl.style.display = "";
     var speedBtns = document.querySelectorAll(".speed-btn");
@@ -221,9 +220,7 @@
       });
     });
 
-    // ===== 鍵盤快捷鍵 =====
     document.addEventListener("keydown", function (e) {
-      // 如果焦點在輸入框，不攔截
       if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable) return;
       switch (e.key) {
         case " ":
@@ -259,7 +256,6 @@
       }
     });
 
-    // ===== 影片結束自動跳轉下一堂（Hahow / Udemy 風格） =====
     {% if next_lesson_id %}
     var nextUrl = "{% url 'watch_lesson' next_lesson_id %}";
     var autoTimer = null;

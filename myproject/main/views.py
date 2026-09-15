@@ -103,7 +103,6 @@ from .transitions import (
     reject_withdrawal,
 )
 
-
 def home(request):
     sort = request.GET.get('sort', 'newest')
     q = request.GET.get('q', '').strip()
@@ -134,11 +133,9 @@ def home(request):
     paginator = Paginator(qs, 8)
     page_obj = paginator.get_page(request.GET.get('page'))
 
-    # 評分：一次查完本頁所有課程，避免每堂課各發一次查詢（遠端 DB 的 N+1 效能殺手）
     _attach_reviews(page_obj.object_list)
 
     categories = list(CourseCategory.objects.order_by('name'))
-    # 依分類名稱配對應圖示（找不到關鍵字就用預設資料夾）
     _CATEGORY_ICONS = {
         '個人成長': 'fa-seedling', '商業管理': 'fa-briefcase', '學術教育': 'fa-graduation-cap',
         '影視製作': 'fa-film', '手作生活': 'fa-palette', '攝影剪輯': 'fa-camera',
@@ -168,7 +165,6 @@ def home(request):
         base_pub.annotate(sc=Count('enrollment', distinct=True)).order_by('-sc', '-created_at')[:10]
     )
     latest_courses = _decorate(base_pub.order_by('-created_at')[:10])
-    # 首頁最上面大輪播：隨機挑幾門,每次進來順序不同
     hero_courses = _decorate(base_pub.order_by('?')[:6])
 
     now = timezone.now()
@@ -180,9 +176,6 @@ def home(request):
         ).order_by('funding_end_date')[:10]
     )
 
-    # 首頁「課程牆」3D 展示區：五欄各 8 張課程封面圖，各欄用不同起始位移
-    # 取值，避免每欄畫面一模一樣。圖片數不足時允許重複，只有完全沒有
-    # 課程封面圖時才整個區塊不顯示（模板用 {% if showcase_columns %} 判斷）。
     showcase_columns = []
     showcase_image_urls = [c.image.url for c in base_pub.exclude(image='') if c.image]
     if showcase_image_urls:
@@ -196,7 +189,6 @@ def home(request):
 
     from . import ai_assistant
 
-    # 「繼續學習」：已購課但尚未完成的課程（Hahow 首頁核心功能）
     continue_learning = []
     if request.user.is_authenticated:
         enrolled_courses = Course.objects.filter(
@@ -211,7 +203,6 @@ def home(request):
             ).count()
             ec_pct = round(ec_done / ec_total * 100) if ec_total else 0
             if ec_pct < 100:
-                # 找出下一個未完成的單元
                 completed_ids = set(
                     LessonProgress.objects.filter(
                         user=request.user, lesson__chapter__course=ec, is_completed=True,
@@ -228,7 +219,6 @@ def home(request):
                     'next_lesson': next_lesson,
                 })
 
-    # 主題精選區：每個有課程的分類取最多 4 門熱門課
     theme_sections = []
     for category in CourseCategory.objects.order_by('name'):
         cat_courses = list(
@@ -266,17 +256,7 @@ def home(request):
         ],
     })
 
-
 def _course_stats_annotations():
-    """課程統計（購課數／觀看分鐘／營收／平均評分）的子查詢。
-
-    為什麼用 Subquery 而不是四個 annotate：那些統計各自來自不同的 to-many
-    關聯，一起 annotate 會在 JOIN 後產生笛卡爾積，Sum 與 Avg 會被重複計算
-    放大。Subquery 各算各的，且整批課程只發一次查詢。
-
-    取代的是「每門課各發四次查詢」的迴圈 —— 在跨網路的共用資料庫上，
-    5 門課要 21 次往返、約 2.8 秒。
-    """
     def _for(qs, expr, alias):
         return qs.filter(course=OuterRef('pk')).values('course').annotate(
             **{alias: expr}
@@ -296,16 +276,7 @@ def _course_stats_annotations():
             _for(Review.objects.all(), Avg('rating'), 'a'), output_field=FloatField()),
     }
 
-
 def _visible_course_or_404(request, course_id):
-    """取課程。未上架的只有講師本人、管理員、已購課者看得到。
-
-    回傳 (course, is_preview)。is_preview=True 表示這是未上架課程的預覽 ——
-    畫面要標示審核狀態，購買入口一律關閉（見 _purchasable_course_or_404）。
-
-    已購課者也放行，是因為課程可能在購買後才被下架；讓付過錢的人吃 404
-    等於沒收他買到的東西。
-    """
     course = get_object_or_404(Course, id=course_id)
     if course.is_published:
         return course, False
@@ -321,14 +292,11 @@ def _visible_course_or_404(request, course_id):
 
     return course, True
 
-
 def _purchasable_course_or_404(request, course_id):
-    """取可購買的課程。未上架者一律不可購買 —— 講師與管理員也不行。"""
     course, is_preview = _visible_course_or_404(request, course_id)
     if is_preview:
         raise Http404('課程尚未上架，無法購買')
     return course
-
 
 def course_detail(request, course_id):
     course, is_preview = _visible_course_or_404(request, course_id)
@@ -395,7 +363,6 @@ def course_detail(request, course_id):
 
     review_count = reviews.count()
 
-    # 評分分布 (Hahow style 5★→1★ 長條圖)
     rating_distribution = []
     if review_count > 0:
         from django.db.models import Count as _RCount
@@ -410,21 +377,18 @@ def course_detail(request, course_id):
             pct = round(n / review_count * 100) if review_count else 0
             rating_distribution.append({'star': star, 'count': n, 'pct': pct})
 
-    # A7：課程問答
     questions = CourseQuestion.objects.filter(
         course=course
     ).select_related('user').prefetch_related('answers__user').order_by('-created_at')
 
     is_course_teacher = request.user.is_authenticated and course.teacher_id == request.user.id
 
-    # 課程統計（銷售頁用）
     total_lessons = CourseLesson.objects.filter(chapter__course=course).count()
     total_minutes = CourseLesson.objects.filter(chapter__course=course).aggregate(
         total=Sum('duration_minutes')
     )['total'] or 0
     student_count = Enrollment.objects.filter(course=course).count()
 
-    # 課程完成率：已完成所有單元的學生 / 總購買學生
     completion_rate = None
     if student_count > 0 and total_lessons > 0:
         from django.db.models import Count as _Count
@@ -439,7 +403,6 @@ def course_detail(request, course_id):
         ).filter(done__gte=total_lessons).count()
         completion_rate = round(completed_students / student_count * 100)
 
-    # 推薦相關課程（Hahow 的「你可能也會喜歡」）
     related_courses = Course.objects.filter(
         is_published=True,
     ).exclude(id=course.id)
@@ -480,14 +443,11 @@ def course_detail(request, course_id):
         'is_preview': is_preview,
     })
 
-
 def register(request):
     if request.method == 'POST':
         form = RegisterForm(request.POST)
 
         if form.is_valid():
-            # 註冊一律建成學生；教師權限只由 Admin 後台賦予（設 is_teacher）。
-            # 用交易包住，避免 Profile 建失敗時留下沒有 Profile 的殘帳號。
             with transaction.atomic():
                 user = User.objects.create_user(
                     username=form.cleaned_data['username'],
@@ -504,10 +464,8 @@ def register(request):
         'form': form
     })
 
-
 def register_success(request):
     return render(request, 'main/register_success.html')
-
 
 def login_view(request):
     error_message = None
@@ -555,14 +513,12 @@ def login_view(request):
 
     return render(request, 'main/login.html', {
         'error_message': error_message,
-        'force_home_nav': True,   # 登入頁用深色玻璃版面，導覽列也走深色
+        'force_home_nav': True,
     })
-
 
 def logout_view(request):
     logout(request)
     return redirect('home')
-
 
 @login_required
 def profile_view(request):
@@ -587,7 +543,6 @@ def profile_view(request):
         'purchased_count': purchased_count,
     })
 
-
 @login_required
 def edit_profile(request):
     try:
@@ -608,7 +563,6 @@ def edit_profile(request):
         'profile': profile,
     })
 
-
 @require_student
 def student_dashboard(request):
     total_minutes = LearningRecord.objects.filter(
@@ -621,12 +575,10 @@ def student_dashboard(request):
         student=request.user
     ).count()
 
-    # 遊戲化：連續學習天數與徽章（進入頁面時懶惰結算）
     from . import gamification
     gamification.evaluate_badges(request.user)
     badges = gamification.badge_progress(request.user)
 
-    # 學習日曆熱力圖：最近 365 天每天的學習分鐘數
     import datetime
     today = datetime.date.today()
     year_ago = today - datetime.timedelta(days=364)
@@ -641,7 +593,6 @@ def student_dashboard(request):
         .order_by('day')
     )
     heatmap_data = {str(r['day']): r['mins'] for r in daily_records}
-    # 產生完整 365 天清單（前端渲染用）
     import json as _json
     heatmap_json = _json.dumps(heatmap_data)
 
@@ -657,10 +608,8 @@ def student_dashboard(request):
         'heatmap_today': today.isoformat(),
     })
 
-
 @require_teacher
 def teacher_dashboard(request):
-    # 一次查完所有統計，不再逐課發四次查詢（見 _course_stats_annotations）
     teacher_courses = Course.objects.filter(
         teacher=request.user
     ).select_related('category').annotate(**_course_stats_annotations())
@@ -679,7 +628,6 @@ def teacher_dashboard(request):
     return render(request, 'main/teacher_dashboard.html', {
         'course_data': course_data
     })
-
 
 @require_teacher
 def submit_marketing_request(request):
@@ -713,7 +661,6 @@ def submit_marketing_request(request):
 
     return render(request, 'main/marketing_request_form.html', {'form': form})
 
-
 @require_teacher
 def marketing_requests(request):
 
@@ -725,10 +672,8 @@ def marketing_requests(request):
     )
     return render(request, 'main/marketing_requests.html', {'marketing_requests': requests})
 
-
 @login_required
 def marketing_plan_detail(request, request_id):
-    """教師查看已核准的行銷企劃。"""
     try:
         profile = request.user.profile
         if profile.role != 'teacher' and not profile.is_teacher:
@@ -752,10 +697,8 @@ def marketing_plan_detail(request, request_id):
         'plan': plan,
     })
 
-
 @login_required
 def cancel_marketing_request(request, request_id):
-    """教師取消待處理的行銷申請。"""
     try:
         profile = request.user.profile
         if profile.role != 'teacher' and not profile.is_teacher:
@@ -782,10 +725,8 @@ def cancel_marketing_request(request, request_id):
 
     return redirect('marketing_requests')
 
-
 @login_required
 def request_vm_access(request):
-    """學生申請 Mac 用虛擬機：只能挑自己實際購買過的課程。"""
     has_purchase = Enrollment.objects.filter(student=request.user).exists()
     if not has_purchase:
         return render(request, 'main/vm_request_form.html', {
@@ -813,15 +754,12 @@ def request_vm_access(request):
 
     return render(request, 'main/vm_request_form.html', {'form': form})
 
-
 @login_required
 def my_vm_requests(request):
-    """學生查看自己的虛擬機申請與核發資訊。"""
     vm_requests = VMAccessRequest.objects.filter(
         student=request.user
     ).select_related('course').order_by('-created_at')
     return render(request, 'main/vm_requests.html', {'vm_requests': vm_requests})
-
 
 @login_required
 def my_courses(request):
@@ -830,7 +768,6 @@ def my_courses(request):
     except Profile.DoesNotExist:
         return redirect('home')
 
-    # 觀看分鐘與課程總長用子查詢一次算完，不再逐筆發查詢
     enrollments = list(
         Enrollment.objects.filter(student=request.user)
         .select_related('course', 'course__teacher', 'course__category')
@@ -853,8 +790,6 @@ def my_courses(request):
         )
     )
 
-    # 退款整合進我的課程：訂單與退款狀態各用一次查詢批次取回，
-    # 依 id 遞增覆蓋 → 每門課留下的就是最新一筆。
     course_ids = [e.course_id for e in enrollments]
     orders_by_course = {
         o.course_id: o
@@ -889,7 +824,6 @@ def my_courses(request):
         'total_minutes': total_minutes,
     })
 
-
 @login_required
 def checkout(request, course_id):
     course = _purchasable_course_or_404(request, course_id)
@@ -910,11 +844,8 @@ def checkout(request, course_id):
     action = request.POST.get('action', 'buy') if request.method == 'POST' else ''
     selected_code = request.POST.get('coupon_code', '').strip() if request.method == 'POST' else ''
 
-    # 定價與下單一律走 checkout module：單課只是「只有一項的購物籃」，
-    # 因此和購物車結帳算出完全相同的價格（含促銷）。詞彙見 CONTEXT.md。
     quote = quote_basket(request.user, [course], selected_code)
     if quote.is_empty:
-        # 上面的已購課檢查與這裡之間有購買發生（並行送出兩次表單）
         return redirect('course_detail', course_id=course.id)
 
     error_message = quote.coupon_error
@@ -922,13 +853,10 @@ def checkout(request, course_id):
         f'優惠券已套用，折抵 NT$ {quote.coupon_total}。' if quote.coupon_total > 0 else None
     )
 
-    # 只有按「確認購買」且沒有錯誤時才成立「待付款」訂單，導向付款頁；
-    # 按「套用優惠券」只重新整理頁面顯示折扣預覽。付款完成後才會開通課程。
     if action == 'buy' and not error_message:
         order = place_order(request.user, quote)
         return redirect('payment', order_id=order.id)
 
-    # A4：帶出使用者可用的優惠券供選擇
     now = timezone.now()
     my_coupons = UserCoupon.objects.filter(
         user=request.user, status='unused'
@@ -952,7 +880,6 @@ def checkout(request, course_id):
         'selected_code': selected_code,
     })
 
-
 @login_required
 def order_success(request, order_id):
     order = get_object_or_404(
@@ -961,14 +888,12 @@ def order_success(request, order_id):
         user=request.user
     )
 
-    # 未付款完成的訂單導回付款頁
     if order.status != 'paid':
         return redirect('payment', order_id=order.id)
 
     payment_obj = order.payments.order_by('-id').first()
     items = order.items.select_related('course', 'course__teacher', 'course__teacher__profile').all()
 
-    # 推薦更多課程：同分類中使用者尚未購買的熱門課程
     purchased_ids = set(Enrollment.objects.filter(student=request.user).values_list('course_id', flat=True))
     cat_ids = [i.course.category_id for i in items if i.course.category_id]
     recommended_courses = (
@@ -986,11 +911,9 @@ def order_success(request, order_id):
         'recommended_courses': recommended_courses,
     })
 
-
 @login_required
 def buy_course(request, course_id):
     return redirect('checkout', course_id=course_id)
-
 
 @login_required
 def purchase_success(request, course_id):
@@ -999,7 +922,6 @@ def purchase_success(request, course_id):
     return render(request, 'main/purchase_success.html', {
         'course': course
     })
-
 
 @login_required
 def watch_course(request, course_id):
@@ -1013,7 +935,6 @@ def watch_course(request, course_id):
     if not has_purchased and course.teacher_id != request.user.id:
         return redirect('course_detail', course_id=course.id)
 
-    # 導向課程第一個單元的播放頁
     first_lesson = CourseLesson.objects.filter(
         chapter__course=course
     ).order_by('chapter__sort_order', 'sort_order').first()
@@ -1022,7 +943,6 @@ def watch_course(request, course_id):
         return redirect('watch_lesson', lesson_id=first_lesson.id)
 
     return redirect('course_detail', course_id=course.id)
-
 
 @login_required
 def watch_lesson(request, lesson_id):
@@ -1034,11 +954,9 @@ def watch_lesson(request, lesson_id):
     enrolled = Enrollment.objects.filter(student=request.user, course=course).exists()
     is_teacher = course.teacher_id == request.user.id
 
-    # 免費試看單元任何登入者可看；其餘需購買或為講師
     if not (enrolled or is_teacher or lesson.is_free_preview):
         return redirect('course_detail', course_id=course.id)
 
-    # 側欄：所有章節/單元 + 完成狀態
     chapters = course.chapters.prefetch_related('lessons').all()
     completed_ids = set(
         LearningRecord.objects.filter(user=request.user, course=course)
@@ -1051,16 +969,13 @@ def watch_lesson(request, lesson_id):
 
     is_completed = lesson.id in completed_ids
 
-    # 本單元的累積進度與續看位置
     prog = LessonProgress.objects.filter(user=request.user, lesson=lesson).first()
     lesson_percent = prog.percent() if prog else 0
     resume_position = 0
     if prog:
-        # 尚未看到接近結尾才續看，否則從頭
         if prog.duration and prog.last_position < prog.duration - 3:
             resume_position = prog.last_position
 
-    # 上一堂 / 下一堂（所有已排序單元的列表，找出當前位置）
     all_lessons = list(
         CourseLesson.objects.filter(chapter__course=course)
         .order_by('chapter__sort_order', 'sort_order')
@@ -1087,10 +1002,8 @@ def watch_lesson(request, lesson_id):
         'next_lesson_id': next_lesson_id,
     })
 
-
 @login_required
 def save_progress(request, lesson_id):
-    """AJAX：累積觀看秒數 + 記錄續看位置；達 60% 自動標記完成。"""
     if request.method != 'POST':
         return JsonResponse({'ok': False}, status=405)
 
@@ -1121,7 +1034,6 @@ def save_progress(request, lesson_id):
     if duration > 0:
         prog.duration = duration
 
-    # 合併新看過的秒數進 bitmap（快轉跳過的秒不會被加入）
     n = max(len(prog.watched_map), prog.duration, (max(new_secs) + 1 if new_secs else 0))
     bitmap = list(prog.watched_map.ljust(n, '0'))
     for s in new_secs:
@@ -1152,7 +1064,6 @@ def save_progress(request, lesson_id):
         'completed': prog.is_completed,
     })
 
-
 @require_teacher
 def create_course(request):
 
@@ -1162,7 +1073,7 @@ def create_course(request):
         if form.is_valid():
             course = form.save(commit=False)
             course.teacher = request.user
-            course.is_published = False  # A8：送審前不上架
+            course.is_published = False
             course.save()
 
             CourseAudit.objects.create(course=course, status='pending')
@@ -1182,12 +1093,7 @@ def create_course(request):
         'form': form
     })
 
-
 def _notify_promotion_changes(course, old_discount, old_is_crowdfunding, old_early_bird):
-    """課程促銷有新變動時通知講師的追蹤者。
-
-    觸發條件：新設/調降折扣價、首次開啟募資、或新設早鳥價。
-    """
     from .notifications import notify_followers
 
     messages = []
@@ -1206,7 +1112,6 @@ def _notify_promotion_changes(course, old_discount, old_is_crowdfunding, old_ear
             + '、'.join(messages) + '，把握機會！'
         )
 
-
 @require_teacher
 def edit_course(request, course_id):
 
@@ -1217,7 +1122,6 @@ def edit_course(request, course_id):
     )
 
     if request.method == 'POST':
-        # 記下舊的促銷狀態，存檔後用來判斷是否要通知追蹤者
         old_discount = course.discount_price
         old_is_crowdfunding = course.is_crowdfunding
         old_early_bird = course.early_bird_price
@@ -1245,7 +1149,6 @@ def edit_course(request, course_id):
         'course': course
     })
 
-
 @require_teacher
 def delete_course(request, course_id):
 
@@ -1262,7 +1165,6 @@ def delete_course(request, course_id):
     return render(request, 'main/delete_course.html', {
         'course': course
     })
-
 
 @login_required
 def student_analytics(request):
@@ -1309,7 +1211,6 @@ def student_analytics(request):
         'recent_records': recent_records,
     })
 
-
 @login_required
 def teacher_analytics(request):
     try:
@@ -1319,7 +1220,6 @@ def teacher_analytics(request):
     except Profile.DoesNotExist:
         return redirect('home')
 
-    # 逐課統計一次查完（見 _course_stats_annotations）
     teacher_courses = Course.objects.filter(
         teacher=request.user
     ).annotate(**_course_stats_annotations())
@@ -1392,7 +1292,6 @@ def export_data_page(request):
         'export_groups': export_groups,
     })
 
-
 @login_required
 def platform_analytics(request):
     if not request.user.is_superuser:
@@ -1411,7 +1310,6 @@ def platform_analytics(request):
     pending_audits = CourseAudit.objects.filter(status='pending').count()
     total_discount = CouponUsage.objects.aggregate(s=Sum('discount_amount'))['s'] or 0
 
-    # 近 30 天營收趨勢
     since = timezone.now() - timezone.timedelta(days=29)
     daily = (
         paid_orders.filter(created_at__gte=since)
@@ -1428,7 +1326,6 @@ def platform_analytics(request):
         revenue_labels.append(day.strftime('%m/%d'))
         revenue_series.append(daily_map.get(day, 0))
 
-    # 熱銷課程 Top 5（依訂單明細原價加總，涵蓋單課與購物車多課訂單）
     top_courses = (
         OrderItem.objects.filter(order__status='paid')
         .values('course__title')
@@ -1438,7 +1335,6 @@ def platform_analytics(request):
     top_course_labels = [t['course__title'] or '（課程已刪除）' for t in top_courses]
     top_course_revenue = [t['gross'] for t in top_courses]
 
-    # 課程分類分布
     cat_dist = (
         Course.objects.filter(is_published=True)
         .values('category__name')
@@ -1448,7 +1344,6 @@ def platform_analytics(request):
     cat_labels = [c['category__name'] or '未分類' for c in cat_dist]
     cat_counts = [c['n'] for c in cat_dist]
 
-    # 付款方式分布
     method_dist = (
         Payment.objects.filter(status='paid')
         .values('method')
@@ -1459,7 +1354,6 @@ def platform_analytics(request):
     method_labels = [method_display.get(m['method'], m['method']) for m in method_dist]
     method_counts = [m['n'] for m in method_dist]
 
-    # 訂單狀態分布
     status_dist = Order.objects.values('status').annotate(n=Count('id')).order_by('-n')
     status_display = dict(Order.STATUS_CHOICES)
     status_labels = [status_display.get(s['status'], s['status']) for s in status_dist]
@@ -1486,22 +1380,11 @@ def platform_analytics(request):
         'status_counts_json': status_counts,
     })
 
-
 def create_csv_response(filename):
-    """\u5efa\u7acb\u5e36 UTF-8 BOM \u7684 CSV response\uff0cExcel/LibreOffice \u958b\u555f\u6642\u6703\u81ea\u52d5\u5224\u65b7\u7de8\u78bc\u3001
-    \u4e0d\u8df3\u51fa\u532f\u5165\u7cbe\u9748\uff0c\u4e2d\u6587\u4e5f\u4e0d\u6703\u4e82\u78bc\u3002
-
-    \u9019\u88e1\u523b\u610f\u628a charset \u8a2d\u70ba utf-8\uff08\u4e0d\u662f utf-8-sig\uff09\u518d\u624b\u52d5\u5beb\u4e00\u6b21 BOM \u2014\u2014 HttpResponse
-    \u662f\u9010\u6b21 write() \u500b\u5225\u7de8\u78bc\uff08\u4e0d\u662f\u7528\u540c\u4e00\u689d\u4e32\u6d41\u7d2f\u52a0\uff09\uff0c\u82e5 charset \u8a2d\u6210 utf-8-sig\uff0c
-    \u4e4b\u5f8c csv.writer \u6bcf\u547c\u53eb\u4e00\u6b21 writerow() \u90fd\u6703\u5404\u81ea\u88ab\u52a0\u4e0a\u4e00\u500b BOM\uff0c
-    \u6574\u4efd CSV \u6bcf\u4e00\u884c\u524d\u9762\u90fd\u6703\u591a\u51fa\u4e00\u500b\u770b\u4e0d\u898b\u7684 BOM \u5b57\u5143\uff0cExcel \u958b\u51fa\u4f86\u6bcf\u4e00\u5217\u90fd\u6703\u932f\u4f4d\u3002
-    BOM \u53ea\u9700\u8981\u51fa\u73fe\u5728\u6a94\u6848\u6700\u958b\u982d\u4e00\u6b21\uff0c\u6240\u4ee5\u6539\u6210\u624b\u52d5\u53ea\u5beb\u4e00\u6b21\u3002
-    """
     response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     response.write('\ufeff')
     return response
-
 
 @login_required
 def export_courses_csv(request):
@@ -1545,7 +1428,6 @@ def export_courses_csv(request):
 
     return response
 
-
 @login_required
 def export_enrollments_csv(request):
     if not request.user.is_superuser:
@@ -1582,7 +1464,6 @@ def export_enrollments_csv(request):
         ])
 
     return response
-
 
 @login_required
 def export_learning_records_csv(request):
@@ -1625,7 +1506,6 @@ def export_learning_records_csv(request):
         ])
 
     return response
-
 
 @login_required
 def export_profiles_csv(request):
@@ -1701,7 +1581,6 @@ def export_orders_csv(request):
 
     return response
 
-
 @login_required
 def export_order_items_csv(request):
     if not request.user.is_superuser:
@@ -1739,7 +1618,6 @@ def export_order_items_csv(request):
         ])
 
     return response
-
 
 @login_required
 def export_payments_csv(request):
@@ -1781,7 +1659,6 @@ def export_payments_csv(request):
 
     return response
 
-
 @login_required
 def export_coupon_usage_csv(request):
     if not request.user.is_superuser:
@@ -1818,7 +1695,6 @@ def export_coupon_usage_csv(request):
         ])
 
     return response
-
 
 @login_required
 def export_reviews_csv(request):
@@ -1863,7 +1739,6 @@ def export_reviews_csv(request):
 
     return response
 
-
 @login_required
 def export_course_lessons_csv(request):
     if not request.user.is_superuser:
@@ -1906,15 +1781,8 @@ def export_course_lessons_csv(request):
 
     return response
 
-
-# =========================
-# 購物車 Cart
-# =========================
-
 @login_required
 def add_to_cart(request, course_id):
-    # 改資料庫狀態的動作只接受 POST —— GET 不受 CSRF middleware 保護，
-    # 一個 <img src> 或預抓就能代替使用者送出。畫面本來就是 POST 表單。
     if request.method != 'POST':
         return redirect('course_detail', course_id=course_id)
 
@@ -1928,16 +1796,13 @@ def add_to_cart(request, course_id):
 
     return redirect('view_cart')
 
-
 @login_required
 def view_cart(request):
     cart, _ = Cart.objects.get_or_create(user=request.user)
     items = list(cart.items.select_related('course', 'course__teacher').all())
-    # 顯示價含促銷，才會和結帳實際收的錢一致（批次計算，不逐課查詢）
     with_display_price([item.course for item in items])
     total = sum(item.course.display_price for item in items)
 
-    # 優惠券整合進購物車：可領取 + 我的優惠券
     now = timezone.now()
     available_coupons = Coupon.objects.filter(
         is_active=True, start_date__lte=now, end_date__gte=now
@@ -1957,7 +1822,6 @@ def view_cart(request):
         'my_coupons': my_coupons,
     })
 
-
 @login_required
 def remove_from_cart(request, item_id):
     if request.method != 'POST':
@@ -1967,18 +1831,14 @@ def remove_from_cart(request, item_id):
     item.delete()
     return redirect('view_cart')
 
-
 @login_required
 def cart_checkout(request):
-    # 成立訂單會改資料庫狀態，只接受 POST（cart.html 已經是 POST 表單）。
-    # 先前沒有這道檢查，一個 GET（含瀏覽器預抓、重新整理）就會多一張訂單。
     if request.method != 'POST':
         return redirect('view_cart')
 
     cart, _ = Cart.objects.get_or_create(user=request.user)
     courses = [item.course for item in cart.items.select_related('course').all()]
 
-    # 定價與下單一律走 checkout module；已購課過濾、促銷、券分攤都在裡面。
     quote = quote_basket(request.user, courses, request.POST.get('coupon_code', ''))
     if quote.is_empty:
         return redirect('view_cart')
@@ -1988,18 +1848,12 @@ def cart_checkout(request):
 
     return redirect('payment', order_id=order.id)
 
-
-# =========================
-# 模擬金流 付款流程
-# =========================
-
 def _mark_payment_paid(payment, result):
     payment.status = 'paid'
     payment.paid_at = timezone.now()
     if result.transaction_no:
         payment.transaction_no = result.transaction_no
     payment.save()
-
 
 @login_required
 def payment(request, order_id):
@@ -2008,8 +1862,6 @@ def payment(request, order_id):
     if order.status == 'paid':
         return redirect('order_success', order_id=order.id)
 
-    # place_order 是原子性的，新訂單一定帶著 Payment。這個 get_or_create 只為了
-    # 修補在該修正之前建立、可能沒有 Payment 的舊待付款訂單。
     payment_obj, _ = Payment.objects.get_or_create(
         order=order,
         defaults={'amount': order.final_price, 'status': 'pending', 'method': 'mock'}
@@ -2026,7 +1878,6 @@ def payment(request, order_id):
         method = request.POST.get('method', '')
 
         if action == 'select':
-            # 選擇付款方式 → 準備該方式的付款資訊
             if method == 'atm':
                 gateway.create_atm(payment_obj)
             elif method == 'cvs':
@@ -2052,7 +1903,6 @@ def payment(request, order_id):
             method = 'credit_card'
 
         elif action == 'confirm_offline':
-            # 使用者回報已完成 ATM 轉帳 / 超商繳費（模擬銀行/超商回拋）
             result = gateway.confirm_offline(payment_obj)
             if result.success:
                 _mark_payment_paid(payment_obj, result)
@@ -2069,11 +1919,6 @@ def payment(request, order_id):
         'error': error,
     })
 
-
-# =========================
-# 收藏 Favorite
-# =========================
-
 @login_required
 def toggle_favorite(request, course_id):
     if request.method != 'POST':
@@ -2087,15 +1932,12 @@ def toggle_favorite(request, course_id):
     else:
         Favorite.objects.create(user=request.user, course=course)
 
-    # next 是使用者可控的輸入：未經驗證就 redirect 等於開放轉址，
-    # 可被拿來把人導去釣魚站再假裝是本站流程。
     next_url = request.POST.get('next')
     if next_url and url_has_allowed_host_and_scheme(
         next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
     ):
         return redirect(next_url)
     return redirect('my_favorites')
-
 
 @login_required
 def my_favorites(request):
@@ -2106,11 +1948,6 @@ def my_favorites(request):
     return render(request, 'main/favorites.html', {
         'favorites': favorites,
     })
-
-
-# =========================
-# 退款 Refund
-# =========================
 
 @login_required
 def request_refund(request, order_id):
@@ -2143,22 +1980,13 @@ def request_refund(request, order_id):
         'existing': existing,
     })
 
-
 @login_required
 def my_refunds(request):
-    # 退款已整合進「我的課程」，舊網址轉址過去
     return redirect('my_courses')
-
-
-# =========================
-# 優惠券領取 UserCoupon
-# =========================
 
 @login_required
 def coupon_list(request):
-    # 優惠券領取已整合進「購物車」，舊網址轉址過去
     return redirect('view_cart')
-
 
 @login_required
 def claim_coupon(request, coupon_id):
@@ -2176,19 +2004,11 @@ def claim_coupon(request, coupon_id):
 
     return redirect('view_cart')
 
-
 @login_required
 def my_coupons(request):
-    # 優惠券管理已整合進「購物車」，舊網址轉址過去
     return redirect('view_cart')
 
-
-# =========================
-# A2 章節 / 單元管理（老師）
-# =========================
-
 def _require_course_teacher(request, course_id):
-    """回傳 (course, None) 或 (None, redirect)。只有課程講師本人可管理。"""
     try:
         profile = request.user.profile
     except Profile.DoesNotExist:
@@ -2199,7 +2019,6 @@ def _require_course_teacher(request, course_id):
 
     course = get_object_or_404(Course, id=course_id, teacher=request.user)
     return course, None
-
 
 @login_required
 def manage_content(request, course_id):
@@ -2216,7 +2035,6 @@ def manage_content(request, course_id):
         'lesson_form': LessonForm(),
     })
 
-
 @login_required
 def add_chapter(request, course_id):
     course, redirect_resp = _require_course_teacher(request, course_id)
@@ -2231,7 +2049,6 @@ def add_chapter(request, course_id):
             chapter.save()
 
     return redirect('manage_content', course_id=course.id)
-
 
 @login_required
 def edit_chapter(request, chapter_id):
@@ -2254,7 +2071,6 @@ def edit_chapter(request, chapter_id):
         'course': course,
     })
 
-
 @login_required
 def delete_chapter(request, chapter_id):
     chapter = get_object_or_404(CourseChapter, id=chapter_id)
@@ -2267,9 +2083,7 @@ def delete_chapter(request, chapter_id):
 
     return redirect('manage_content', course_id=course.id)
 
-
 def _autoset_lesson_duration(lesson):
-    """上傳影片檔後自動偵測時長，寫回 duration_minutes（老師免手動輸入）。"""
     if not lesson.video_file:
         return
     try:
@@ -2280,7 +2094,6 @@ def _autoset_lesson_duration(lesson):
             lesson.save(update_fields=['duration_minutes'])
     except Exception:
         pass
-
 
 @login_required
 def add_lesson(request, chapter_id):
@@ -2297,7 +2110,6 @@ def add_lesson(request, chapter_id):
             lesson.save()
             _autoset_lesson_duration(lesson)
 
-            # 通知已購買學員：課程有新影片
             from .notifications import notify_course_buyers
             notify_course_buyers(
                 course,
@@ -2306,7 +2118,6 @@ def add_lesson(request, chapter_id):
             )
 
     return redirect('manage_content', course_id=course.id)
-
 
 @login_required
 def edit_lesson(request, lesson_id):
@@ -2332,10 +2143,8 @@ def edit_lesson(request, lesson_id):
         'material_form': LessonMaterialForm(),
     })
 
-
 @login_required
 def add_lesson_material(request, lesson_id):
-    """單元教材上傳（課程講師本人）。"""
     lesson = get_object_or_404(CourseLesson, id=lesson_id)
     course, redirect_resp = _require_course_teacher(request, lesson.chapter.course_id)
     if redirect_resp:
@@ -2352,7 +2161,6 @@ def add_lesson_material(request, lesson_id):
 
     return redirect('edit_lesson', lesson_id=lesson.id)
 
-
 @login_required
 def delete_material(request, material_id):
     material = get_object_or_404(LessonMaterial, id=material_id)
@@ -2366,7 +2174,6 @@ def delete_material(request, material_id):
 
     return redirect('edit_lesson', lesson_id=lesson.id)
 
-
 @login_required
 def delete_lesson(request, lesson_id):
     lesson = get_object_or_404(CourseLesson, id=lesson_id)
@@ -2378,11 +2185,6 @@ def delete_lesson(request, lesson_id):
         lesson.delete()
 
     return redirect('manage_content', course_id=course.id)
-
-
-# =========================
-# A3 退款審核（老師 / 管理員）
-# =========================
 
 @login_required
 def manage_refunds(request):
@@ -2405,12 +2207,10 @@ def manage_refunds(request):
         'refunds': refunds,
     })
 
-
 @login_required
 def process_refund(request, refund_id):
     refund = get_object_or_404(Refund, id=refund_id)
 
-    # 權限：管理員或該課程講師
     is_teacher = (
         not request.user.is_superuser
         and refund.order.course
@@ -2420,7 +2220,6 @@ def process_refund(request, refund_id):
         return redirect('home')
 
     if request.method == 'POST' and refund.status == 'pending':
-        # 狀態轉換一律走 transitions —— 後台 admin 的批次動作呼叫的是同一份。
         action = request.POST.get('action')
         if action == 'approve':
             approve_refund(refund)
@@ -2428,11 +2227,6 @@ def process_refund(request, refund_id):
             reject_refund(refund)
 
     return redirect('manage_refunds')
-
-
-# =========================
-# A6 通知中心
-# =========================
 
 @login_required
 def notifications(request):
@@ -2444,7 +2238,6 @@ def notifications(request):
         'notifications': notes,
     })
 
-
 @login_required
 def mark_notifications_read(request):
     if request.method == 'POST':
@@ -2453,25 +2246,18 @@ def mark_notifications_read(request):
         ).update(is_read=True)
     return redirect('notifications')
 
-
-# =========================
-# A7 課程問答
-# =========================
-
 @login_required
 def add_question(request, course_id):
     course = get_object_or_404(Course, id=course_id)
 
     is_teacher = course.teacher_id == request.user.id
 
-    # 登入即可提問，不需購買
     if request.method == 'POST':
         form = QuestionForm(request.POST)
         if form.is_valid():
             q = form.save(commit=False)
             q.user = request.user
             q.course = course
-            # 表單只收「問題內容」，標題自動取內容前段（供後台/通知顯示）
             q.title = (q.content or '')[:50]
             q.save()
             if not is_teacher:
@@ -2490,7 +2276,6 @@ def add_question(request, course_id):
                     )
 
     return redirect('course_detail', course_id=course.id)
-
 
 @login_required
 def add_answer(request, question_id):
@@ -2516,11 +2301,6 @@ def add_answer(request, question_id):
 
     return redirect('course_detail', course_id=course.id)
 
-
-# =========================
-# A8 課程審核（管理員）
-# =========================
-
 @login_required
 def manage_audits(request):
     if not request.user.is_superuser:
@@ -2534,7 +2314,6 @@ def manage_audits(request):
         'audits': audits,
     })
 
-
 @login_required
 def process_audit(request, audit_id):
     if not request.user.is_superuser:
@@ -2543,8 +2322,6 @@ def process_audit(request, audit_id):
     audit = get_object_or_404(CourseAudit, id=audit_id)
 
     if request.method == 'POST':
-        # 上架/退回一律走 transitions —— 後台的批次上架呼叫的是同一份，
-        # 因此不存在繞過 CourseAudit 的旁路。
         action = request.POST.get('action')
         comment = request.POST.get('comment', '').strip()
 
@@ -2555,27 +2332,15 @@ def process_audit(request, audit_id):
 
     return redirect('manage_audits')
 
-
-# =========================
-# A9 分潤收支與提領（講師 / 管理員）
-#
-# 分潤計算本身（RevenueRecord.recompute / create_for_order_item）是純計算，
-# 已隨 fulfill_order／approve_refund 自動觸發，見 CONTEXT.md「分潤、收支與提領」。
-# 這裡是講師查詢與提領申請的對外入口。
-# =========================
-
 def _require_teacher_profile(request):
-    """回傳講師的 Profile；非講師或未設定角色一律回傳 None。"""
     try:
         profile = request.user.profile
     except Profile.DoesNotExist:
         return None
     return profile if profile.role == 'teacher' else None
 
-
 @login_required
 def my_revenue(request):
-    """講師查詢收支分潤紀錄：每一筆的計算依據（比例、成本）與目前分潤規則。"""
     if not _require_teacher_profile(request):
         return redirect('home')
 
@@ -2592,7 +2357,6 @@ def my_revenue(request):
         teacher_amount=Sum('teacher_amount'),
     )
 
-    # 每門課目前適用的分潤規則（含未自訂過、套用預設值的課程）。
     course_rules = [
         CourseSplitSetting.for_course(course)
         for course in Course.objects.filter(teacher=request.user).order_by('title')
@@ -2609,10 +2373,8 @@ def my_revenue(request):
         'default_company_marketing_share': CourseSplitSetting.DEFAULT_COMPANY_MARKETING_SHARE_PERCENT,
     })
 
-
 @login_required
 def edit_bank_account(request):
-    """講師設定收款銀行帳戶（提領前需先綁定）。"""
     if not _require_teacher_profile(request):
         return redirect('home')
 
@@ -2631,10 +2393,8 @@ def edit_bank_account(request):
 
     return render(request, 'main/edit_bank_account.html', {'form': form})
 
-
 @login_required
 def my_withdrawals(request):
-    """講師申請提領、查看自己的提領紀錄與目前可提領餘額。"""
     if not _require_teacher_profile(request):
         return redirect('home')
 
@@ -2683,10 +2443,8 @@ def my_withdrawals(request):
         'has_bank_account': has_bank_account,
     })
 
-
 @login_required
 def manage_withdrawals(request):
-    """後台查看：所有講師的提領申請，僅管理員可核准／拒絕。"""
     if not request.user.is_superuser:
         return redirect('home')
 
@@ -2698,7 +2456,6 @@ def manage_withdrawals(request):
         'withdrawals': withdrawals,
     })
 
-
 @login_required
 def process_withdrawal(request, withdrawal_id):
     if not request.user.is_superuser:
@@ -2707,7 +2464,6 @@ def process_withdrawal(request, withdrawal_id):
     withdrawal = get_object_or_404(WithdrawalRequest, id=withdrawal_id)
 
     if request.method == 'POST':
-        # 提領完成/拒絕一律走 transitions —— 與退款、審核同一套規則。
         action = request.POST.get('action')
         note = request.POST.get('note', '').strip()
 
@@ -2718,10 +2474,8 @@ def process_withdrawal(request, withdrawal_id):
 
     return redirect('manage_withdrawals')
 
-
 @login_required
 def export_my_revenue_csv(request):
-    """講師匯出自己的收支分潤紀錄。"""
     if not _require_teacher_profile(request):
         return redirect('home')
 
@@ -2771,10 +2525,8 @@ def export_my_revenue_csv(request):
 
     return response
 
-
 @login_required
 def export_my_withdrawals_csv(request):
-    """講師匯出自己的提領申請紀錄。"""
     if not _require_teacher_profile(request):
         return redirect('home')
 
@@ -2806,20 +2558,13 @@ def export_my_withdrawals_csv(request):
 
     return response
 
-
-# =========================
-# Task 2 課程完成證書（PDF）
-# =========================
-
 def _course_completion(user, course):
-    """回傳 (total_lessons, done_count, is_complete)。"""
     total = CourseLesson.objects.filter(chapter__course=course).count()
     done = LearningRecord.objects.filter(
         user=user, course=course
     ).exclude(lesson=None).values('lesson').distinct().count()
     is_complete = total > 0 and done >= total
     return total, done, is_complete
-
 
 @login_required
 def certificate(request, course_id):
@@ -2839,7 +2584,6 @@ def certificate(request, course_id):
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 
-    # 繁體中文內建 CID 字型（免安裝字型檔）
     pdfmetrics.registerFont(UnicodeCIDFont('MSung-Light'))
     FONT = 'MSung-Light'
 
@@ -2847,7 +2591,6 @@ def certificate(request, course_id):
     W, H = landscape(A4)
     c = canvas.Canvas(buffer, pagesize=landscape(A4))
 
-    # 背景與外框
     c.setFillColorRGB(0.97, 0.97, 1.0)
     c.rect(0, 0, W, H, fill=1, stroke=0)
     c.setStrokeColorRGB(0.31, 0.27, 0.90)
@@ -2904,13 +2647,7 @@ def certificate(request, course_id):
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
 
-
-# =========================
-# Task 4 講師公開頁
-# =========================
-
 def teacher_catalog(request):
-    """講師總覽：列出所有有公開課程的講師，供首頁「講師」入口點進來瀏覽。"""
     q = request.GET.get('q', '').strip()
 
     teacher_ids = (
@@ -2945,11 +2682,9 @@ def teacher_catalog(request):
         'total_teachers': len(teachers),
     })
 
-
 def teacher_profile(request, teacher_id):
     teacher = get_object_or_404(User, id=teacher_id)
 
-    # 評分統計用子查詢一次算完，不再逐課發查詢
     review_stats = Review.objects.filter(course=OuterRef('pk')).values('course')
     courses = list(
         Course.objects.filter(teacher=teacher, is_published=True)
@@ -2987,10 +2722,8 @@ def teacher_profile(request, teacher_id):
         profile = None
         role_display = ''
 
-    # 講師是否為本人（決定要不要顯示管理按鈕）
     is_owner = request.user.is_authenticated and request.user.id == teacher.id
 
-    # 追蹤狀態與人數
     is_following = (
         request.user.is_authenticated
         and not is_owner
@@ -2998,7 +2731,6 @@ def teacher_profile(request, teacher_id):
     )
     follower_count = TeacherFollow.objects.filter(teacher=teacher).count()
 
-    # 內容分類（本人看得到未公開的，訪客只看得到已公開的）
     columns = TeacherColumn.objects.filter(teacher=teacher)
     articles = TeacherArticle.objects.filter(teacher=teacher).select_related('column')
     materials = TeacherMaterial.objects.filter(teacher=teacher)
@@ -3042,10 +2774,8 @@ def teacher_profile(request, teacher_id):
         ],
     })
 
-
 @login_required
 def toggle_follow(request, teacher_id):
-    """追蹤／取消追蹤講師（POST）。"""
     teacher = get_object_or_404(User, id=teacher_id)
     if request.method == 'POST' and teacher.id != request.user.id:
         existing = TeacherFollow.objects.filter(follower=request.user, teacher=teacher).first()
@@ -3061,10 +2791,8 @@ def toggle_follow(request, teacher_id):
         return redirect(next_url)
     return redirect(default_url)
 
-
 @login_required
 def my_following(request):
-    """我追蹤的講師清單。"""
     follows = TeacherFollow.objects.filter(
         follower=request.user
     ).select_related('teacher', 'teacher__profile').order_by('-created_at')
@@ -3072,13 +2800,7 @@ def my_following(request):
         'follows': follows,
     })
 
-
-# =========================
-# 講師內容管理：專欄／文章／教材
-# =========================
-
 def _require_teacher(request):
-    """確認登入者為教師；不是就回傳 redirect。回傳 (profile, redirect_resp)。"""
     try:
         profile = request.user.profile
     except Profile.DoesNotExist:
@@ -3087,10 +2809,8 @@ def _require_teacher(request):
         return None, redirect('home')
     return profile, None
 
-
 @login_required
 def teacher_content(request):
-    """講師內容管理中心：管理自己的專欄、文章與教材。"""
     profile, redirect_resp = _require_teacher(request)
     if redirect_resp:
         return redirect_resp
@@ -3111,8 +2831,6 @@ def teacher_content(request):
         'tab_defs': [('column', '專欄'), ('article', '文章'), ('material', '教材')],
     })
 
-
-# ---- 專欄 ----
 @login_required
 def add_column(request):
     profile, redirect_resp = _require_teacher(request)
@@ -3131,7 +2849,6 @@ def add_column(request):
         'form': form, 'content_kind': '專欄', 'is_edit': False,
     })
 
-
 @login_required
 def edit_column(request, column_id):
     column = get_object_or_404(TeacherColumn, id=column_id, teacher=request.user)
@@ -3146,14 +2863,12 @@ def edit_column(request, column_id):
         'form': form, 'content_kind': '專欄', 'is_edit': True,
     })
 
-
 @login_required
 def delete_column(request, column_id):
     column = get_object_or_404(TeacherColumn, id=column_id, teacher=request.user)
     if request.method == 'POST':
         column.delete()
     return redirect('teacher_content')
-
 
 def column_detail(request, column_id):
     column = get_object_or_404(TeacherColumn, id=column_id)
@@ -3169,10 +2884,8 @@ def column_detail(request, column_id):
         'has_access': has_access,
     })
 
-
 @login_required
 def subscribe_column(request, column_id):
-    """訂閱付費專欄（mock 付款，開通 30 天；已訂閱則延長 30 天）。"""
     column = get_object_or_404(TeacherColumn, id=column_id, is_published=True)
     if request.method != 'POST' or not column.is_paid or column.teacher_id == request.user.id:
         return redirect('column_detail', column_id=column.id)
@@ -3198,8 +2911,6 @@ def subscribe_column(request, column_id):
     )
     return redirect('column_detail', column_id=column.id)
 
-
-# ---- 文章 ----
 @login_required
 def add_article(request):
     profile, redirect_resp = _require_teacher(request)
@@ -3218,7 +2929,6 @@ def add_article(request):
         'form': form, 'content_kind': '文章', 'is_edit': False,
     })
 
-
 @login_required
 def edit_article(request, article_id):
     article = get_object_or_404(TeacherArticle, id=article_id, teacher=request.user)
@@ -3233,14 +2943,12 @@ def edit_article(request, article_id):
         'form': form, 'content_kind': '文章', 'is_edit': True,
     })
 
-
 @login_required
 def delete_article(request, article_id):
     article = get_object_or_404(TeacherArticle, id=article_id, teacher=request.user)
     if request.method == 'POST':
         article.delete()
     return redirect('teacher_content')
-
 
 def article_detail(request, article_id):
     article = get_object_or_404(
@@ -3250,14 +2958,11 @@ def article_detail(request, article_id):
     is_owner = request.user.is_authenticated and request.user.id == article.teacher_id
     if not article.is_published and not is_owner:
         raise Http404()
-    # 付費專欄的文章：非訂閱者只能看到預覽
     locked = bool(article.column and article.column.is_paid and not article.column.has_access(request.user))
     return render(request, 'main/article_detail.html', {
         'article': article, 'is_owner': is_owner, 'locked': locked,
     })
 
-
-# ---- 教材 ----
 @login_required
 def add_material(request):
     profile, redirect_resp = _require_teacher(request)
@@ -3276,7 +2981,6 @@ def add_material(request):
         'form': form, 'content_kind': '教材', 'is_edit': False,
     })
 
-
 @login_required
 def edit_material(request, material_id):
     material = get_object_or_404(TeacherMaterial, id=material_id, teacher=request.user)
@@ -3291,7 +2995,6 @@ def edit_material(request, material_id):
         'form': form, 'content_kind': '教材', 'is_edit': True,
     })
 
-
 @login_required
 def delete_material(request, material_id):
     material = get_object_or_404(TeacherMaterial, id=material_id, teacher=request.user)
@@ -3299,18 +3002,8 @@ def delete_material(request, material_id):
         material.delete()
     return redirect('teacher_content')
 
-
-# =========================
-# AI 課程助教
-# =========================
-
 @login_required
 def ask_ai(request, course_id):
-    """課程 AI 助教問答（POST，回傳 JSON）。限已購買學員、該課講師或管理員。
-
-    支援多輪對話：前端送 history 陣列，後端轉交給 AI 模型以延續語境。
-    回傳 suggestions 陣列：建議追問，前端渲染成可點擊的按鈕。
-    """
     course = get_object_or_404(Course, id=course_id)
 
     is_teacher = course.teacher_id == request.user.id
@@ -3331,8 +3024,6 @@ def ask_ai(request, course_id):
 
     from . import ai_assistant
 
-    # 先比對固定 FAQ（觀看課程方法／付費方式／課程遺失／忘記帳密等），
-    # 命中就直接回答，完全不呼叫 AI API、不吃額度。
     faq = ai_assistant.match_platform_faq(question)
     if faq:
         return JsonResponse({
@@ -3342,13 +3033,8 @@ def ask_ai(request, course_id):
     result = ai_assistant.answer_course_question(course, question, history=history)
     return JsonResponse(result)
 
-
 @login_required
 def ask_platform_ai(request):
-    """首頁 AI 助手問答（平台 FAQ + 課程推薦，POST，回傳 JSON）。限已登入使用者。
-
-    支援多輪對話與建議追問。
-    """
     if request.method != 'POST':
         return JsonResponse({'ok': False, 'error': '方法不允許。'}, status=405)
 
@@ -3362,7 +3048,6 @@ def ask_platform_ai(request):
 
     from . import ai_assistant
 
-    # 先比對固定 FAQ，命中就直接回答，完全不呼叫 AI API、不吃額度。
     faq = ai_assistant.match_platform_faq(question)
     if faq:
         return JsonResponse({
@@ -3371,11 +3056,6 @@ def ask_platform_ai(request):
 
     result = ai_assistant.answer_platform_question(question, history=history)
     return JsonResponse(result)
-
-
-# =========================
-# 支援 Range 的媒體服務（開發環境播放影片用）
-# =========================
 
 def _file_iterator(path, start, length, chunk=8192):
     with open(path, 'rb') as f:
@@ -3388,9 +3068,7 @@ def _file_iterator(path, start, length, chunk=8192):
             remaining -= len(data)
             yield data
 
-
 def _range_file_response(request, full):
-    """支援 HTTP Range 的檔案串流（影片才能拖曳進度條）。"""
     import os
     import re
     import mimetypes
@@ -3422,14 +3100,8 @@ def _range_file_response(request, full):
     resp['Accept-Ranges'] = 'bytes'
     return resp
 
-
 @login_required
 def stream_lesson_video(request, lesson_id):
-    """付費影片的唯一出口。權限與 watch_lesson 相同。
-
-    影片不再由 /media/ 直出 —— 那條路徑沒有任何存取檢查，等於只要知道
-    網址就能把課程內容整包拿走。
-    """
     lesson = get_object_or_404(
         CourseLesson.objects.select_related('chapter__course'), id=lesson_id
     )
@@ -3443,8 +3115,6 @@ def stream_lesson_video(request, lesson_id):
     if not lesson.video_file:
         raise Http404('這個單元沒有上傳影片')
 
-    # 權限已檢查通過。本機(FileSystemStorage)直接串流檔案並支援 Range；
-    # 線上(S3)沒有實體 .path，改導向帶簽章的暫時性網址（同樣先過了上面的購課檢查）。
     try:
         local_path = lesson.video_file.path
     except (NotImplementedError, ValueError):
@@ -3453,7 +3123,6 @@ def stream_lesson_video(request, lesson_id):
         return _range_file_response(request, local_path)
     return redirect(lesson.video_file.url)
 
-
 def serve_media(request, path):
     import os
     from django.conf import settings
@@ -3461,31 +3130,20 @@ def serve_media(request, path):
     media_root = os.path.normpath(str(settings.MEDIA_ROOT))
     full = os.path.normpath(os.path.join(media_root, path))
 
-    # 必須真的落在 MEDIA_ROOT 底下。startswith 會讓 <media_root>_evil/ 這種
-    # 同層兄弟目錄通過，commonpath 不會。
     try:
         inside = os.path.commonpath([full, media_root]) == media_root
-    except ValueError:          # 不同磁碟機
+    except ValueError:
         inside = False
     if not inside or not os.path.isfile(full):
         raise Http404('media not found')
 
-    # 課程影片一律改走 stream_lesson_video（會檢查購課），不從這裡直出。
     rel = os.path.relpath(full, media_root).replace('\\', '/')
     if rel.startswith('course_videos/'):
         raise Http404('media not found')
 
     return _range_file_response(request, full)
 
-
-
-# ===== 快速登入（OAuth）／合購購物車／課程公告留言／教師問答 =====
-# 上游分支沒有這幾個功能，從本機分支搬過來，邏輯與變數名稱不變。
-
 def _attach_reviews(courses):
-    """一次查完所有課程的評分統計，避免每堂課各發一次查詢（遠端 DB 的 N+1 效能殺手）。
-    courses 若為 QuerySet，呼叫後其 _result_cache 會被填入已標記 avg_rating/review_count
-    的物件，後續重新迭代該 QuerySet（例如樣板的 {% for %}）會直接用到快取，不需接收回傳值。"""
     courses = list(courses)
     ids = [c.id for c in courses]
     stats_map = {
@@ -3500,10 +3158,7 @@ def _attach_reviews(courses):
         c.review_count = s['n'] if s else 0
     return courses
 
-
 def _group_cart_items_by_bundle(items):
-    """把購物車項目依合購組合分組，回傳 (display_bundles, loose_items)。
-    display_bundles 每筆含 bundle/items/is_intact/individual_total。"""
     bundle_groups = {}
     loose_items = []
     for item in items:
@@ -3527,23 +3182,16 @@ def _group_cart_items_by_bundle(items):
 
     return display_bundles, loose_items
 
-
 def _is_teacher(profile):
-    """單一帳號體系：role=='teacher'（傳統教師帳號）或 is_teacher（Admin 額外授權）皆可使用教師專區。"""
     return profile.role == 'teacher' or profile.is_teacher
-
 
 def _login_error_redirect(message):
     return redirect(f"{reverse('login')}?{urlencode({'error': message})}")
 
-
 def _post_login_redirect(user):
-    # 不論學生或具備教師權限的使用者，登入後一律回到主頁；教師專區只能透過
-    # 導覽列的「進入教師專區」按鈕主動進入，絕不在登入當下直接跳轉過去。
     if user.is_superuser:
         return redirect('/admin/')
     return redirect('home')
-
 
 @login_required
 def add_announcement(request, course_id):
@@ -3559,7 +3207,6 @@ def add_announcement(request, course_id):
             announcement.author = request.user
             announcement.save()
 
-            # 通知已購買學員與講師追蹤者（同一人只發一則）
             from .models import Enrollment as _Enrollment, TeacherFollow as _Follow
             from .notifications import notify_users
             audience = set(
@@ -3574,7 +3221,6 @@ def add_announcement(request, course_id):
             )
 
     return redirect('manage_content', course_id=course.id)
-
 
 @login_required
 def add_bundle_to_cart(request, bundle_id):
@@ -3598,7 +3244,6 @@ def add_bundle_to_cart(request, bundle_id):
 
     return redirect('view_cart')
 
-
 @login_required
 def add_comment(request, course_id):
     course = get_object_or_404(Course, id=course_id)
@@ -3613,9 +3258,7 @@ def add_comment(request, course_id):
 
     return redirect('course_detail', course_id=course.id)
 
-
 def course_catalog(request):
-    """完整課程總覽：搜尋、分類篩選、排序、分頁。"""
     sort = request.GET.get('sort', 'newest')
     q = request.GET.get('q', '').strip()
     cat = request.GET.get('cat', '').strip()
@@ -3675,7 +3318,6 @@ def course_catalog(request):
         ],
     })
 
-
 @login_required
 def delete_announcement(request, announcement_id):
     announcement = get_object_or_404(CourseAnnouncement, id=announcement_id)
@@ -3688,14 +3330,12 @@ def delete_announcement(request, announcement_id):
 
     return redirect('manage_content', course_id=course.id)
 
-
 def google_login(request):
     if not settings.GOOGLE_OAUTH_CLIENT_ID:
         return _login_error_redirect('Google 登入尚未設定。')
     state = oauth.new_state()
     request.session['google_oauth_state'] = state
     return redirect(oauth.build_google_auth_url(request, state))
-
 
 def google_oauth_callback(request):
     error = request.GET.get('error')
@@ -3720,14 +3360,12 @@ def google_oauth_callback(request):
     login(request, user, backend='django.contrib.auth.backends.ModelBackend')
     return _post_login_redirect(user)
 
-
 def line_login(request):
     if not settings.LINE_LOGIN_CHANNEL_ID:
         return _login_error_redirect('LINE 登入尚未設定。')
     state = oauth.new_state()
     request.session['line_oauth_state'] = state
     return redirect(oauth.build_line_auth_url(request, state))
-
 
 def line_oauth_callback(request):
     error = request.GET.get('error')
@@ -3751,7 +3389,6 @@ def line_oauth_callback(request):
 
     login(request, user, backend='django.contrib.auth.backends.ModelBackend')
     return _post_login_redirect(user)
-
 
 @require_teacher
 def teacher_qna(request):

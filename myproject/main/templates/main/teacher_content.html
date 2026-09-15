@@ -11,7 +11,7 @@
     <a href="{% url 'teacher_profile' user.id %}" class="text-jp-primary hover:underline font-medium">查看我的講師頁 →</a>
   </div>
 
-  <!-- 分頁 -->
+
   <div class="flex gap-1 border-b border-slate-200 mb-6">
     {% for key, label in tab_defs %}
     <a href="?tab={{ key }}" class="px-5 py-3 font-bold transition {% if active_tab == key %}text-jp-primaryHover border-b-2 border-jp-primary{% else %}text-slate-500 hover:text-slate-700{% endif %}">{{ label }}</a>
