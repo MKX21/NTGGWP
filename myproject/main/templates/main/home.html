@@ -93,8 +93,7 @@
                 <i class="fas fa-arrow-right absolute top-8 right-8 text-white/80 group-hover:text-electric group-hover:translate-x-1 transition"></i>
                 <div class="relative">
                     <span class="inline-flex h-12 w-12 items-center justify-center rounded-md bg-electric text-white text-2xl mb-4"><i class="fas fa-book-open"></i></span>
-                    <h3 class="font-grotesk text-2xl font-extrabold text-white mb-1">課程</h3>
-                    <p class="text-sm text-white/75">探索 <span class="font-grotesk tabular-nums">{{ total_courses }}+</span> 堂精選課程</p>
+                    <h3 class="font-grotesk text-2xl font-extrabold text-white">課程</h3>
                 </div>
             </a>
             <a href="{% url 'teacher_catalog' %}" class="group relative overflow-hidden rounded-lg bg-satdark-surface border border-satdark-border h-64 flex flex-col justify-end p-8 transition hover:border-electric bg-center bg-cover" style="background-image:url('/media/site/hero-teachers.jpg')">
@@ -102,8 +101,7 @@
                 <i class="fas fa-arrow-right absolute top-8 right-8 text-white/80 group-hover:text-electric group-hover:translate-x-1 transition"></i>
                 <div class="relative">
                     <span class="inline-flex h-12 w-12 items-center justify-center rounded-md bg-brand-400 text-white text-2xl mb-4"><i class="fas fa-chalkboard-user"></i></span>
-                    <h3 class="font-grotesk text-2xl font-extrabold text-white mb-1">講師</h3>
-                    <p class="text-sm text-white/75"><span class="font-grotesk tabular-nums">{{ total_teachers }}+</span> 位業界專家親自授課</p>
+                    <h3 class="font-grotesk text-2xl font-extrabold text-white">講師</h3>
                 </div>
             </a>
         </div>
@@ -132,14 +130,14 @@
   /* 全部 class 加 eduflow-showcase 前綴隔離，避免跟站內其他樣式（.up/.down/section 等泛用名稱）打架。
      尺寸改用 em 並讓 .eduflow-showcase-wrapper 的 font-size 隨螢幕寬度縮放，
      這組 3D 位移數字彼此牽動，縮放字級是不破版最省事的做法（原設計用寫死 px）。
-     字級調校成適合「佔版面一半寬度」的欄位（約 560～570px），跟原本滿版展示的尺寸不同。 */
+     字級調校成適合「佔版面五分之三寬度」的欄位（約 610～630px）。 */
   .eduflow-showcase-wrapper {
     --column-height: 18.75em;
     --image-height: 12.5em;
     --row-gap: 0.5em;
     --column-gap: 0.25em;
     --number-of-images: 8;
-    font-size: 13px;
+    font-size: 14px;
     width: 43.75em;
     max-width: 100%;
     height: var(--column-height);
@@ -193,10 +191,21 @@
   @media (prefers-reduced-motion: reduce) {
     .eduflow-showcase-column.scroll-up, .eduflow-showcase-column.scroll-down { animation: none; }
   }
+  /* 引言下方的刻度線分隔符：跟登入／註冊頁的 glass-sep 同一套視覺語彙，
+     不是隨手加一條 <hr>，是刻意重複使用的簽名元素，讓評語區不會長得像
+     隨便一個 UI 套件庫的 testimonial card。 */
+  .eduflow-quote-rule {
+    height: 7px;
+    width: 7rem;
+    background-image: linear-gradient(90deg, hsl(0 0% 100% / .35) 1.5px, transparent 1.5px);
+    background-size: 11px 100%;
+    background-position: left center;
+    background-repeat: repeat-x;
+  }
 </style>
 <section class="bg-satdark-bg py-16 overflow-hidden">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-2 gap-10 items-center">
-    <div>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-5 gap-12 items-center">
+    <div class="lg:col-span-3">
       <div class="mb-6">
         <span class="inline-flex items-center gap-2 text-electric font-medium text-sm mb-2"><i class="fas fa-images"></i> 課程牆</span>
         <h2 class="font-grotesk text-tight-head text-2xl md:text-3xl font-extrabold text-satdark-text">看看大家都在學什麼</h2>
@@ -214,21 +223,16 @@
       </div>
     </div>
 
-    <div class="bg-satdark-surface border border-satdark-border rounded-2xl p-8 lg:p-10">
-      <i class="fas fa-quote-left text-3xl text-electric/40 mb-4"></i>
-      <p class="font-display italic text-xl md:text-2xl text-satdark-text leading-relaxed mb-6">
-        照著課程重做論文排版的那個下午，我才知道原來目錄跟章節樣式可以一鍵套用。
-        口試前一天熬夜改格式的日子，總算在這門課上劃下句點。
-      </p>
-      <div class="flex items-center gap-3">
-        <span class="inline-flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-brand-700 to-brand-500 text-white font-bold">陳</span>
-        <div>
-          <p class="font-bold text-satdark-text">陳同學</p>
-          <p class="text-sm text-satdark-muted">企業管理系・已購買 Word 論文排版課程</p>
-        </div>
-        <div class="ml-auto text-amber-400 text-sm">
-          <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
-        </div>
+    <div class="lg:col-span-2">
+      <div class="border-l-2 border-electric pl-6 md:pl-8">
+        <span class="inline-flex items-center gap-2 text-electric font-medium text-sm mb-3"><i class="fas fa-handshake"></i> 平台承諾</span>
+        <p class="font-display italic text-2xl md:text-[1.75rem] text-satdark-text leading-snug">
+          兼顧師生權益，成就卓越學習。
+        </p>
+        <div class="eduflow-quote-rule my-6"></div>
+        <p class="font-ticket text-xs tracking-widest uppercase text-satdark-muted">
+          課程審核制 · 分潤公開透明 · 7 天不滿意退費
+        </p>
       </div>
     </div>
   </div>
