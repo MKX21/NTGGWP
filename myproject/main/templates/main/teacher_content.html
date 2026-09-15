@@ -50,7 +50,7 @@
   </div>
 
   {% elif active_tab == 'material' %}
-  <div class="flex justify-end mb-4"><a href="{% url 'add_material' %}" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-4 py-2 rounded-lg text-sm"><i class="fas fa-plus mr-1"></i>新增教材</a></div>
+  <div class="flex justify-end mb-4"><a href="{% url 'add_teacher_material' %}" class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-4 py-2 rounded-lg text-sm"><i class="fas fa-plus mr-1"></i>新增教材</a></div>
   <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm divide-y divide-slate-100">
     {% for m in materials %}
     <div class="flex items-center gap-4 p-5">
@@ -60,8 +60,8 @@
         <p class="text-sm text-slate-500 line-clamp-1">{{ m.description|default:"—" }}</p>
       </div>
       <a href="{{ m.file.url }}" target="_blank" rel="noopener" class="text-slate-500 hover:text-jp-primary font-medium text-sm">下載</a>
-      <a href="{% url 'edit_material' m.id %}" class="text-slate-500 hover:text-jp-primary font-medium text-sm">編輯</a>
-      <form method="post" action="{% url 'delete_material' m.id %}" onsubmit="return confirm('確定刪除此教材？');">{% csrf_token %}<button class="text-slate-400 hover:text-rose-600 font-medium text-sm">刪除</button></form>
+      <a href="{% url 'edit_teacher_material' m.id %}" class="text-slate-500 hover:text-jp-primary font-medium text-sm">編輯</a>
+      <form method="post" action="{% url 'delete_teacher_material' m.id %}" onsubmit="return confirm('確定刪除此教材？');">{% csrf_token %}<button class="text-slate-400 hover:text-rose-600 font-medium text-sm">刪除</button></form>
     </div>
     {% empty %}<p class="p-6 text-slate-500">尚無教材，點右上角新增。</p>{% endfor %}
   </div>

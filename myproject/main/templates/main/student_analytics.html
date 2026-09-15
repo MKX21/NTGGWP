@@ -37,9 +37,11 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ course_labels_json|json_script:"sa-course-labels" }}
+{{ course_minutes_json|json_script:"sa-course-minutes" }}
 <script>
-  const courseLabels = {{ course_labels_json|safe }};
-  const courseMinutes = {{ course_minutes_json|safe }};
+  const courseLabels = JSON.parse(document.getElementById("sa-course-labels").textContent);
+  const courseMinutes = JSON.parse(document.getElementById("sa-course-minutes").textContent);
   const palette = ["#4f46e5","#7c3aed","#ec4899","#f59e0b","#10b981","#3b82f6"];
   const opts = { responsive: true, maintainAspectRatio: false };
   new Chart(document.getElementById("barChart"), { type: "bar", data: { labels: courseLabels, datasets: [{ label: "觀看分鐘數", data: courseMinutes, backgroundColor: "#7c3aed", borderRadius: 6 }] }, options: opts });

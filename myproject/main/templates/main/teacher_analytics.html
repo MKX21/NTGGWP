@@ -32,12 +32,17 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ course_labels_json|json_script:"ta-labels" }}
+{{ purchase_counts_json|json_script:"ta-purchases" }}
+{{ revenue_data_json|json_script:"ta-revenue" }}
+{{ watch_minutes_data_json|json_script:"ta-watch" }}
+{{ rating_data_json|json_script:"ta-rating" }}
 <script>
-  const courseLabels = {{ course_labels_json|safe }};
-  const purchaseCounts = {{ purchase_counts_json|safe }};
-  const revenueData = {{ revenue_data_json|safe }};
-  const watchMinutesData = {{ watch_minutes_data_json|safe }};
-  const ratingData = {{ rating_data_json|safe }};
+  const courseLabels = JSON.parse(document.getElementById("ta-labels").textContent);
+  const purchaseCounts = JSON.parse(document.getElementById("ta-purchases").textContent);
+  const revenueData = JSON.parse(document.getElementById("ta-revenue").textContent);
+  const watchMinutesData = JSON.parse(document.getElementById("ta-watch").textContent);
+  const ratingData = JSON.parse(document.getElementById("ta-rating").textContent);
   const totalRevenue = {{ total_revenue }};
   const totalPurchaseCount = {{ total_purchase_count }};
   const totalWatchMinutes = {{ total_watch_minutes }};

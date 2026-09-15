@@ -617,7 +617,7 @@ class Order(models.Model):
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        default='paid',
+        default='pending',
         verbose_name="訂單狀態"
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="建立時間")
@@ -704,7 +704,7 @@ class Payment(models.Model):
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        default='paid',
+        default='pending',
         verbose_name="付款狀態"
     )
     transaction_no = models.CharField(

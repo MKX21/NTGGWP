@@ -98,7 +98,7 @@ urlpatterns = [
     path('content/lesson/add/<int:chapter_id>/', views.add_lesson, name='add_lesson'),
     path('content/lesson/<int:lesson_id>/edit/', views.edit_lesson, name='edit_lesson'),
     path('content/lesson/<int:lesson_id>/delete/', views.delete_lesson, name='delete_lesson'),
-    path('content/lesson/<int:lesson_id>/material/add/', views.add_material, name='add_material'),
+    path('content/lesson/<int:lesson_id>/material/add/', views.add_lesson_material, name='add_lesson_material'),
     path('content/material/<int:material_id>/delete/', views.delete_material, name='delete_material'),
 
     # A3 退款審核
@@ -139,9 +139,9 @@ urlpatterns = [
     path('teacher/content/article/<int:article_id>/edit/', views.edit_article, name='edit_article'),
     path('teacher/content/article/<int:article_id>/delete/', views.delete_article, name='delete_article'),
     path('article/<int:article_id>/', views.article_detail, name='article_detail'),
-    path('teacher/content/material/add/', views.add_material, name='add_material'),
-    path('teacher/content/material/<int:material_id>/edit/', views.edit_material, name='edit_material'),
-    path('teacher/content/material/<int:material_id>/delete/', views.delete_material, name='delete_material'),
+    path('teacher/content/material/add/', views.add_material, name='add_teacher_material'),
+    path('teacher/content/material/<int:material_id>/edit/', views.edit_material, name='edit_teacher_material'),
+    path('teacher/content/material/<int:material_id>/delete/', views.delete_material, name='delete_teacher_material'),
 
     # A8 課程審核
     path('audits/manage/', views.manage_audits, name='manage_audits'),

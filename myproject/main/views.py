@@ -1230,8 +1230,8 @@ def student_analytics(request):
     return render(request, 'main/student_analytics.html', {
         'total_minutes': total_minutes,
         'purchased_count': purchased_count,
-        'course_labels_json': json.dumps(course_labels, ensure_ascii=False),
-        'course_minutes_json': json.dumps(course_minutes),
+        'course_labels_json': course_labels,
+        'course_minutes_json': course_minutes,
         'recent_records': recent_records,
     })
 
@@ -1284,11 +1284,11 @@ def teacher_analytics(request):
         'total_revenue': total_revenue,
         'total_purchase_count': total_purchase_count,
         'total_watch_minutes': total_watch_minutes,
-        'course_labels_json': json.dumps(course_labels, ensure_ascii=False),
-        'purchase_counts_json': json.dumps(purchase_counts),
-        'revenue_data_json': json.dumps(revenue_data),
-        'watch_minutes_data_json': json.dumps(watch_minutes_data),
-        'rating_data_json': json.dumps(rating_data),
+        'course_labels_json': course_labels,
+        'purchase_counts_json': purchase_counts,
+        'revenue_data_json': revenue_data,
+        'watch_minutes_data_json': watch_minutes_data,
+        'rating_data_json': rating_data,
     })
 @login_required
 def export_data_page(request):
@@ -1400,16 +1400,16 @@ def platform_analytics(request):
         'pending_refunds': pending_refunds,
         'pending_audits': pending_audits,
         'total_discount': total_discount,
-        'revenue_labels_json': json.dumps(revenue_labels),
-        'revenue_series_json': json.dumps(revenue_series),
-        'top_course_labels_json': json.dumps(top_course_labels, ensure_ascii=False),
-        'top_course_revenue_json': json.dumps(top_course_revenue),
-        'cat_labels_json': json.dumps(cat_labels, ensure_ascii=False),
-        'cat_counts_json': json.dumps(cat_counts),
-        'method_labels_json': json.dumps(method_labels, ensure_ascii=False),
-        'method_counts_json': json.dumps(method_counts),
-        'status_labels_json': json.dumps(status_labels, ensure_ascii=False),
-        'status_counts_json': json.dumps(status_counts),
+        'revenue_labels_json': revenue_labels,
+        'revenue_series_json': revenue_series,
+        'top_course_labels_json': top_course_labels,
+        'top_course_revenue_json': top_course_revenue,
+        'cat_labels_json': cat_labels,
+        'cat_counts_json': cat_counts,
+        'method_labels_json': method_labels,
+        'method_counts_json': method_counts,
+        'status_labels_json': status_labels,
+        'status_counts_json': status_counts,
     })
 
 
@@ -2260,7 +2260,7 @@ def edit_lesson(request, lesson_id):
 
 
 @login_required
-def add_material(request, lesson_id):
+def add_lesson_material(request, lesson_id):
     """單元教材上傳（課程講師本人）。"""
     lesson = get_object_or_404(CourseLesson, id=lesson_id)
     course, redirect_resp = _require_course_teacher(request, lesson.chapter.course_id)
@@ -2979,8 +2979,13 @@ def toggle_follow(request, teacher_id):
             existing.delete()
         else:
             TeacherFollow.objects.create(follower=request.user, teacher=teacher)
-    next_url = request.POST.get('next') or reverse('teacher_profile', args=[teacher.id])
-    return redirect(next_url)
+    default_url = reverse('teacher_profile', args=[teacher.id])
+    next_url = request.POST.get('next')
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        return redirect(next_url)
+    return redirect(default_url)
 
 
 @login_required
@@ -3482,6 +3487,7 @@ def _post_login_redirect(user):
     return redirect('home')
 
 
+@login_required
 def add_announcement(request, course_id):
     course, redirect_resp = _require_course_teacher(request, course_id)
     if redirect_resp:
@@ -3512,7 +3518,11 @@ def add_announcement(request, course_id):
     return redirect('manage_content', course_id=course.id)
 
 
+@login_required
 def add_bundle_to_cart(request, bundle_id):
+    if request.method != 'POST':
+        return redirect('view_cart')
+
     bundle = get_object_or_404(CourseBundle, id=bundle_id, is_active=True)
     courses = list(bundle.courses.all())
 
@@ -3531,6 +3541,7 @@ def add_bundle_to_cart(request, bundle_id):
     return redirect('view_cart')
 
 
+@login_required
 def add_comment(request, course_id):
     course = get_object_or_404(Course, id=course_id)
 
@@ -3594,6 +3605,7 @@ def course_catalog(request):
     })
 
 
+@login_required
 def delete_announcement(request, announcement_id):
     announcement = get_object_or_404(CourseAnnouncement, id=announcement_id)
     course, redirect_resp = _require_course_teacher(request, announcement.course_id)
@@ -3670,6 +3682,7 @@ def line_oauth_callback(request):
     return _post_login_redirect(user)
 
 
+@login_required
 def teacher_qna(request):
     try:
         profile = request.user.profile

@@ -72,40 +72,51 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ revenue_labels_json|json_script:"pa-rev-labels" }}
+{{ revenue_series_json|json_script:"pa-rev-series" }}
+{{ top_course_labels_json|json_script:"pa-top-labels" }}
+{{ top_course_revenue_json|json_script:"pa-top-revenue" }}
+{{ cat_labels_json|json_script:"pa-cat-labels" }}
+{{ cat_counts_json|json_script:"pa-cat-counts" }}
+{{ method_labels_json|json_script:"pa-method-labels" }}
+{{ method_counts_json|json_script:"pa-method-counts" }}
+{{ status_labels_json|json_script:"pa-status-labels" }}
+{{ status_counts_json|json_script:"pa-status-counts" }}
 <script>
+  function j(id) { return JSON.parse(document.getElementById(id).textContent); }
   const opts = { responsive: true, maintainAspectRatio: false };
   const palette = ["#4f46e5","#7c3aed","#ec4899","#f59e0b","#10b981","#3b82f6","#f43f5e"];
 
   new Chart(document.getElementById("revenueChart"), {
     type: "line",
     data: {
-      labels: {{ revenue_labels_json|safe }},
-      datasets: [{ label: "營收 NT$", data: {{ revenue_series_json|safe }}, borderColor: "#4f46e5", backgroundColor: "rgba(79,70,229,0.1)", fill: true, tension: 0.3 }]
+      labels: j("pa-rev-labels"),
+      datasets: [{ label: "營收 NT$", data: j("pa-rev-series"), borderColor: "#4f46e5", backgroundColor: "rgba(79,70,229,0.1)", fill: true, tension: 0.3 }]
     },
     options: opts
   });
 
   new Chart(document.getElementById("topCoursesChart"), {
     type: "bar",
-    data: { labels: {{ top_course_labels_json|safe }}, datasets: [{ label: "銷售額 NT$", data: {{ top_course_revenue_json|safe }}, backgroundColor: "#7c3aed", borderRadius: 6 }] },
+    data: { labels: j("pa-top-labels"), datasets: [{ label: "銷售額 NT$", data: j("pa-top-revenue"), backgroundColor: "#7c3aed", borderRadius: 6 }] },
     options: Object.assign({}, opts, { indexAxis: 'y' })
   });
 
   new Chart(document.getElementById("categoryChart"), {
     type: "doughnut",
-    data: { labels: {{ cat_labels_json|safe }}, datasets: [{ data: {{ cat_counts_json|safe }}, backgroundColor: palette }] },
+    data: { labels: j("pa-cat-labels"), datasets: [{ data: j("pa-cat-counts"), backgroundColor: palette }] },
     options: opts
   });
 
   new Chart(document.getElementById("methodChart"), {
     type: "doughnut",
-    data: { labels: {{ method_labels_json|safe }}, datasets: [{ data: {{ method_counts_json|safe }}, backgroundColor: palette }] },
+    data: { labels: j("pa-method-labels"), datasets: [{ data: j("pa-method-counts"), backgroundColor: palette }] },
     options: opts
   });
 
   new Chart(document.getElementById("statusChart"), {
     type: "bar",
-    data: { labels: {{ status_labels_json|safe }}, datasets: [{ label: "訂單數", data: {{ status_counts_json|safe }}, backgroundColor: "#ec4899", borderRadius: 6 }] },
+    data: { labels: j("pa-status-labels"), datasets: [{ label: "訂單數", data: j("pa-status-counts"), backgroundColor: "#ec4899", borderRadius: 6 }] },
     options: opts
   });
 </script>
