@@ -31,7 +31,7 @@
               </div>
               <div class="flex items-center gap-3">
                 {% if not group.is_intact %}<span class="text-sm text-slate-600">NT$ {{ item.course.get_effective_price }}</span>{% endif %}
-                <form method="post" action="{% url 'remove_from_cart' item.id %}">
+                <form method="post" action="{% url 'remove_from_cart' item.id %}" onsubmit="return confirm('確定從購物車移除這門課程？')">
                   {% csrf_token %}
                   <button type="submit" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-3 py-1.5 rounded-lg text-xs transition">移除</button>
                 </form>
@@ -59,7 +59,7 @@
             <div class="text-lg font-black text-jp-primaryHover">NT$ {{ item.course.price }}</div>
             {% endif %}
           </div>
-          <form method="post" action="{% url 'remove_from_cart' item.id %}">
+          <form method="post" action="{% url 'remove_from_cart' item.id %}" onsubmit="return confirm('確定從購物車移除這門課程？')">
             {% csrf_token %}
             <button type="submit" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-3 py-2 rounded-lg text-sm transition">移除</button>
           </form>

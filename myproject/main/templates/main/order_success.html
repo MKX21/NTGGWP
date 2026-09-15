@@ -1,32 +1,130 @@
 {% extends 'main/base_eduflow.html' %}
-{% block title %}訂單完成 | EduFlow{% endblock %}
+{% block title %}購買成功 | EduFlow{% endblock %}
+
+{% block extra_head %}
+<style>
+  @keyframes confetti-fall {
+    0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  }
+  .confetti-piece {
+    position: fixed;
+    top: -20px;
+    z-index: 50;
+    pointer-events: none;
+    animation: confetti-fall linear forwards;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .confetti-piece { display: none; }
+  }
+  @keyframes success-pop {
+    0% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .success-pop { animation: success-pop 0.6s ease-out both; }
+  .success-pop-delay { animation: success-pop 0.5s ease-out 0.3s both; }
+</style>
+{% endblock %}
 
 {% block content %}
-<main class="max-w-lg mx-auto px-4 py-14">
-  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-8 text-center">
-    <div class="text-5xl mb-3">🎉</div>
-    <h1 class="text-2xl font-black text-green-600 mb-6">付款完成，購買成功</h1>
-
-    <div class="text-left divide-y divide-slate-100 mb-2">
-      {% for item in items %}
-      <div class="flex justify-between py-2.5 text-slate-700"><span>{{ item.course.title }}</span><span>NT$ {{ item.price }}</span></div>
-      {% endfor %}
-      <div class="flex justify-between py-2.5 text-slate-500"><span>原價</span><span>NT$ {{ order.original_price }}</span></div>
-      <div class="flex justify-between py-2.5 text-slate-500"><span>折扣</span><span>− NT$ {{ order.discount_amount }}</span></div>
-      {% if order.coupon %}<div class="flex justify-between py-2.5 text-slate-500"><span>使用優惠券</span><span>{{ order.coupon.code }}</span></div>{% endif %}
-      {% if payment %}
-      <div class="flex justify-between py-2.5 text-slate-500"><span>付款方式</span><span>{{ payment.get_method_display }}</span></div>
-      <div class="flex justify-between py-2.5 text-slate-500"><span>交易編號</span><span class="text-sm">{{ payment.transaction_no }}</span></div>
-      {% endif %}
-      <div class="flex justify-between py-2.5 text-lg font-black text-jp-primaryHover"><span>實付金額</span><span>NT$ {{ order.final_price }}</span></div>
+<main class="max-w-2xl mx-auto px-4 py-14">
+  <!-- 成功卡片 -->
+  <div class="bg-jp-surface rounded-2xl border border-jp-border shadow-sm overflow-hidden">
+    <!-- 頂部慶祝區 -->
+    <div class="bg-gradient-to-br from-green-500/20 to-brand-500/20 py-10 text-center">
+      <div class="text-7xl success-pop mb-3">🎉</div>
+      <h1 class="text-3xl font-black text-green-400 success-pop-delay mb-2">購買成功！</h1>
+      <p class="text-jp-muted success-pop-delay">課程已開通，立即開始你的學習旅程</p>
     </div>
 
-    <div class="flex gap-3 justify-center flex-wrap mt-6">
-      {% if order.course %}
-      <a href="{% url 'watch_course' order.course.id %}" class="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-3 rounded-lg transition">▶ 立即開始上課</a>
-      {% endif %}
-      <a href="{% url 'my_courses' %}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-6 py-3 rounded-lg transition">我的課程</a>
+    <!-- 訂單明細 -->
+    <div class="p-7">
+      <h2 class="font-bold text-jp-text mb-3">訂單明細</h2>
+      <div class="divide-y divide-jp-border text-sm">
+        {% for item in items %}
+        <div class="flex justify-between py-3">
+          <span class="text-jp-text font-medium">{{ item.course.title }}</span>
+          <span class="text-jp-muted tabular-nums">NT$ {{ item.price }}</span>
+        </div>
+        {% endfor %}
+        <div class="flex justify-between py-3 text-jp-muted">
+          <span>折扣</span><span>− NT$ {{ order.discount_amount }}</span>
+        </div>
+        {% if order.coupon %}
+        <div class="flex justify-between py-3 text-jp-muted">
+          <span>優惠券</span><span class="bg-brand-50 text-jp-primary text-xs font-bold px-2 py-0.5 rounded">{{ order.coupon.code }}</span>
+        </div>
+        {% endif %}
+        {% if payment %}
+        <div class="flex justify-between py-3 text-jp-muted">
+          <span>付款方式</span><span>{{ payment.get_method_display }}</span>
+        </div>
+        {% endif %}
+        <div class="flex justify-between py-3 text-lg font-black text-jp-accent">
+          <span>實付金額</span><span class="tabular-nums">NT$ {{ order.final_price }}</span>
+        </div>
+      </div>
+
+      <!-- CTA 按鈕 -->
+      <div class="mt-6 space-y-3">
+        {% for item in items %}
+        <a href="{% url 'watch_course' item.course.id %}" class="flex items-center justify-between w-full bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-6 py-3.5 rounded-xl transition group">
+          <span>▶ 開始上課：{{ item.course.title|truncatechars:20 }}</span>
+          <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+        </a>
+        {% endfor %}
+        <a href="{% url 'my_courses' %}" class="block text-center w-full bg-jp-bg hover:bg-jp-border text-jp-muted font-medium px-6 py-3 rounded-xl transition">回到我的課程</a>
+      </div>
     </div>
   </div>
+
+  <!-- 推薦更多課程 -->
+  {% if recommended_courses %}
+  <div class="mt-8">
+    <h2 class="font-grotesk text-tight-head text-xl font-extrabold text-jp-text mb-4">接下來，你可能也想學</h2>
+    <div class="grid sm:grid-cols-2 gap-4">
+      {% for c in recommended_courses %}
+      <a href="{% url 'course_detail' c.id %}" class="group flex gap-4 bg-jp-surface border border-jp-border rounded-xl p-4 hover:border-brand-500/50 hover:shadow-lg hover:shadow-brand-500/10 transition-all">
+        <div class="w-20 h-14 rounded-lg overflow-hidden shrink-0 bg-jp-bg">
+          {% if c.image %}
+          <img src="{{ c.image.url }}" alt="{{ c.title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+          {% else %}
+          <div class="w-full h-full bg-gradient-to-br from-brand-700 to-brand-500 flex items-center justify-center text-white font-bold">{{ c.title|slice:":1" }}</div>
+          {% endif %}
+        </div>
+        <div class="flex-1 min-w-0">
+          <h3 class="font-medium text-jp-text text-sm truncate group-hover:text-jp-primary transition">{{ c.title }}</h3>
+          <p class="text-xs text-jp-muted">{{ c.teacher.profile.display_name }}</p>
+          <span class="text-sm font-bold text-jp-accent tabular-nums">NT$ {{ c.get_effective_price }}</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
 </main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 紙花慶祝動畫
+(function () {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var colors = ['#16c2a3', '#fbbf24', '#ec4899', '#3b82f6', '#10b981', '#f59e0b'];
+  for (var i = 0; i < 40; i++) {
+    var el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.left = Math.random() * 100 + 'vw';
+    el.style.width = (Math.random() * 8 + 4) + 'px';
+    el.style.height = (Math.random() * 8 + 4) + 'px';
+    el.style.background = colors[Math.floor(Math.random() * colors.length)];
+    el.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+    el.style.animationDuration = (Math.random() * 2 + 2) + 's';
+    el.style.animationDelay = (Math.random() * 1.5) + 's';
+    document.body.appendChild(el);
+    setTimeout(function (e) { e.remove(); }.bind(null, el), 5000);
+  }
+})();
+</script>
 {% endblock %}

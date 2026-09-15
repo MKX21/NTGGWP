@@ -6,9 +6,11 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from .decorators import require_teacher, require_student, require_superuser
 from django.db.models import (
     Avg,
     Count,
+    F,
     FloatField,
     IntegerField,
     OuterRef,
@@ -133,21 +135,6 @@ def home(request):
     page_obj = paginator.get_page(request.GET.get('page'))
 
     # 評分：一次查完本頁所有課程，避免每堂課各發一次查詢（遠端 DB 的 N+1 效能殺手）
-    def _attach_reviews(courses):
-        courses = list(courses)
-        ids = [c.id for c in courses]
-        stats_map = {
-            row['course']: row
-            for row in Review.objects.filter(course_id__in=ids)
-            .values('course')
-            .annotate(avg=Avg('rating'), n=Count('id'))
-        }
-        for c in courses:
-            s = stats_map.get(c.id)
-            c.avg_rating = round(s['avg'], 1) if s and s['avg'] else None
-            c.review_count = s['n'] if s else 0
-        return courses
-
     _attach_reviews(page_obj.object_list)
 
     categories = list(CourseCategory.objects.order_by('name'))
@@ -169,6 +156,7 @@ def home(request):
     total_students = Enrollment.objects.values('student').distinct().count()
     total_courses = Course.objects.filter(is_published=True).count()
     total_teachers = Course.objects.filter(is_published=True).values('teacher').distinct().count()
+    total_learning_hours = (LearningRecord.objects.aggregate(t=Sum('minutes'))['t'] or 0) // 60
     avg_all = Review.objects.aggregate(a=Avg('rating'))['a']
     avg_all = round(avg_all, 1) if avg_all else 4.8
 
@@ -208,6 +196,50 @@ def home(request):
 
     from . import ai_assistant
 
+    # 「繼續學習」：已購課但尚未完成的課程（Hahow 首頁核心功能）
+    continue_learning = []
+    if request.user.is_authenticated:
+        enrolled_courses = Course.objects.filter(
+            enrollment__student=request.user, is_published=True,
+        ).select_related('teacher', 'teacher__profile', 'category')
+        for ec in enrolled_courses[:6]:
+            ec_total = CourseLesson.objects.filter(chapter__course=ec).count()
+            if ec_total == 0:
+                continue
+            ec_done = LessonProgress.objects.filter(
+                user=request.user, lesson__chapter__course=ec, is_completed=True,
+            ).count()
+            ec_pct = round(ec_done / ec_total * 100) if ec_total else 0
+            if ec_pct < 100:
+                # 找出下一個未完成的單元
+                completed_ids = set(
+                    LessonProgress.objects.filter(
+                        user=request.user, lesson__chapter__course=ec, is_completed=True,
+                    ).values_list('lesson_id', flat=True)
+                )
+                next_lesson = CourseLesson.objects.filter(
+                    chapter__course=ec,
+                ).exclude(id__in=completed_ids).order_by('chapter__sort_order', 'sort_order').first()
+                continue_learning.append({
+                    'course': ec,
+                    'progress': ec_pct,
+                    'done': ec_done,
+                    'total': ec_total,
+                    'next_lesson': next_lesson,
+                })
+
+    # 主題精選區：每個有課程的分類取最多 4 門熱門課
+    theme_sections = []
+    for category in CourseCategory.objects.order_by('name'):
+        cat_courses = list(
+            base_pub.filter(category=category)
+            .annotate(_pop=Count('enrollment', distinct=True))
+            .order_by('-_pop')[:4]
+        )
+        if cat_courses:
+            _attach_reviews(cat_courses)
+            theme_sections.append({'category': category, 'courses': cat_courses})
+
     return render(request, 'main/home.html', {
         'page_obj': page_obj,
         'sort': sort,
@@ -224,6 +256,8 @@ def home(request):
         'hero_courses': hero_courses,
         'funding_courses': funding_courses,
         'showcase_columns': showcase_columns,
+        'theme_sections': theme_sections,
+        'continue_learning': continue_learning,
         'sort_options': [
             ('newest', '最新'),
             ('popular', '熱門'),
@@ -361,6 +395,21 @@ def course_detail(request, course_id):
 
     review_count = reviews.count()
 
+    # 評分分布 (Hahow style 5★→1★ 長條圖)
+    rating_distribution = []
+    if review_count > 0:
+        from django.db.models import Count as _RCount
+        dist_raw = dict(
+            Review.objects.filter(course=course)
+            .values_list('rating')
+            .annotate(n=_RCount('id'))
+            .values_list('rating', 'n')
+        )
+        for star in range(5, 0, -1):
+            n = dist_raw.get(star, 0)
+            pct = round(n / review_count * 100) if review_count else 0
+            rating_distribution.append({'star': star, 'count': n, 'pct': pct})
+
     # A7：課程問答
     questions = CourseQuestion.objects.filter(
         course=course
@@ -375,16 +424,46 @@ def course_detail(request, course_id):
     )['total'] or 0
     student_count = Enrollment.objects.filter(course=course).count()
 
+    # 課程完成率：已完成所有單元的學生 / 總購買學生
+    completion_rate = None
+    if student_count > 0 and total_lessons > 0:
+        from django.db.models import Count as _Count
+        completed_students = Enrollment.objects.filter(course=course).annotate(
+            done=_Count(
+                'student__lessonprogress',
+                filter=Q(
+                    student__lessonprogress__lesson__chapter__course=course,
+                    student__lessonprogress__is_completed=True,
+                )
+            )
+        ).filter(done__gte=total_lessons).count()
+        completion_rate = round(completed_students / student_count * 100)
+
+    # 推薦相關課程（Hahow 的「你可能也會喜歡」）
+    related_courses = Course.objects.filter(
+        is_published=True,
+    ).exclude(id=course.id)
+    if course.category:
+        related_courses = related_courses.filter(category=course.category)
+    related_courses = related_courses.select_related(
+        'teacher', 'teacher__profile', 'category'
+    ).annotate(
+        _student_count=Count('enrollment', distinct=True),
+    ).order_by('-_student_count')[:4]
+    _attach_reviews(related_courses)
+
     from . import ai_assistant
 
     return render(request, 'main/course_detail.html', {
         'course': course,
         'platform_faqs': ai_assistant.PLATFORM_FAQS,
+        'course_faqs': ai_assistant.build_course_faq(course),
         'already_purchased': already_purchased,
         'chapters': chapters,
         'reviews': reviews,
         'average_rating': average_rating,
         'review_count': review_count,
+        'rating_distribution': rating_distribution,
         'can_review': can_review,
         'my_review': my_review,
         'review_form': review_form,
@@ -396,6 +475,8 @@ def course_detail(request, course_id):
         'total_lessons': total_lessons,
         'total_minutes': total_minutes,
         'student_count': student_count,
+        'completion_rate': completion_rate,
+        'related_courses': related_courses,
         'is_preview': is_preview,
     })
 
@@ -528,17 +609,8 @@ def edit_profile(request):
     })
 
 
-@login_required
+@require_student
 def student_dashboard(request):
-    try:
-        profile = request.user.profile
-
-        if profile.role != 'student':
-            return redirect('home')
-
-    except Profile.DoesNotExist:
-        return redirect('home')
-
     total_minutes = LearningRecord.objects.filter(
         user=request.user
     ).aggregate(
@@ -554,6 +626,25 @@ def student_dashboard(request):
     gamification.evaluate_badges(request.user)
     badges = gamification.badge_progress(request.user)
 
+    # 學習日曆熱力圖：最近 365 天每天的學習分鐘數
+    import datetime
+    today = datetime.date.today()
+    year_ago = today - datetime.timedelta(days=364)
+    daily_records = (
+        LearningRecord.objects.filter(
+            user=request.user,
+            watched_at__date__gte=year_ago,
+        )
+        .extra(select={'day': "DATE(watched_at)"})
+        .values('day')
+        .annotate(mins=Sum('minutes'))
+        .order_by('day')
+    )
+    heatmap_data = {str(r['day']): r['mins'] for r in daily_records}
+    # 產生完整 365 天清單（前端渲染用）
+    import json as _json
+    heatmap_json = _json.dumps(heatmap_data)
+
     return render(request, 'main/student_dashboard.html', {
         'total_minutes': total_minutes,
         'purchased_count': purchased_count,
@@ -561,20 +652,14 @@ def student_dashboard(request):
         'longest_streak': gamification.longest_streak(request.user),
         'badges': badges,
         'earned_badge_count': sum(1 for b in badges if b['earned']),
+        'heatmap_json': heatmap_json,
+        'heatmap_year_ago': year_ago.isoformat(),
+        'heatmap_today': today.isoformat(),
     })
 
 
-@login_required
+@require_teacher
 def teacher_dashboard(request):
-    try:
-        profile = request.user.profile
-
-        if profile.role != 'teacher':
-            return redirect('home')
-
-    except Profile.DoesNotExist:
-        return redirect('home')
-
     # 一次查完所有統計，不再逐課發四次查詢（見 _course_stats_annotations）
     teacher_courses = Course.objects.filter(
         teacher=request.user
@@ -596,14 +681,8 @@ def teacher_dashboard(request):
     })
 
 
-@login_required
+@require_teacher
 def submit_marketing_request(request):
-    try:
-        profile = request.user.profile
-        if profile.role != 'teacher' and not profile.is_teacher:
-            return redirect('home')
-    except Profile.DoesNotExist:
-        return redirect('home')
 
     initial = {}
     course_id = request.GET.get('course') or request.POST.get('course')
@@ -635,14 +714,8 @@ def submit_marketing_request(request):
     return render(request, 'main/marketing_request_form.html', {'form': form})
 
 
-@login_required
+@require_teacher
 def marketing_requests(request):
-    try:
-        profile = request.user.profile
-        if profile.role != 'teacher' and not profile.is_teacher:
-            return redirect('home')
-    except Profile.DoesNotExist:
-        return redirect('home')
 
     requests = (
         MarketingRequest.objects
@@ -893,11 +966,24 @@ def order_success(request, order_id):
         return redirect('payment', order_id=order.id)
 
     payment_obj = order.payments.order_by('-id').first()
+    items = order.items.select_related('course', 'course__teacher', 'course__teacher__profile').all()
+
+    # 推薦更多課程：同分類中使用者尚未購買的熱門課程
+    purchased_ids = set(Enrollment.objects.filter(student=request.user).values_list('course_id', flat=True))
+    cat_ids = [i.course.category_id for i in items if i.course.category_id]
+    recommended_courses = (
+        Course.objects.filter(is_published=True, category_id__in=cat_ids)
+        .exclude(id__in=purchased_ids)
+        .select_related('teacher', 'teacher__profile')
+        .annotate(_pop=Count('enrollment', distinct=True))
+        .order_by('-_pop')[:4]
+    ) if cat_ids else Course.objects.none()
 
     return render(request, 'main/order_success.html', {
         'order': order,
         'payment': payment_obj,
-        'items': order.items.select_related('course').all(),
+        'items': items,
+        'recommended_courses': recommended_courses,
     })
 
 
@@ -974,6 +1060,16 @@ def watch_lesson(request, lesson_id):
         if prog.duration and prog.last_position < prog.duration - 3:
             resume_position = prog.last_position
 
+    # 上一堂 / 下一堂（所有已排序單元的列表，找出當前位置）
+    all_lessons = list(
+        CourseLesson.objects.filter(chapter__course=course)
+        .order_by('chapter__sort_order', 'sort_order')
+        .values_list('id', flat=True)
+    )
+    curr_idx = all_lessons.index(lesson.id) if lesson.id in all_lessons else -1
+    prev_lesson_id = all_lessons[curr_idx - 1] if curr_idx > 0 else None
+    next_lesson_id = all_lessons[curr_idx + 1] if curr_idx >= 0 and curr_idx < len(all_lessons) - 1 else None
+
     return render(request, 'main/watch_lesson.html', {
         'course': course,
         'lesson': lesson,
@@ -987,6 +1083,8 @@ def watch_lesson(request, lesson_id):
         'can_download_materials': enrolled or is_teacher,
         'lesson_percent': lesson_percent,
         'resume_position': resume_position,
+        'prev_lesson_id': prev_lesson_id,
+        'next_lesson_id': next_lesson_id,
     })
 
 
@@ -1055,16 +1153,8 @@ def save_progress(request, lesson_id):
     })
 
 
-@login_required
+@require_teacher
 def create_course(request):
-    try:
-        profile = request.user.profile
-
-        if profile.role != 'teacher':
-            return redirect('home')
-
-    except Profile.DoesNotExist:
-        return redirect('home')
 
     if request.method == 'POST':
         form = CourseForm(request.POST, request.FILES)
@@ -1117,16 +1207,8 @@ def _notify_promotion_changes(course, old_discount, old_is_crowdfunding, old_ear
         )
 
 
-@login_required
+@require_teacher
 def edit_course(request, course_id):
-    try:
-        profile = request.user.profile
-
-        if profile.role != 'teacher':
-            return redirect('home')
-
-    except Profile.DoesNotExist:
-        return redirect('home')
 
     course = get_object_or_404(
         Course,
@@ -1164,16 +1246,8 @@ def edit_course(request, course_id):
     })
 
 
-@login_required
+@require_teacher
 def delete_course(request, course_id):
-    try:
-        profile = request.user.profile
-
-        if profile.role != 'teacher':
-            return redirect('home')
-
-    except Profile.DoesNotExist:
-        return redirect('home')
 
     course = get_object_or_404(
         Course,
@@ -3232,7 +3306,11 @@ def delete_material(request, material_id):
 
 @login_required
 def ask_ai(request, course_id):
-    """課程 AI 助教問答（POST，回傳 JSON）。限已購買學員、該課講師或管理員。"""
+    """課程 AI 助教問答（POST，回傳 JSON）。限已購買學員、該課講師或管理員。
+
+    支援多輪對話：前端送 history 陣列，後端轉交給 AI 模型以延續語境。
+    回傳 suggestions 陣列：建議追問，前端渲染成可點擊的按鈕。
+    """
     course = get_object_or_404(Course, id=course_id)
 
     is_teacher = course.teacher_id == request.user.id
@@ -3246,8 +3324,10 @@ def ask_ai(request, course_id):
     try:
         payload = json.loads(request.body.decode('utf-8'))
         question = payload.get('question', '')
+        history = payload.get('history', [])
     except (ValueError, AttributeError):
         question = request.POST.get('question', '')
+        history = []
 
     from . import ai_assistant
 
@@ -3255,32 +3335,41 @@ def ask_ai(request, course_id):
     # 命中就直接回答，完全不呼叫 AI API、不吃額度。
     faq = ai_assistant.match_platform_faq(question)
     if faq:
-        return JsonResponse({'ok': True, 'answer': faq['answer'], 'faq': True})
+        return JsonResponse({
+            'ok': True, 'answer': faq['answer'], 'faq': True, 'suggestions': [],
+        })
 
-    result = ai_assistant.answer_course_question(course, question)
+    result = ai_assistant.answer_course_question(course, question, history=history)
     return JsonResponse(result)
 
 
 @login_required
 def ask_platform_ai(request):
-    """首頁 AI 助手問答（平台 FAQ + 課程推薦，POST，回傳 JSON）。限已登入使用者。"""
+    """首頁 AI 助手問答（平台 FAQ + 課程推薦，POST，回傳 JSON）。限已登入使用者。
+
+    支援多輪對話與建議追問。
+    """
     if request.method != 'POST':
         return JsonResponse({'ok': False, 'error': '方法不允許。'}, status=405)
 
     try:
         payload = json.loads(request.body.decode('utf-8'))
         question = payload.get('question', '')
+        history = payload.get('history', [])
     except (ValueError, AttributeError):
         question = request.POST.get('question', '')
+        history = []
 
     from . import ai_assistant
 
     # 先比對固定 FAQ，命中就直接回答，完全不呼叫 AI API、不吃額度。
     faq = ai_assistant.match_platform_faq(question)
     if faq:
-        return JsonResponse({'ok': True, 'answer': faq['answer'], 'faq': True})
+        return JsonResponse({
+            'ok': True, 'answer': faq['answer'], 'faq': True, 'suggestions': [],
+        })
 
-    result = ai_assistant.answer_platform_question(question)
+    result = ai_assistant.answer_platform_question(question, history=history)
     return JsonResponse(result)
 
 
@@ -3412,37 +3501,6 @@ def _attach_reviews(courses):
     return courses
 
 
-def _finalize_paid_order(order):
-    """付款成功後：開通課程、標記優惠券、發通知（具冪等性）。"""
-    if order.status == 'paid':
-        return
-    order.status = 'paid'
-    order.save()
-
-    for item in order.items.select_related('course').all():
-        Enrollment.objects.get_or_create(student=order.user, course=item.course)
-
-    if order.coupon:
-        CouponUsage.objects.get_or_create(
-            order=order,
-            defaults={
-                'user': order.user,
-                'coupon': order.coupon,
-                'discount_amount': order.discount_amount,
-            }
-        )
-        UserCoupon.objects.filter(
-            user=order.user, coupon=order.coupon, status='unused'
-        ).update(status='used', used_at=timezone.now())
-
-    titles = '、'.join(i.course.title for i in order.items.all())
-    Notification.objects.create(
-        user=order.user,
-        title='購買成功通知',
-        content=f'你已完成付款並開通課程：{titles}（實付 NT$ {order.final_price}）。'
-    )
-
-
 def _group_cart_items_by_bundle(items):
     """把購物車項目依合購組合分組，回傳 (display_bundles, loose_items)。
     display_bundles 每筆含 bundle/items/is_intact/individual_total。"""
@@ -3557,30 +3615,42 @@ def add_comment(request, course_id):
 
 
 def course_catalog(request):
-    """完整課程總覽：搜尋、分類篩選、排序、分頁——從首頁搬過來，邏輯與變數名稱不變。"""
+    """完整課程總覽：搜尋、分類篩選、排序、分頁。"""
     sort = request.GET.get('sort', 'newest')
     q = request.GET.get('q', '').strip()
     cat = request.GET.get('cat', '').strip()
 
-    qs = Course.objects.filter(is_published=True).select_related('teacher', 'category')
+    qs = Course.objects.filter(is_published=True).select_related('teacher', 'teacher__profile', 'category')
 
     if q:
-        qs = qs.filter(Q(title__icontains=q) | Q(teacher__username__icontains=q))
+        qs = qs.filter(
+            Q(title__icontains=q)
+            | Q(description__icontains=q)
+            | Q(teacher__username__icontains=q)
+            | Q(teacher__first_name__icontains=q)
+            | Q(teacher__last_name__icontains=q)
+        )
     if cat:
         qs = qs.filter(category__name=cat)
 
-    qs = qs.annotate(student_count=Count('enrollment', distinct=True))
+    qs = qs.annotate(
+        student_count=Count('enrollment', distinct=True),
+        avg_rating_val=Avg('review__rating'),
+    )
 
     sort_map = {
         'newest': '-created_at',
         'popular': '-student_count',
         'price_asc': 'price',
         'price_desc': '-price',
+        'rating': '-avg_rating_val',
     }
     if sort not in sort_map:
         sort = 'newest'
     if sort == 'popular':
         qs = qs.order_by('-student_count', '-created_at')
+    elif sort == 'rating':
+        qs = qs.order_by(F('avg_rating_val').desc(nulls_last=True), '-created_at')
     else:
         qs = qs.order_by(sort_map[sort])
 
@@ -3599,6 +3669,7 @@ def course_catalog(request):
         'sort_options': [
             ('newest', '最新'),
             ('popular', '熱門'),
+            ('rating', '評分最高'),
             ('price_asc', '價格低→高'),
             ('price_desc', '價格高→低'),
         ],
@@ -3682,14 +3753,8 @@ def line_oauth_callback(request):
     return _post_login_redirect(user)
 
 
-@login_required
+@require_teacher
 def teacher_qna(request):
-    try:
-        profile = request.user.profile
-        if not _is_teacher(profile):
-            return redirect('home')
-    except Profile.DoesNotExist:
-        return redirect('home')
 
     questions = CourseQuestion.objects.filter(
         course__teacher=request.user

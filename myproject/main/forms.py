@@ -240,10 +240,10 @@ class CommentForm(forms.ModelForm):
 
 
 class RegisterForm(forms.Form):
-    username = forms.CharField(label='帳號', max_length=150)
-    email = forms.EmailField(label='Email')
-    password = forms.CharField(label='密碼', widget=forms.PasswordInput)
-    confirm_password = forms.CharField(label='確認密碼', widget=forms.PasswordInput)
+    username = forms.CharField(label='帳號', max_length=150, widget=forms.TextInput(attrs={'autocomplete': 'username'}))
+    email = forms.EmailField(label='Email', widget=forms.EmailInput(attrs={'autocomplete': 'email'}))
+    password = forms.CharField(label='密碼', widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}))
+    confirm_password = forms.CharField(label='確認密碼', widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}))
 
     def clean_username(self):
         username = self.cleaned_data['username']

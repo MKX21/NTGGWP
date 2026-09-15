@@ -7,6 +7,9 @@
             <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-brand-600 to-brand-400 text-white text-4xl font-bold">{{ course.title|slice:":1"|upper }}</div>
             {% endif %}
             <span class="absolute top-3 left-3 bg-jp-bg/90 text-jp-primary text-xs font-medium px-2 py-1 rounded">{{ course.get_level_display }}</span>
+            {% if course.id in nav_enrolled_ids %}
+            <span class="absolute top-3 left-20 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded"><i class="fas fa-check mr-0.5"></i>已購買</span>
+            {% endif %}
             {% if course.is_crowdfunding and course.is_funding_active %}
             <span class="absolute top-3 right-3 bg-accent-500 text-black text-xs font-bold px-2 py-1 rounded"><i class="fas fa-bullhorn mr-1"></i>募資中</span>
             {% endif %}

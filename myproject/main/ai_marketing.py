@@ -132,7 +132,7 @@ def _call_claude(system_prompt, user_prompt):
     try:
         client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
         message = client.messages.create(
-            model=getattr(settings, "AI_ASSISTANT_MODEL", "claude-opus-5"),
+            model=getattr(settings, "AI_ASSISTANT_MODEL", "claude-sonnet-4-6"),
             max_tokens=4096,
             system=system_prompt,
             messages=[
@@ -148,7 +148,7 @@ def _call_claude(system_prompt, user_prompt):
         return None, "API 呼叫頻率超出限制，請稍後再試。"
     except Exception as e:
         logger.error(f"Anthropic API 呼叫失敗: {e}")
-        return None, f"API 呼叫失敗：{e}"
+        return None, "AI 行銷企劃生成失敗，請稍後再試。"
 
     return reply_text, None
 
@@ -199,10 +199,10 @@ def _call_gemini(system_prompt, user_prompt):
             if code == 503:
                 return None, "AI 服務目前忙碌中，請稍後再試。"
             logger.error(f"Gemini API 呼叫失敗: {exc}")
-            return None, f"API 呼叫失敗：{getattr(exc, 'message', None) or exc}"
+            return None, "AI 行銷企劃生成失敗，請稍後再試。"
         except Exception as e:
             logger.error(f"Gemini API 呼叫失敗: {e}")
-            return None, f"API 呼叫失敗：{e}"
+            return None, "AI 行銷企劃生成失敗，請稍後再試。"
 
     return (getattr(response, "text", "") or ""), None
 
@@ -224,7 +224,7 @@ def generate_marketing_plan(marketing_request):
         course_data = _collect_course_data(marketing_request)
     except Exception as e:
         logger.error(f"收集課程資料失敗: {e}")
-        return False, f"收集課程資料失敗：{e}"
+        return False, "收集課程資料時發生錯誤，請稍後再試。"
 
     system_prompt, user_prompt = _build_prompt(course_data)
 

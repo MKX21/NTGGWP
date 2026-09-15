@@ -10,12 +10,18 @@
             {% if q %}<p class="text-jp-muted mt-1">「{{ q }}」的搜尋結果，共 {{ page_obj.paginator.count }} 門</p>
             {% else %}<p class="text-jp-muted mt-1">依熱門、最新或價格排序，並可用分類篩選</p>{% endif %}
         </div>
-        <!-- 排序 -->
+        <!-- 排序 + 檢視切換 -->
+        <div class="flex items-center gap-3">
+            <div class="flex border border-jp-border rounded-lg overflow-hidden" data-view-toggle>
+                <button type="button" data-view="grid" class="px-3 py-2 text-sm bg-jp-primary text-white" aria-label="格狀檢視"><i class="fas fa-th-large"></i></button>
+                <button type="button" data-view="list" class="px-3 py-2 text-sm bg-jp-surface text-jp-muted hover:text-jp-primary" aria-label="列表檢視"><i class="fas fa-list"></i></button>
+            </div>
         <div class="flex flex-wrap gap-2">
             {% for key, label in sort_options %}
             <a href="?sort={{ key }}{% if q %}&q={{ q }}{% endif %}{% if cat %}&cat={{ cat }}{% endif %}#courses"
                class="px-4 py-2 rounded-full text-sm font-medium transition {% if sort == key %}bg-jp-primary text-white{% else %}bg-jp-surface text-jp-muted border border-jp-border hover:border-jp-primary{% endif %}">{{ label }}</a>
             {% endfor %}
+        </div>
         </div>
     </div>
 
@@ -35,7 +41,8 @@
     </div>
 
     {% if page_obj %}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <p class="text-sm text-jp-muted mb-4">共 {{ page_obj.paginator.count }} 門課程</p>
+    <div data-course-grid class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {% for course in page_obj %}
         {% include 'main/partials/course_card.html' with card_extra="" %}
         {% endfor %}
@@ -62,4 +69,38 @@
     </div>
     {% endif %}
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    var grid = document.querySelector('[data-course-grid]');
+    var btns = document.querySelectorAll('[data-view-toggle] button');
+    if (!grid || !btns.length) return;
+    btns.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var mode = btn.dataset.view;
+            btns.forEach(function (b) {
+                var on = b === btn;
+                b.className = 'px-3 py-2 text-sm ' + (on ? 'bg-jp-primary text-white' : 'bg-jp-surface text-jp-muted hover:text-jp-primary');
+            });
+            if (mode === 'list') {
+                grid.className = 'space-y-3';
+                grid.querySelectorAll('article').forEach(function (card) {
+                    card.className = (card.className || '').replace(/rounded-lg/g, 'rounded-xl') + ' flex flex-row h-32';
+                    var img = card.querySelector('.aspect-video');
+                    if (img) { img.className = img.className.replace('aspect-video', '') + ' w-48 h-full shrink-0'; }
+                });
+            } else {
+                grid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6';
+                grid.querySelectorAll('article').forEach(function (card) {
+                    card.className = card.className.replace(/ flex flex-row h-32/g, '').replace(/rounded-xl/g, 'rounded-lg');
+                    var img = card.querySelector('.w-48');
+                    if (img) { img.className = img.className.replace('w-48 h-full shrink-0', '') + ' aspect-video'; }
+                });
+            }
+        });
+    });
+})();
+</script>
 {% endblock %}

@@ -92,11 +92,11 @@
       {% csrf_token %}
       <div>
         <label class="block font-medium mb-1.5 text-sm" for="username">帳號名稱或 Gmail</label>
-        <input type="text" id="username" name="username" placeholder="請輸入帳號名稱或 Gmail" required class="glass-input">
+        <input type="text" id="username" name="username" placeholder="請輸入帳號名稱或 Gmail" required autocomplete="username" class="glass-input">
       </div>
       <div>
         <label class="block font-medium mb-1.5 text-sm" for="password">密碼</label>
-        <input type="password" id="password" name="password" required class="glass-input">
+        <input type="password" id="password" name="password" required autocomplete="current-password" class="glass-input">
       </div>
       <button type="submit" class="glass-btn">登入</button>
     </form>

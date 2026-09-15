@@ -17,12 +17,24 @@
   </div>
 
   {% if enrollments %}
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+  <!-- 篩選 Tabs（全部 / 進行中 / 已完成）-->
+  <div class="flex gap-2 mb-6" data-filter-tabs>
+    <button type="button" data-filter="all" class="px-5 py-2 rounded-full text-sm font-bold bg-jp-primary text-white transition">全部 ({{ enrollments|length }})</button>
+    <button type="button" data-filter="in-progress" class="px-5 py-2 rounded-full text-sm font-bold bg-jp-surface text-jp-muted border border-jp-border hover:border-jp-primary transition">進行中</button>
+    <button type="button" data-filter="completed" class="px-5 py-2 rounded-full text-sm font-bold bg-jp-surface text-jp-muted border border-jp-border hover:border-jp-primary transition">已完成</button>
+  </div>
+
+  <div data-course-list class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
     {% for enrollment in enrollments %}
-    <div class="bg-jp-surface rounded-xl border border-jp-border shadow-sm overflow-hidden flex flex-col">
-      <div class="aspect-video bg-jp-bg">
+    <div class="bg-jp-surface rounded-xl border border-jp-border shadow-sm overflow-hidden flex flex-col" data-progress="{{ enrollment.progress }}">
+      <div class="aspect-video bg-jp-bg relative">
         {% if enrollment.course.image %}<img src="{{ enrollment.course.image.url }}" alt="{{ enrollment.course.title }}" class="w-full h-full object-cover">
         {% else %}<div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-brand-600 to-brand-400 text-white text-4xl font-bold">{{ enrollment.course.title|slice:":1"|upper }}</div>{% endif %}
+        {% if enrollment.progress == 100 %}
+        <span class="absolute top-3 right-3 bg-green-500 text-white text-xs font-bold px-2.5 py-1 rounded-full"><i class="fas fa-check mr-1"></i>已完成</span>
+        {% elif enrollment.progress > 0 %}
+        <span class="absolute top-3 right-3 bg-jp-primary text-white text-xs font-bold px-2.5 py-1 rounded-full">{{ enrollment.progress }}%</span>
+        {% endif %}
       </div>
       <div class="p-5 flex flex-col flex-1">
         <h3 class="font-medium text-jp-text mb-0.5 line-clamp-2">{{ enrollment.course.title }}</h3>
@@ -56,9 +68,40 @@
     {% endfor %}
   </div>
   {% else %}
-  <div class="bg-jp-surface rounded-xl border border-jp-border shadow-sm p-12 text-center text-jp-muted">
-    你目前還沒有購買任何課程。<br>可以先到<a href="{% url 'course_catalog' %}" class="text-jp-primary hover:underline">課程總覽</a>瀏覽課程並完成購買。
+  <div class="bg-jp-surface rounded-xl border-2 border-dashed border-jp-border shadow-sm p-16 text-center">
+    <div class="text-6xl mb-4">📚</div>
+    <h3 class="text-xl font-bold text-jp-text mb-2">還沒有購買任何課程</h3>
+    <p class="text-jp-muted mb-6">探索感興趣的課程，開始你的學習旅程吧！</p>
+    <a href="{% url 'course_catalog' %}" class="inline-block bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-8 py-3 rounded-lg transition">瀏覽課程</a>
   </div>
   {% endif %}
 </main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var tabs = document.querySelectorAll('[data-filter-tabs] button');
+  var cards = document.querySelectorAll('[data-course-list] [data-progress]');
+  if (!tabs.length) return;
+
+  tabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      var filter = tab.dataset.filter;
+      tabs.forEach(function (t) {
+        var on = t === tab;
+        t.className = 'px-5 py-2 rounded-full text-sm font-bold transition ' +
+          (on ? 'bg-jp-primary text-white' : 'bg-jp-surface text-jp-muted border border-jp-border hover:border-jp-primary');
+      });
+      cards.forEach(function (card) {
+        var p = parseInt(card.dataset.progress);
+        var show = filter === 'all' ||
+                   (filter === 'completed' && p === 100) ||
+                   (filter === 'in-progress' && p < 100);
+        card.style.display = show ? '' : 'none';
+      });
+    });
+  });
+})();
+</script>
 {% endblock %}

@@ -110,6 +110,12 @@
                     <p class="text-jp-muted">學生人數</p>
                     <p class="font-grotesk tabular-nums text-jp-text font-bold">{{ student_count }} 人</p>
                 </div>
+                {% if completion_rate is not None %}
+                <div>
+                    <p class="text-jp-muted">完課率</p>
+                    <p class="font-grotesk tabular-nums text-jp-text font-bold">{{ completion_rate }}%</p>
+                </div>
+                {% endif %}
                 <div>
                     <p class="text-jp-muted">課程內容</p>
                     <p class="font-grotesk tabular-nums text-jp-text font-bold">{{ total_lessons }} 單元・{{ total_minutes }} 分鐘</p>
@@ -232,6 +238,28 @@
             <!-- Tab: 學生評價 -->
             <div data-panel="reviews" class="hidden">
                 <h2 class="font-grotesk text-tight-head text-xl font-extrabold text-jp-text mb-4">學生評價</h2>
+
+                {% if rating_distribution %}
+                <!-- Hahow 風格：評分總覽 + 分布長條圖 -->
+                <div class="flex flex-col sm:flex-row gap-6 mb-6 p-5 bg-jp-bg rounded-xl border border-jp-border">
+                    <div class="text-center sm:text-left shrink-0">
+                        <div class="font-grotesk text-5xl font-black text-jp-accent tabular-nums">{{ average_rating }}</div>
+                        <div class="text-amber-400 text-lg mt-1">{% for i in "12345"|make_list %}{% if forloop.counter <= average_rating %}<i class="fas fa-star"></i>{% else %}<i class="far fa-star"></i>{% endif %}{% endfor %}</div>
+                        <div class="text-jp-muted text-sm mt-1">{{ review_count }} 則評價</div>
+                    </div>
+                    <div class="flex-1 space-y-1.5">
+                        {% for d in rating_distribution %}
+                        <div class="flex items-center gap-2 text-sm">
+                            <span class="text-jp-muted w-8 text-right tabular-nums">{{ d.star }}★</span>
+                            <div class="flex-1 h-3 bg-jp-border rounded-full overflow-hidden">
+                                <div class="h-full bg-amber-400 rounded-full transition-all" style="width: {{ d.pct }}%"></div>
+                            </div>
+                            <span class="text-jp-muted w-10 text-right tabular-nums text-xs">{{ d.count }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
                 {% if user.is_authenticated and can_review %}
                 <div class="bg-jp-bg rounded-xl p-5 mb-6">
                     <h3 class="font-medium text-jp-text mb-3">{% if my_review %}修改我的評價{% else %}我要評價{% endif %}</h3>
@@ -443,6 +471,24 @@
                     <p><i class="fas fa-certificate mr-2 text-jp-primary"></i> 完課證書</p>
                     <p><i class="fas fa-shield-halved mr-2 text-jp-primary"></i> 7 天不滿意退款保障</p>
                 </div>
+
+                <!-- 分享按鈕（Hahow 風格） -->
+                <div class="mt-6 pt-5 border-t border-jp-border">
+                    <p class="text-xs text-jp-muted font-medium mb-3">分享這堂課</p>
+                    <div class="flex gap-2">
+                        <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri }}" target="_blank" rel="noopener"
+                           class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-[#1877F2]/10 text-[#1877F2] hover:bg-[#1877F2]/20 text-sm font-medium transition">
+                            <i class="fab fa-facebook-f"></i> Facebook
+                        </a>
+                        <a href="https://social-plugins.line.me/lineit/share?url={{ request.build_absolute_uri }}" target="_blank" rel="noopener"
+                           class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-[#06C755]/10 text-[#06C755] hover:bg-[#06C755]/20 text-sm font-medium transition">
+                            <i class="fab fa-line"></i> LINE
+                        </a>
+                        <button type="button" data-copy-url class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-jp-bg text-jp-muted hover:bg-jp-border text-sm font-medium transition">
+                            <i class="fas fa-link"></i> <span data-copy-label>複製連結</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -461,6 +507,37 @@
     </div>
   </div>
 </div>
+{% endif %}
+
+{% if related_courses %}
+<!-- 你可能也會喜歡（Hahow 風格推薦） -->
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
+    <h2 class="font-grotesk text-tight-head text-2xl font-extrabold text-jp-text mb-5">你可能也會喜歡</h2>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {% for c in related_courses %}
+        <a href="{% url 'course_detail' c.id %}" class="group block bg-jp-surface rounded-xl border border-jp-border overflow-hidden hover:border-brand-500/50 hover:shadow-lg hover:shadow-brand-500/10 transition-all">
+            <div class="aspect-video bg-jp-bg overflow-hidden">
+                {% if c.image %}
+                <img src="{{ c.image.url }}" alt="{{ c.title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                {% else %}
+                <div class="w-full h-full bg-gradient-to-br from-brand-700 to-brand-500 flex items-center justify-center text-white/60 text-4xl"><i class="fas fa-graduation-cap"></i></div>
+                {% endif %}
+            </div>
+            <div class="p-4">
+                <h3 class="font-bold text-jp-text text-sm mb-1 line-clamp-2 group-hover:text-jp-primary transition-colors">{{ c.title }}</h3>
+                <p class="text-xs text-jp-muted mb-2">{{ c.teacher.profile.display_name }}</p>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-1">
+                        {% if c.avg_rating %}<span class="text-amber-400 text-xs"><i class="fas fa-star"></i></span><span class="text-xs text-jp-muted">{{ c.avg_rating }}</span>{% endif %}
+                        <span class="text-xs text-jp-muted">（{{ c.review_count }}）</span>
+                    </div>
+                    <span class="font-grotesk tabular-nums text-sm font-bold text-jp-accent">NT$ {{ c.get_effective_price }}</span>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</section>
 {% endif %}
 
 {% if already_purchased or is_course_teacher or user.is_superuser %}
@@ -482,7 +559,7 @@
       {% endfor %}
     </div>
     <div data-ai-log class="flex-1 overflow-y-auto p-4 space-y-3 text-sm bg-slate-50">
-      <div class="bg-white rounded-xl p-3 ring-1 ring-slate-100 text-slate-600">嗨！我是「{{ course.title }}」的 AI 助教，關於這門課的內容都可以問我 🙌</div>
+      <div class="bg-white rounded-xl p-3 ring-1 ring-slate-100 text-slate-600">嗨！我是「{{ course.title }}」的 AI 助教，關於這門課的內容都可以問我。</div>
     </div>
     <form data-ai-form class="p-3 border-t border-slate-100 flex gap-2">
       <input data-ai-input type="text" placeholder="輸入你的問題…" class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-brand-200" autocomplete="off">
@@ -491,6 +568,7 @@
   </div>
 </div>
 {{ platform_faqs|json_script:"course-ai-faqs-data" }}
+{{ course_faqs|json_script:"course-specific-faqs-data" }}
 {% endif %}
 {% endblock %}
 
@@ -597,6 +675,29 @@ document.querySelectorAll('[data-funding-countdown]').forEach((root) => {
     const askUrl = "{% url 'ask_ai' course.id %}";
     const faqDataEl = document.getElementById('course-ai-faqs-data');
     const FAQS = faqDataEl ? JSON.parse(faqDataEl.textContent) : [];
+    const courseFaqEl = document.getElementById('course-specific-faqs-data');
+    const COURSE_FAQS = courseFaqEl ? JSON.parse(courseFaqEl.textContent) : [];
+    const ALL_FAQS = FAQS.concat(COURSE_FAQS);
+
+    // 多輪對話：保留對話歷史
+    const chatHistory = [];
+
+    // 動態渲染課程專屬 FAQ 按鈕（如果有的話）
+    const faqBar = root.querySelector('[data-ai-faq]');
+    if (faqBar && COURSE_FAQS.length > 0) {
+        COURSE_FAQS.forEach((faq) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.dataset.faqId = faq.id;
+            btn.className = 'text-xs bg-blue-50 hover:bg-jp-primary hover:text-white text-blue-600 rounded-full px-3 py-1.5 transition whitespace-nowrap';
+            btn.textContent = faq.label;
+            btn.addEventListener('click', () => {
+                bubble(faq.question, 'user');
+                setTimeout(() => bubble(faq.answer, 'ai'), 300);
+            });
+            faqBar.appendChild(btn);
+        });
+    }
 
     root.querySelector('[data-ai-toggle]').addEventListener('click', () => {
         panel.classList.toggle('hidden');
@@ -609,7 +710,7 @@ document.querySelectorAll('[data-funding-countdown]').forEach((root) => {
     // 常見問題快速按鈕：直接用本機資料顯示問答，完全不打 API、不消耗額度。
     root.querySelectorAll('[data-ai-faq] [data-faq-id]').forEach((btn) => {
         btn.addEventListener('click', () => {
-            const faq = FAQS.find((f) => f.id === btn.dataset.faqId);
+            const faq = ALL_FAQS.find((f) => f.id === btn.dataset.faqId);
             if (!faq) return;
             bubble(faq.question, 'user');
             setTimeout(() => bubble(faq.answer, 'ai'), 300);
@@ -627,13 +728,30 @@ document.querySelectorAll('[data-funding-countdown]').forEach((root) => {
         return el;
     }
 
-    // 防重複發送：送出後鎖住輸入框／按鈕，回覆後再強制冷卻 1 秒才解鎖，
-    // 避免使用者連點或頻繁送出觸發後端 API 的 429（限流）錯誤。
+    function renderSuggestions(suggestions) {
+        if (!suggestions || suggestions.length === 0) return;
+        const wrap = document.createElement('div');
+        wrap.className = 'flex flex-wrap gap-1.5 mt-1';
+        suggestions.forEach((s) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'text-xs bg-slate-100 hover:bg-jp-primary hover:text-white text-slate-600 rounded-full px-3 py-1.5 transition text-left';
+            btn.textContent = s;
+            btn.addEventListener('click', () => {
+                wrap.remove();
+                sendQuestion(s);
+            });
+            wrap.appendChild(btn);
+        });
+        log.appendChild(wrap);
+        log.scrollTop = log.scrollHeight;
+    }
+
     function setBusy(isBusy, label) {
         busy = isBusy;
         input.disabled = isBusy;
         submitBtn.disabled = isBusy;
-        submitBtn.textContent = label || (isBusy ? '思考中…' : SUBMIT_LABEL);
+        submitBtn.textContent = label || (isBusy ? '思考中...' : SUBMIT_LABEL);
     }
 
     function startCooldown() {
@@ -643,32 +761,50 @@ document.querySelectorAll('[data-funding-countdown]').forEach((root) => {
             busy = false;
             input.disabled = false;
             submitBtn.disabled = false;
+            input.focus();
         }, COOLDOWN_MS);
     }
 
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        if (busy) return;
-        const q = input.value.trim();
-        if (!q) return;
+    async function sendQuestion(q) {
+        if (busy || !q) return;
         setBusy(true);
         bubble(q, 'user');
+        chatHistory.push({ role: 'user', text: q });
         input.value = '';
-        const thinking = bubble('思考中…', 'ai');
+        const thinking = bubble('思考中...', 'ai');
         try {
             const res = await fetch(askUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
-                body: JSON.stringify({ question: q }),
+                body: JSON.stringify({ question: q, history: chatHistory.slice(0, -1) }),
             });
             const data = await res.json();
-            thinking.textContent = data.ok ? data.answer : (data.error || '發生錯誤，請稍後再試。');
+            const answer = data.ok ? data.answer : (data.error || '發生錯誤，請稍後再試。');
+            thinking.textContent = answer;
+            chatHistory.push({ role: 'ai', text: answer });
+            if (data.suggestions) renderSuggestions(data.suggestions);
         } catch (err) {
             thinking.textContent = '連線失敗，請稍後再試。';
         } finally {
             startCooldown();
         }
+    }
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        sendQuestion(input.value.trim());
     });
+
+    // 複製連結按鈕
+    var copyBtn = document.querySelector('[data-copy-url]');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', function () {
+            var label = copyBtn.querySelector('[data-copy-label]');
+            navigator.clipboard.writeText(window.location.href).then(function () {
+                if (label) { label.textContent = '已複製！'; setTimeout(function () { label.textContent = '複製連結'; }, 2000); }
+            });
+        });
+    }
 })();
 </script>
 {% endblock %}

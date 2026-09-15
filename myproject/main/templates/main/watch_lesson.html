@@ -28,6 +28,18 @@
           <div class="text-slate-500 mb-4">影片長度 {{ lesson.duration_minutes }} 分鐘{% if lesson.is_free_preview %} ・ <span class="text-green-600 font-medium">免費試看</span>{% endif %}</div>
           {% if lesson.content %}<div class="text-slate-700 leading-relaxed whitespace-pre-line">{{ lesson.content }}</div>{% endif %}
 
+          <!-- 播放速度控制 -->
+          <div class="mt-4 flex items-center gap-2 flex-wrap" id="speedControls" style="display:none;">
+            <span class="text-sm text-slate-400 mr-1"><i class="fas fa-gauge-high"></i> 播放速度</span>
+            <button type="button" data-speed="0.5" class="speed-btn text-xs px-2.5 py-1 rounded-lg border border-slate-200 text-slate-500 hover:border-brand-300 hover:text-jp-primary transition">0.5x</button>
+            <button type="button" data-speed="0.75" class="speed-btn text-xs px-2.5 py-1 rounded-lg border border-slate-200 text-slate-500 hover:border-brand-300 hover:text-jp-primary transition">0.75x</button>
+            <button type="button" data-speed="1" class="speed-btn text-xs px-2.5 py-1 rounded-lg border-2 border-jp-primary text-jp-primary font-bold transition">1x</button>
+            <button type="button" data-speed="1.25" class="speed-btn text-xs px-2.5 py-1 rounded-lg border border-slate-200 text-slate-500 hover:border-brand-300 hover:text-jp-primary transition">1.25x</button>
+            <button type="button" data-speed="1.5" class="speed-btn text-xs px-2.5 py-1 rounded-lg border border-slate-200 text-slate-500 hover:border-brand-300 hover:text-jp-primary transition">1.5x</button>
+            <button type="button" data-speed="2" class="speed-btn text-xs px-2.5 py-1 rounded-lg border border-slate-200 text-slate-500 hover:border-brand-300 hover:text-jp-primary transition">2x</button>
+            <span class="text-xs text-slate-400 ml-2 hidden sm:inline">快捷鍵：空白 暫停 ・ ← → 快轉 5 秒 ・ ↑ ↓ 音量</span>
+          </div>
+
           {% if can_download_materials and lesson.materials.all %}
           <div class="mt-5 border-t border-slate-100 pt-4">
             <h3 class="font-bold text-slate-800 mb-3"><i class="fas fa-folder-open text-jp-primary mr-1"></i> 課程教材</h3>
@@ -59,6 +71,21 @@
             </div>
             <a href="{% url 'course_detail' course.id %}" class="ml-auto text-jp-primary hover:underline font-medium text-sm">回課程頁</a>
           </div>
+
+          <!-- 上一堂 / 下一堂 -->
+          <div class="mt-4 flex items-center gap-3">
+            {% if prev_lesson_id %}
+            <a href="{% url 'watch_lesson' prev_lesson_id %}" class="flex-1 flex items-center justify-center gap-2 border border-slate-200 hover:border-brand-300 text-slate-600 hover:text-jp-primary rounded-lg py-2.5 font-medium text-sm transition"><i class="fas fa-chevron-left"></i> 上一堂</a>
+            {% else %}
+            <span class="flex-1 flex items-center justify-center gap-2 border border-slate-100 text-slate-300 rounded-lg py-2.5 font-medium text-sm cursor-not-allowed"><i class="fas fa-chevron-left"></i> 上一堂</span>
+            {% endif %}
+            {% if next_lesson_id %}
+            <a href="{% url 'watch_lesson' next_lesson_id %}" class="flex-1 flex items-center justify-center gap-2 bg-jp-primary hover:bg-jp-primaryHover text-white rounded-lg py-2.5 font-bold text-sm transition">下一堂 <i class="fas fa-chevron-right"></i></a>
+            {% else %}
+            <a href="{% url 'course_detail' course.id %}" class="flex-1 flex items-center justify-center gap-2 bg-jp-accent hover:bg-accent-600 text-white rounded-lg py-2.5 font-bold text-sm transition">🎉 回到課程頁</a>
+            {% endif %}
+          </div>
+
           <input type="hidden" id="csrftoken" value="{{ csrf_token }}" />
           {% endif %}
         </div>
@@ -177,6 +204,93 @@
       if (document.visibilityState === "hidden") flush();
     });
     window.addEventListener("pagehide", flush);
+
+    // ===== 播放速度控制 =====
+    var speedCtrl = document.getElementById("speedControls");
+    if (speedCtrl) speedCtrl.style.display = "";
+    var speedBtns = document.querySelectorAll(".speed-btn");
+    speedBtns.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var rate = parseFloat(btn.dataset.speed);
+        if (!isNaN(rate)) video.playbackRate = rate;
+        speedBtns.forEach(function (b) {
+          var isActive = b === btn;
+          b.className = "speed-btn text-xs px-2.5 py-1 rounded-lg transition " +
+            (isActive ? "border-2 border-jp-primary text-jp-primary font-bold" : "border border-slate-200 text-slate-500 hover:border-brand-300 hover:text-jp-primary");
+        });
+      });
+    });
+
+    // ===== 鍵盤快捷鍵 =====
+    document.addEventListener("keydown", function (e) {
+      // 如果焦點在輸入框，不攔截
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable) return;
+      switch (e.key) {
+        case " ":
+        case "k":
+          e.preventDefault();
+          video.paused ? video.play() : video.pause();
+          break;
+        case "ArrowLeft":
+        case "j":
+          e.preventDefault();
+          video.currentTime = Math.max(0, video.currentTime - 5);
+          break;
+        case "ArrowRight":
+        case "l":
+          e.preventDefault();
+          video.currentTime = Math.min(video.duration || Infinity, video.currentTime + 5);
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          video.volume = Math.min(1, video.volume + 0.1);
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          video.volume = Math.max(0, video.volume - 0.1);
+          break;
+        case "m":
+          video.muted = !video.muted;
+          break;
+        case "f":
+          if (document.fullscreenElement) document.exitFullscreen();
+          else video.requestFullscreen && video.requestFullscreen();
+          break;
+      }
+    });
+
+    // ===== 影片結束自動跳轉下一堂（Hahow / Udemy 風格） =====
+    {% if next_lesson_id %}
+    var nextUrl = "{% url 'watch_lesson' next_lesson_id %}";
+    var autoTimer = null;
+    var overlay = null;
+    video.addEventListener("ended", function () {
+      if (overlay) return;
+      overlay = document.createElement("div");
+      overlay.className = "absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-4 z-10";
+      overlay.innerHTML = '<p class="text-white text-lg font-bold">即將播放下一堂</p>' +
+        '<div class="text-white/70 text-sm">自動跳轉 <span id="cd-sec" class="text-electric font-bold">5</span> 秒</div>' +
+        '<div class="flex gap-3">' +
+        '<button id="cd-cancel" class="px-5 py-2 rounded-lg border border-white/30 text-white text-sm hover:bg-white/10 transition">取消</button>' +
+        '<a href="' + nextUrl + '" class="px-5 py-2 rounded-lg bg-jp-primary hover:bg-jp-primaryHover text-white text-sm font-bold transition">立即播放</a>' +
+        '</div>';
+      var box = document.querySelector(".video-box");
+      box.style.position = "relative";
+      box.appendChild(overlay);
+      var sec = 5;
+      var cdEl = overlay.querySelector("#cd-sec");
+      autoTimer = setInterval(function () {
+        sec--;
+        if (cdEl) cdEl.textContent = sec;
+        if (sec <= 0) { clearInterval(autoTimer); window.location.href = nextUrl; }
+      }, 1000);
+      overlay.querySelector("#cd-cancel").addEventListener("click", function () {
+        clearInterval(autoTimer);
+        overlay.remove();
+        overlay = null;
+      });
+    });
+    {% endif %}
   })();
 </script>
 {% endblock %}

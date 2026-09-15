@@ -84,6 +84,44 @@
 })();
 </script>
 
+<!-- ============ 繼續學習（已登入且有進行中課程時顯示，Hahow 核心功能） ============ -->
+{% if continue_learning %}
+<section class="bg-satdark-bg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div class="flex items-end justify-between gap-4 mb-6">
+            <div>
+                <span class="inline-flex items-center gap-2 text-electric font-medium text-sm mb-2"><i class="fas fa-play-circle"></i> 繼續學習</span>
+                <h2 class="font-grotesk text-tight-head text-2xl font-extrabold text-satdark-text">接續上次進度</h2>
+            </div>
+            <a href="{% url 'my_courses' %}" class="text-electric hover:underline font-medium text-sm">我的課程</a>
+        </div>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {% for item in continue_learning %}
+            <a href="{% if item.next_lesson %}{% url 'watch_lesson' item.next_lesson.id %}{% else %}{% url 'course_detail' item.course.id %}{% endif %}" class="group flex gap-4 bg-satdark-surface border border-satdark-border rounded-xl p-4 hover:border-electric hover:shadow-lg hover:shadow-electric/10 transition-all">
+                <div class="w-24 h-16 rounded-lg overflow-hidden shrink-0 bg-satdark-bg">
+                    {% if item.course.image %}
+                    <img src="{{ item.course.image.url }}" alt="{{ item.course.title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                    {% else %}
+                    <div class="w-full h-full bg-gradient-to-br from-electric to-brand-500 flex items-center justify-center text-white text-lg font-bold">{{ item.course.title|slice:":1" }}</div>
+                    {% endif %}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h3 class="font-medium text-satdark-text text-sm truncate group-hover:text-electric transition">{{ item.course.title }}</h3>
+                    <p class="text-xs text-satdark-muted mt-0.5">{{ item.done }}/{{ item.total }} 個單元</p>
+                    <div class="flex items-center gap-2 mt-2">
+                        <div class="flex-1 h-1.5 bg-satdark-border rounded-full overflow-hidden">
+                            <div class="h-full bg-electric rounded-full" style="width: {{ item.progress }}%"></div>
+                        </div>
+                        <span class="text-xs font-bold text-electric tabular-nums">{{ item.progress }}%</span>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
 <!-- ============ 課程／講師 瀏覽入口 ============ -->
 <section class="bg-satdark-bg">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -123,6 +161,30 @@
     </div>
 </section>
 {% endif %}
+
+<!-- ============ 平台數據（動態跳動計數器） ============ -->
+<section class="bg-satdark-bg border-y border-satdark-border">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 text-center">
+            <div>
+                <div class="font-grotesk text-4xl md:text-5xl font-black text-electric tabular-nums" data-counter="{{ total_courses }}">0</div>
+                <p class="text-satdark-muted text-sm mt-1">門精選課程</p>
+            </div>
+            <div>
+                <div class="font-grotesk text-4xl md:text-5xl font-black text-electric tabular-nums" data-counter="{{ total_students }}">0</div>
+                <p class="text-satdark-muted text-sm mt-1">位學習夥伴</p>
+            </div>
+            <div>
+                <div class="font-grotesk text-4xl md:text-5xl font-black text-electric tabular-nums" data-counter="{{ total_teachers }}">0</div>
+                <p class="text-satdark-muted text-sm mt-1">位專業講師</p>
+            </div>
+            <div>
+                <div class="font-grotesk text-4xl md:text-5xl font-black text-amber-400 tabular-nums">{% if avg_all %}{{ avg_all }}{% else %}—{% endif %}</div>
+                <p class="text-satdark-muted text-sm mt-1">平均課程評分</p>
+            </div>
+        </div>
+    </div>
+</section>
 
 <!-- ============ 課程牆（左）＋ 學員評語（右） ============ -->
 {% if showcase_columns %}
@@ -442,7 +504,7 @@
       {% endfor %}
     </div>
     <div data-platform-ai-log class="flex-1 overflow-y-auto p-4 space-y-3 text-sm bg-slate-50">
-      <div class="bg-white rounded-xl p-3 ring-1 ring-slate-100 text-slate-600">嗨！我是 EduFlow 平台助手，想找課程、或想了解定價／折扣／退款等平台使用問題都可以問我 🙌</div>
+      <div class="bg-white rounded-xl p-3 ring-1 ring-slate-100 text-slate-600">嗨！我是 EduFlow 平台助手，想找課程、或想了解定價／折扣／退款等平台使用問題都可以問我。</div>
     </div>
     <form data-platform-ai-form class="p-3 border-t border-slate-100 flex gap-2">
       <input data-platform-ai-input type="text" placeholder="輸入你的問題…" class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-brand-200" autocomplete="off">
@@ -451,6 +513,36 @@
   </div>
 </div>
 {{ platform_faqs|json_script:"platform-faqs-data" }}
+<script>
+// 數字跳動動畫（IntersectionObserver 觸發，進入畫面時才開始）
+(function () {
+    var counters = document.querySelectorAll('[data-counter]');
+    if (!counters.length) return;
+    var animated = new Set();
+    function animateCounter(el) {
+        var target = parseInt(el.dataset.counter, 10);
+        if (isNaN(target) || target <= 0) { el.textContent = target; return; }
+        var duration = 1200;
+        var start = performance.now();
+        function tick(now) {
+            var t = Math.min((now - start) / duration, 1);
+            var ease = 1 - Math.pow(1 - t, 3); // easeOutCubic
+            el.textContent = Math.round(ease * target).toLocaleString();
+            if (t < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+    }
+    var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+            if (entry.isIntersecting && !animated.has(entry.target)) {
+                animated.add(entry.target);
+                animateCounter(entry.target);
+            }
+        });
+    }, { threshold: 0.3 });
+    counters.forEach(function (el) { observer.observe(el); });
+})();
+</script>
 <script>
 (function () {
     const root = document.querySelector('[data-platform-ai-assistant]');
@@ -467,6 +559,9 @@
     const askUrl = "{% url 'ask_platform_ai' %}";
     const faqDataEl = document.getElementById('platform-faqs-data');
     const FAQS = faqDataEl ? JSON.parse(faqDataEl.textContent) : [];
+
+    // 多輪對話：保留對話歷史，每次送出時附帶給後端
+    const chatHistory = [];
 
     root.querySelector('[data-platform-ai-toggle]').addEventListener('click', () => {
         panel.classList.toggle('hidden');
@@ -497,13 +592,32 @@
         return el;
     }
 
+    function renderSuggestions(suggestions) {
+        if (!suggestions || suggestions.length === 0) return;
+        const wrap = document.createElement('div');
+        wrap.className = 'flex flex-wrap gap-1.5 mt-1';
+        suggestions.forEach((s) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'text-xs bg-slate-100 hover:bg-jp-primary hover:text-white text-slate-600 rounded-full px-3 py-1.5 transition text-left';
+            btn.textContent = s;
+            btn.addEventListener('click', () => {
+                wrap.remove();
+                sendQuestion(s);
+            });
+            wrap.appendChild(btn);
+        });
+        log.appendChild(wrap);
+        log.scrollTop = log.scrollHeight;
+    }
+
     // 防重複發送：送出後鎖住輸入框／按鈕，回覆後再強制冷卻 1 秒才解鎖，
     // 避免使用者連點或頻繁送出觸發後端 API 的 429（限流）錯誤。
     function setBusy(isBusy, label) {
         busy = isBusy;
         input.disabled = isBusy;
         submitBtn.disabled = isBusy;
-        submitBtn.textContent = label || (isBusy ? '思考中…' : SUBMIT_LABEL);
+        submitBtn.textContent = label || (isBusy ? '思考中...' : SUBMIT_LABEL);
     }
 
     function startCooldown() {
@@ -513,31 +627,38 @@
             busy = false;
             input.disabled = false;
             submitBtn.disabled = false;
+            input.focus();
         }, COOLDOWN_MS);
     }
 
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        if (busy) return;
-        const q = input.value.trim();
-        if (!q) return;
+    async function sendQuestion(q) {
+        if (busy || !q) return;
         setBusy(true);
         bubble(q, 'user');
+        chatHistory.push({ role: 'user', text: q });
         input.value = '';
-        const thinking = bubble('思考中…', 'ai');
+        const thinking = bubble('思考中...', 'ai');
         try {
             const res = await fetch(askUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
-                body: JSON.stringify({ question: q }),
+                body: JSON.stringify({ question: q, history: chatHistory.slice(0, -1) }),
             });
             const data = await res.json();
-            thinking.textContent = data.ok ? data.answer : (data.error || '發生錯誤，請稍後再試。');
+            const answer = data.ok ? data.answer : (data.error || '發生錯誤，請稍後再試。');
+            thinking.textContent = answer;
+            chatHistory.push({ role: 'ai', text: answer });
+            if (data.suggestions) renderSuggestions(data.suggestions);
         } catch (err) {
             thinking.textContent = '連線失敗，請稍後再試。';
         } finally {
             startCooldown();
         }
+    }
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        sendQuestion(input.value.trim());
     });
 })();
 </script>
