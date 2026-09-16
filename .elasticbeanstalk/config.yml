@@ -1,4 +1,6 @@
 branch-defaults:
+  default:
+    environment: ntggwp-env
   main:
     environment: ntggwp-env
     group_suffix: null
