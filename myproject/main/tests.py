@@ -16,11 +16,13 @@ from .models import (
     CourseAudit,
     CourseCategory,
     CourseChapter,
+    CourseCertificate,
     CourseLesson,
     CourseSplitSetting,
     Enrollment,
     Favorite,
     LearningRecord,
+    LessonProgress,
     Notification,
     Order,
     OrderItem,
@@ -258,6 +260,93 @@ class BaseFixture(TestCase):
         order.payments.update(status='paid', paid_at=timezone.now())
         fulfill_order(order)
         return order
+
+
+class CourseCertificateTests(BaseFixture):
+
+    def setUp(self):
+        super().setUp()
+        self.buy(self.student, self.course)
+        self.client.login(username='student', password='pw')
+
+    def test_incomplete_course_cannot_issue_certificate(self):
+        response = self.client.get(reverse('certificate', args=[self.course.id]))
+
+        self.assertRedirects(response, reverse('my_courses'))
+        self.assertFalse(CourseCertificate.objects.exists())
+
+    def test_completed_course_downloads_pdf_and_persists_certificate(self):
+        LearningRecord.objects.create(
+            user=self.student,
+            course=self.course,
+            lesson=self.lesson,
+            minutes=10,
+        )
+
+        response = self.client.get(reverse('certificate', args=[self.course.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertIn('attachment;', response['Content-Disposition'])
+        self.assertTrue(response.content.startswith(b'%PDF-'))
+        certificate = CourseCertificate.objects.get(
+            student=self.student,
+            course=self.course,
+        )
+        self.assertIn(str(certificate.certificate_number), response['Content-Disposition'])
+
+        second_response = self.client.get(reverse('certificate', args=[self.course.id]))
+        self.assertEqual(second_response.status_code, 200)
+        self.assertEqual(CourseCertificate.objects.count(), 1)
+
+    def test_non_enrolled_student_cannot_issue_certificate(self):
+        self.client.logout()
+        self.client.login(username='other', password='pw')
+        LearningRecord.objects.create(
+            user=self.other,
+            course=self.course,
+            lesson=self.lesson,
+            minutes=10,
+        )
+
+        response = self.client.get(reverse('certificate', args=[self.course.id]))
+
+        self.assertRedirects(
+            response,
+            reverse('course_detail', args=[self.course.id]),
+        )
+        self.assertFalse(CourseCertificate.objects.filter(student=self.other).exists())
+
+    def test_my_courses_progress_uses_completed_lessons(self):
+        CourseLesson.objects.create(
+            chapter=self.chapter,
+            title='第二單元',
+            duration_minutes=10,
+            sort_order=2,
+        )
+        LessonProgress.objects.create(
+            user=self.student,
+            course=self.course,
+            lesson=self.lesson,
+            watched_seconds=360,
+            duration=600,
+            is_completed=True,
+        )
+        LearningRecord.objects.create(
+            user=self.student,
+            course=self.course,
+            lesson=self.lesson,
+            minutes=10,
+        )
+
+        response = self.client.get(reverse('my_courses'))
+
+        enrollment = response.context['enrollments'][0]
+        self.assertEqual(enrollment.total_lessons, 2)
+        self.assertEqual(enrollment.completed_lessons, 1)
+        self.assertEqual(enrollment.progress, 50)
+        self.assertNotContains(response, reverse('certificate', args=[self.course.id]))
+
 
 class RefundRevokesAccessTests(BaseFixture):
 

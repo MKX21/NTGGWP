@@ -42,7 +42,7 @@
 
         <div class="flex justify-between text-xs text-jp-muted mb-1.5">
           <span>學習進度</span>
-          <span>{{ enrollment.progress }}%（{{ enrollment.watch_minutes }}/{{ enrollment.course_total_minutes }} 分）</span>
+          <span>{{ enrollment.progress }}%（{{ enrollment.completed_lessons }}/{{ enrollment.total_lessons }} 單元）</span>
         </div>
         <div class="h-2 bg-jp-bg rounded-full overflow-hidden mb-4"><div class="h-full bg-jp-primary rounded-full" style="width: {{ enrollment.progress }}%;"></div></div>
 

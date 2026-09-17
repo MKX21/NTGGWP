@@ -47,6 +47,7 @@ from .models import (
     MarketingRequest,
     MarketingPlan,
     VMAccessRequest,
+    CourseCertificate,
 )
 
 admin.site.site_header = "購課平台・營運管理後台"
@@ -431,6 +432,19 @@ class EnrollmentAdmin(admin.ModelAdmin):
     list_filter = ('purchased_at', 'course')
     autocomplete_fields = ('student', 'course')
 
+
+@admin.register(CourseCertificate)
+class CourseCertificateAdmin(admin.ModelAdmin):
+    list_display = ('display_number', 'student', 'course', 'issued_at')
+    search_fields = ('certificate_number', 'student__username', 'course__title')
+    list_filter = ('issued_at', 'course')
+    autocomplete_fields = ('student', 'course')
+    readonly_fields = ('certificate_number', 'student', 'course', 'issued_at')
+
+    @admin.display(description='證書編號')
+    def display_number(self, obj):
+        return obj.display_number
+
 @admin.register(CourseSplitSetting)
 class CourseSplitSettingAdmin(admin.ModelAdmin):
     list_display = (
@@ -701,7 +715,7 @@ from django.urls import reverse as _reverse
 
 _CUSTOM_GROUPS = [
     ('📚 課程管理', ['Course', 'CourseCategory', 'CourseChapter', 'CourseLesson', 'CourseAudit', 'CourseBundle', 'CourseAnnouncement']),
-    ('🧾 交易管理', ['Order', 'OrderItem', 'Payment', 'Refund', 'Enrollment']),
+    ('🧾 交易管理', ['Order', 'OrderItem', 'Payment', 'Refund', 'Enrollment', 'CourseCertificate']),
     ('💰 分潤與提領', ['CourseSplitSetting', 'RevenueRecord', 'WithdrawalRequest', 'TeacherBankAccount']),
     ('🎯 行銷管理', ['MarketingRequest', 'MarketingPlan', 'Coupon', 'UserCoupon', 'CouponUsage', 'Promotion', 'Cart']),
     ('📝 講師內容', ['TeacherColumn', 'TeacherArticle', 'TeacherMaterial', 'ColumnSubscription']),

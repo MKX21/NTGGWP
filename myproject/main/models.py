@@ -1,3 +1,5 @@
+import uuid
+
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -363,6 +365,46 @@ class LessonProgress(models.Model):
         verbose_name = "單元觀看進度"
         verbose_name_plural = "單元觀看進度"
         unique_together = ('user', 'lesson')
+
+
+class CourseCertificate(models.Model):
+    certificate_number = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+        verbose_name="證書編號",
+    )
+    student = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="course_certificates",
+        verbose_name="學生",
+    )
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name="certificates",
+        verbose_name="課程",
+    )
+    issued_at = models.DateTimeField(auto_now_add=True, verbose_name="核發時間")
+
+    @property
+    def display_number(self):
+        return f"EDUFLOW-{str(self.certificate_number).upper()}"
+
+    def __str__(self):
+        return f"{self.student.username} - {self.course.title} - {self.display_number}"
+
+    class Meta:
+        verbose_name = "課程結業證書"
+        verbose_name_plural = "課程結業證書"
+        ordering = ('-issued_at',)
+        constraints = [
+            models.UniqueConstraint(
+                fields=('student', 'course'),
+                name='unique_student_course_certificate',
+            ),
+        ]
 
 class Coupon(models.Model):
     DISCOUNT_TYPE_CHOICES = [

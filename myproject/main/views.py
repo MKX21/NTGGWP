@@ -67,7 +67,10 @@ from .models import (
     MarketingRequest,
     MarketingPlan,
     VMAccessRequest,
+    CourseCertificate,
 )
+
+from .certificates import render_certificate_pdf
 
 from .forms import (
     RegisterForm,
@@ -787,6 +790,15 @@ def my_courses(request):
                     .annotate(s=Sum('duration_minutes')).values('s')[:1],
                     output_field=IntegerField(),
                 ), 0),
+            total_lessons=Count('course__chapters__lessons', distinct=True),
+            completed_lessons=Count(
+                'course__learningrecord__lesson',
+                filter=Q(
+                    course__learningrecord__user=request.user,
+                    course__learningrecord__lesson__isnull=False,
+                ),
+                distinct=True,
+            ),
         )
     )
 
@@ -805,9 +817,9 @@ def my_courses(request):
     }
 
     for enrollment in enrollments:
-        total = enrollment.course_total_minutes
+        total = enrollment.total_lessons
         enrollment.progress = (
-            int(min(enrollment.watch_minutes, total) / total * 100) if total > 0 else 0
+            int(min(enrollment.completed_lessons, total) / total * 100) if total > 0 else 0
         )
         order = orders_by_course.get(enrollment.course_id)
         enrollment.order = order
@@ -2573,77 +2585,17 @@ def certificate(request, course_id):
     if not Enrollment.objects.filter(student=request.user, course=course).exists():
         return redirect('course_detail', course_id=course.id)
 
-    total, done, is_complete = _course_completion(request.user, course)
+    _, _, is_complete = _course_completion(request.user, course)
     if not is_complete:
         return redirect('my_courses')
 
-    import io
-    from reportlab.lib.pagesizes import A4, landscape
-    from reportlab.lib.units import mm
-    from reportlab.pdfgen import canvas
-    from reportlab.pdfbase import pdfmetrics
-    from reportlab.pdfbase.cidfonts import UnicodeCIDFont
-
-    pdfmetrics.registerFont(UnicodeCIDFont('MSung-Light'))
-    FONT = 'MSung-Light'
-
-    buffer = io.BytesIO()
-    W, H = landscape(A4)
-    c = canvas.Canvas(buffer, pagesize=landscape(A4))
-
-    c.setFillColorRGB(0.97, 0.97, 1.0)
-    c.rect(0, 0, W, H, fill=1, stroke=0)
-    c.setStrokeColorRGB(0.31, 0.27, 0.90)
-    c.setLineWidth(4)
-    c.rect(15 * mm, 15 * mm, W - 30 * mm, H - 30 * mm, fill=0, stroke=1)
-    c.setStrokeColorRGB(0.49, 0.36, 0.93)
-    c.setLineWidth(1)
-    c.rect(19 * mm, 19 * mm, W - 38 * mm, H - 38 * mm, fill=0, stroke=1)
-
-    cx = W / 2
-
-    c.setFillColorRGB(0.31, 0.27, 0.90)
-    c.setFont(FONT, 40)
-    c.drawCentredString(cx, H - 55 * mm, '結業證書')
-
-    c.setFillColorRGB(0.42, 0.45, 0.5)
-    c.setFont('Helvetica', 14)
-    c.drawCentredString(cx, H - 66 * mm, 'CERTIFICATE OF COMPLETION')
-
-    c.setFillColorRGB(0.2, 0.2, 0.25)
-    c.setFont(FONT, 15)
-    c.drawCentredString(cx, H - 90 * mm, '茲證明')
-
-    c.setFillColorRGB(0.1, 0.1, 0.15)
-    c.setFont(FONT, 30)
-    c.drawCentredString(cx, H - 108 * mm, request.user.username)
-
-    c.setStrokeColorRGB(0.7, 0.7, 0.75)
-    c.setLineWidth(0.8)
-    c.line(cx - 70 * mm, H - 112 * mm, cx + 70 * mm, H - 112 * mm)
-
-    c.setFillColorRGB(0.2, 0.2, 0.25)
-    c.setFont(FONT, 15)
-    c.drawCentredString(cx, H - 126 * mm, '已完成本平台線上課程')
-
-    c.setFillColorRGB(0.31, 0.27, 0.90)
-    c.setFont(FONT, 22)
-    c.drawCentredString(cx, H - 142 * mm, course.title)
-
-    c.setFillColorRGB(0.3, 0.3, 0.35)
-    c.setFont(FONT, 13)
-    c.drawCentredString(cx, H - 158 * mm, f'授課講師：{course.teacher.username}　　完成日期：{timezone.now():%Y-%m-%d}')
-
-    c.setFillColorRGB(0.55, 0.55, 0.6)
-    c.setFont('Helvetica', 10)
-    c.drawCentredString(cx, 26 * mm, f'Course Platform　|　證書編號 CERT-{course.id:04d}-{request.user.id:04d}')
-
-    c.showPage()
-    c.save()
-    buffer.seek(0)
-
-    response = HttpResponse(buffer, content_type='application/pdf')
-    filename = f'certificate_{course.id}_{request.user.id}.pdf'
+    issued_certificate, _ = CourseCertificate.objects.get_or_create(
+        student=request.user,
+        course=course,
+    )
+    pdf_bytes = render_certificate_pdf(issued_certificate)
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    filename = f'eduflow-certificate-{issued_certificate.certificate_number}.pdf'
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
 
