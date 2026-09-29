@@ -25,6 +25,9 @@ class Profile(models.Model):
     line_id = models.CharField(
         max_length=255, unique=True, blank=True, null=True, verbose_name="LINE 帳號 ID"
     )
+    microsoft_id = models.CharField(
+        max_length=255, unique=True, blank=True, null=True, verbose_name="Microsoft 帳號 ID"
+    )
 
     is_teacher = models.BooleanField(default=False, verbose_name="具備教師權限")
 
@@ -1452,3 +1455,84 @@ class VMAccessRequest(models.Model):
         verbose_name = 'Mac 虛擬機申請'
         verbose_name_plural = 'Mac 虛擬機申請'
         ordering = ['-created_at']
+
+
+class Quiz(models.Model):
+    chapter = models.OneToOneField(
+        CourseChapter, on_delete=models.CASCADE, related_name="quiz", verbose_name="章節"
+    )
+    title = models.CharField(max_length=200, verbose_name="測驗標題")
+    pass_score = models.PositiveSmallIntegerField(
+        default=60,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="及格分數"
+    )
+    is_published = models.BooleanField(default=True, verbose_name="是否啟用")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="建立時間")
+
+    def question_count(self):
+        return self.questions.count()
+
+    def __str__(self):
+        return f"{self.chapter.title} - {self.title}"
+
+    class Meta:
+        verbose_name = "章節測驗"
+        verbose_name_plural = "章節測驗"
+
+class QuizQuestion(models.Model):
+    quiz = models.ForeignKey(
+        Quiz, on_delete=models.CASCADE, related_name="questions", verbose_name="測驗"
+    )
+    question_text = models.TextField(verbose_name="題目")
+    options = models.JSONField(default=list, verbose_name="選項清單")
+    correct_index = models.PositiveSmallIntegerField(default=0, verbose_name="正確選項索引")
+    explanation = models.TextField(blank=True, default='', verbose_name="解析")
+    sort_order = models.PositiveIntegerField(default=1, verbose_name="題目順序")
+
+    def __str__(self):
+        return f"{self.quiz.title} - Q{self.sort_order}"
+
+    class Meta:
+        verbose_name = "測驗題目"
+        verbose_name_plural = "測驗題目"
+        ordering = ['quiz', 'sort_order', 'id']
+
+class QuizAttempt(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="使用者")
+    quiz = models.ForeignKey(
+        Quiz, on_delete=models.CASCADE, related_name="attempts", verbose_name="測驗"
+    )
+    score = models.PositiveSmallIntegerField(default=0, verbose_name="分數")
+    correct_count = models.PositiveSmallIntegerField(default=0, verbose_name="答對題數")
+    total_count = models.PositiveSmallIntegerField(default=0, verbose_name="總題數")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="作答時間")
+
+    def is_passed(self):
+        return self.score >= self.quiz.pass_score
+
+    def __str__(self):
+        return f"{self.user.username} - {self.quiz.title} - {self.score}分"
+
+    class Meta:
+        verbose_name = "測驗作答紀錄"
+        verbose_name_plural = "測驗作答紀錄"
+        ordering = ['-created_at']
+
+class QuizAnswer(models.Model):
+    attempt = models.ForeignKey(
+        QuizAttempt, on_delete=models.CASCADE, related_name="answers", verbose_name="作答紀錄"
+    )
+    question = models.ForeignKey(
+        QuizQuestion, on_delete=models.CASCADE, verbose_name="題目"
+    )
+    selected_index = models.SmallIntegerField(default=-1, verbose_name="所選選項索引")
+    is_correct = models.BooleanField(default=False, verbose_name="是否答對")
+
+    def __str__(self):
+        return f"{self.attempt_id} - Q{self.question_id} - {'對' if self.is_correct else '錯'}"
+
+    class Meta:
+        verbose_name = "測驗答題明細"
+        verbose_name_plural = "測驗答題明細"
+        ordering = ['attempt', 'question']

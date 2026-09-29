@@ -1,0 +1,33 @@
+{% extends 'main/base_eduflow.html' %}
+{% block title %}{{ quiz.title }} | EduFlow{% endblock %}
+
+{% block content %}
+<main class="max-w-2xl mx-auto px-4 py-10">
+  <div class="mb-5">
+    <a href="{% url 'watch_course' course.id %}" class="text-jp-primary hover:underline text-sm font-medium">← 返回課程</a>
+    <p class="text-sm text-slate-400 mt-2">{{ course.title }} ・ 第 {{ chapter.sort_order }} 章</p>
+    <h1 class="text-2xl font-black text-slate-900">{{ quiz.title }}</h1>
+    <p class="text-slate-500 mt-1">共 {{ questions|length }} 題 ・ 及格分數 {{ quiz.pass_score }} 分{% if last_attempt %} ・ 上次成績 {{ last_attempt.score }} 分{% endif %}</p>
+  </div>
+
+  <form method="post" action="{% url 'submit_quiz' quiz.id %}">
+    {% csrf_token %}
+    <div class="space-y-5">
+      {% for q in questions %}
+      <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6">
+        <p class="font-bold text-slate-800 mb-4"><span class="text-jp-primary">Q{{ forloop.counter }}.</span> {{ q.question_text }}</p>
+        <div class="space-y-2">
+          {% for opt in q.options %}
+          <label class="flex items-center gap-3 border border-slate-200 rounded-lg px-4 py-2.5 cursor-pointer hover:border-brand-300 hover:bg-brand-50 transition">
+            <input type="radio" name="q_{{ q.id }}" value="{{ forloop.counter0 }}" required class="accent-jp-primary">
+            <span class="text-slate-700">{{ opt }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <button type="submit" class="mt-6 w-full bg-jp-primary hover:bg-jp-primaryHover text-white font-bold py-3 rounded-lg transition">送出測驗</button>
+  </form>
+</main>
+{% endblock %}

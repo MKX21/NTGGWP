@@ -17,6 +17,12 @@ urlpatterns = [
     path('lesson/<int:lesson_id>/progress/', views.save_progress, name='save_progress'),
     path('lesson/<int:lesson_id>/video/', views.stream_lesson_video, name='stream_lesson_video'),
     path('course/<int:course_id>/certificate/', views.certificate, name='certificate'),
+
+    # 章節測驗
+    path('chapter/<int:chapter_id>/quiz/', views.take_quiz, name='take_quiz'),
+    path('quiz/<int:quiz_id>/submit/', views.submit_quiz, name='submit_quiz'),
+    path('quiz/attempt/<int:attempt_id>/result/', views.quiz_result, name='quiz_result'),
+
     path('teachers/', views.teacher_catalog, name='teacher_catalog'),
     path('teacher/<int:teacher_id>/profile/', views.teacher_profile, name='teacher_profile'),
     path('course/<int:course_id>/edit/', views.edit_course, name='edit_course'),
@@ -57,6 +63,8 @@ urlpatterns = [
     path('oauth/google/callback/', views.google_oauth_callback, name='google_oauth_callback'),
     path('oauth/line/login/', views.line_login, name='line_login'),
     path('oauth/line/callback/', views.line_oauth_callback, name='line_oauth_callback'),
+    path('oauth/microsoft/login/', views.microsoft_login, name='microsoft_login'),
+    path('oauth/microsoft/callback/', views.microsoft_oauth_callback, name='microsoft_oauth_callback'),
 
     path('profile/', views.profile_view, name='profile'),
     path('profile/edit/', views.edit_profile, name='edit_profile'),

@@ -159,10 +159,24 @@ GOOGLE_OAUTH_CLIENT_SECRET = os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET', '')
 LINE_LOGIN_CHANNEL_ID = os.environ.get('LINE_LOGIN_CHANNEL_ID', '')
 LINE_LOGIN_CHANNEL_SECRET = os.environ.get('LINE_LOGIN_CHANNEL_SECRET', '')
 
+MICROSOFT_OAUTH_CLIENT_ID = os.environ.get('MICROSOFT_OAUTH_CLIENT_ID', '')
+MICROSOFT_OAUTH_CLIENT_SECRET = os.environ.get('MICROSOFT_OAUTH_CLIENT_SECRET', '')
+MICROSOFT_OAUTH_TENANT_ID = os.environ.get('MICROSOFT_OAUTH_TENANT_ID', 'common')
+
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
 AI_ASSISTANT_MODEL = os.environ.get('AI_ASSISTANT_MODEL', 'claude-opus-5')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-3.8-flash')
+
+# Azure OpenAI（競賽主力 AI 後端）。四個值都設定後，AI 助教會優先走 Azure，
+# 未設定則自動 fallback 回 Gemini / Anthropic。
+# ENDPOINT 例：https://xxx.openai.azure.com/　DEPLOYMENT 是你在 Azure 部署模型時取的名稱。
+AZURE_OPENAI_ENDPOINT = os.environ.get('AZURE_OPENAI_ENDPOINT', '')
+AZURE_OPENAI_API_KEY = os.environ.get('AZURE_OPENAI_API_KEY', '')
+AZURE_OPENAI_DEPLOYMENT = os.environ.get('AZURE_OPENAI_DEPLOYMENT', '')
+AZURE_OPENAI_API_VERSION = os.environ.get('AZURE_OPENAI_API_VERSION', '2024-10-21')
+
+# AI_PROVIDER 可強制指定後端：'azure' / 'gemini' / 'anthropic'；留空則依設定自動選。
 AI_PROVIDER = os.environ.get('AI_PROVIDER', '')
 
 GEMINI_MARKETING_MODEL = os.environ.get('GEMINI_MARKETING_MODEL', 'gemini-3.6-flash')

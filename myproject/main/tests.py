@@ -348,6 +348,47 @@ class CourseCertificateTests(BaseFixture):
         self.assertNotContains(response, reverse('certificate', args=[self.course.id]))
 
 
+class CourseCertificateAdminTests(BaseFixture):
+
+    def setUp(self):
+        super().setUp()
+        self.client.login(username='admin', password='pw')
+
+    def test_admin_can_manually_issue_certificate(self):
+        response = self.client.post(
+            reverse('admin:main_coursecertificate_add'),
+            {
+                'student': self.student.id,
+                'course': self.course.id,
+                '_save': '儲存',
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        certificate = CourseCertificate.objects.get(
+            student=self.student,
+            course=self.course,
+        )
+        self.assertTrue(certificate.certificate_number)
+        self.assertTrue(certificate.issued_at)
+
+    def test_admin_cannot_issue_duplicate_certificate(self):
+        CourseCertificate.objects.create(student=self.student, course=self.course)
+
+        response = self.client.post(
+            reverse('admin:main_coursecertificate_add'),
+            {
+                'student': self.student.id,
+                'course': self.course.id,
+                '_save': '儲存',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '已經存在')
+        self.assertEqual(CourseCertificate.objects.count(), 1)
+
+
 class RefundRevokesAccessTests(BaseFixture):
 
     def setUp(self):

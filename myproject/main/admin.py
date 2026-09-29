@@ -48,6 +48,10 @@ from .models import (
     MarketingPlan,
     VMAccessRequest,
     CourseCertificate,
+    Quiz,
+    QuizQuestion,
+    QuizAttempt,
+    QuizAnswer,
 )
 
 admin.site.site_header = "購課平台・營運管理後台"
@@ -149,6 +153,8 @@ class ProfileAdmin(admin.ModelAdmin):
             return _badge('Google', '#1d4ed8', '#dbeafe')
         if obj.line_id:
             return _badge('LINE', '#166534', '#dcfce7')
+        if obj.microsoft_id:
+            return _badge('Microsoft', '#5b21b6', '#ede9fe')
         return '—'
 
     @admin.action(description='✅ 賦予教師權限')
@@ -291,6 +297,26 @@ class CourseLessonAdmin(admin.ModelAdmin):
     @admin.display(description='試看')
     def free_badge(self, obj):
         return '免費' if obj.is_free_preview else '—'
+
+class QuizQuestionInline(admin.StackedInline):
+    model = QuizQuestion
+    extra = 1
+    fields = ('sort_order', 'question_text', 'options', 'correct_index', 'explanation')
+
+@admin.register(Quiz)
+class QuizAdmin(admin.ModelAdmin):
+    list_display = ('chapter', 'title', 'question_count', 'pass_score', 'is_published')
+    search_fields = ('chapter__course__title', 'chapter__title', 'title')
+    list_filter = ('is_published', 'chapter__course')
+    autocomplete_fields = ('chapter',)
+    inlines = [QuizQuestionInline]
+
+@admin.register(QuizAttempt)
+class QuizAttemptAdmin(admin.ModelAdmin):
+    list_display = ('user', 'quiz', 'score', 'correct_count', 'total_count', 'created_at')
+    search_fields = ('user__username', 'quiz__title')
+    list_filter = ('quiz__chapter__course',)
+    readonly_fields = ('user', 'quiz', 'score', 'correct_count', 'total_count', 'created_at')
 
 @admin.register(CourseAudit)
 class CourseAuditAdmin(admin.ModelAdmin):
@@ -439,7 +465,7 @@ class CourseCertificateAdmin(admin.ModelAdmin):
     search_fields = ('certificate_number', 'student__username', 'course__title')
     list_filter = ('issued_at', 'course')
     autocomplete_fields = ('student', 'course')
-    readonly_fields = ('certificate_number', 'student', 'course', 'issued_at')
+    readonly_fields = ('certificate_number', 'issued_at')
 
     @admin.display(description='證書編號')
     def display_number(self, obj):

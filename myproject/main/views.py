@@ -68,6 +68,10 @@ from .models import (
     MarketingPlan,
     VMAccessRequest,
     CourseCertificate,
+    Quiz,
+    QuizQuestion,
+    QuizAttempt,
+    QuizAnswer,
 )
 
 from .certificates import render_certificate_pdf
@@ -1074,6 +1078,92 @@ def save_progress(request, lesson_id):
         'ok': True,
         'progress': prog.percent(),
         'completed': prog.is_completed,
+    })
+
+@login_required
+def take_quiz(request, chapter_id):
+    chapter = get_object_or_404(
+        CourseChapter.objects.select_related('course'), id=chapter_id
+    )
+    course = chapter.course
+    quiz = Quiz.objects.filter(chapter=chapter, is_published=True).first()
+    if not quiz:
+        return redirect('watch_course', course_id=course.id)
+
+    enrolled = Enrollment.objects.filter(student=request.user, course=course).exists()
+    is_teacher = course.teacher_id == request.user.id
+    if not (enrolled or is_teacher):
+        return redirect('course_detail', course_id=course.id)
+
+    questions = list(quiz.questions.all())
+    if not questions:
+        return redirect('watch_course', course_id=course.id)
+
+    last_attempt = QuizAttempt.objects.filter(user=request.user, quiz=quiz).first()
+    return render(request, 'main/take_quiz.html', {
+        'course': course,
+        'chapter': chapter,
+        'quiz': quiz,
+        'questions': questions,
+        'last_attempt': last_attempt,
+    })
+
+@login_required
+def submit_quiz(request, quiz_id):
+    quiz = get_object_or_404(Quiz.objects.select_related('chapter__course'), id=quiz_id)
+    course = quiz.chapter.course
+
+    enrolled = Enrollment.objects.filter(student=request.user, course=course).exists()
+    is_teacher = course.teacher_id == request.user.id
+    if not (enrolled or is_teacher):
+        return redirect('course_detail', course_id=course.id)
+
+    if request.method != 'POST':
+        return redirect('take_quiz', chapter_id=quiz.chapter_id)
+
+    questions = list(quiz.questions.all())
+    if not questions:
+        return redirect('watch_course', course_id=course.id)
+
+    with transaction.atomic():
+        attempt = QuizAttempt.objects.create(
+            user=request.user, quiz=quiz, total_count=len(questions)
+        )
+        correct = 0
+        for q in questions:
+            raw = request.POST.get(f'q_{q.id}')
+            try:
+                selected = int(raw)
+            except (TypeError, ValueError):
+                selected = -1
+            is_correct = (selected == q.correct_index)
+            if is_correct:
+                correct += 1
+            QuizAnswer.objects.create(
+                attempt=attempt, question=q,
+                selected_index=selected, is_correct=is_correct,
+            )
+        attempt.correct_count = correct
+        attempt.score = round(correct / len(questions) * 100)
+        attempt.save(update_fields=['correct_count', 'score'])
+
+    return redirect('quiz_result', attempt_id=attempt.id)
+
+@login_required
+def quiz_result(request, attempt_id):
+    attempt = get_object_or_404(
+        QuizAttempt.objects.select_related('quiz__chapter__course'), id=attempt_id
+    )
+    if attempt.user_id != request.user.id and not request.user.is_superuser:
+        return redirect('home')
+
+    answers = attempt.answers.select_related('question').all()
+    return render(request, 'main/quiz_result.html', {
+        'attempt': attempt,
+        'quiz': attempt.quiz,
+        'chapter': attempt.quiz.chapter,
+        'course': attempt.quiz.chapter.course,
+        'answers': answers,
     })
 
 @require_teacher
@@ -3338,6 +3428,36 @@ def line_oauth_callback(request):
         user = oauth.get_or_create_user('line', provider_id, email, name)
     except oauth.OAuthError:
         return _login_error_redirect('LINE 登入失敗，請稍後再試。')
+
+    login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+    return _post_login_redirect(user)
+
+def microsoft_login(request):
+    if not settings.MICROSOFT_OAUTH_CLIENT_ID:
+        return _login_error_redirect('Microsoft 登入尚未設定。')
+    state = oauth.new_state()
+    request.session['microsoft_oauth_state'] = state
+    return redirect(oauth.build_microsoft_auth_url(request, state))
+
+def microsoft_oauth_callback(request):
+    error = request.GET.get('error')
+    if error:
+        return _login_error_redirect('Microsoft 登入已取消。')
+
+    state = request.GET.get('state')
+    expected_state = request.session.pop('microsoft_oauth_state', None)
+    if not state or not expected_state or state != expected_state:
+        return _login_error_redirect('登入驗證失敗，請再試一次。')
+
+    code = request.GET.get('code')
+    if not code:
+        return _login_error_redirect('Microsoft 未提供授權碼。')
+
+    try:
+        provider_id, email, name = oauth.fetch_microsoft_profile(request, code)
+        user = oauth.get_or_create_user('microsoft', provider_id, email, name)
+    except oauth.OAuthError:
+        return _login_error_redirect('Microsoft 登入失敗，請稍後再試。')
 
     login(request, user, backend='django.contrib.auth.backends.ModelBackend')
     return _post_login_redirect(user)

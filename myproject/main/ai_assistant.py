@@ -248,10 +248,19 @@ def build_course_faq(course):
 class _AIError(Exception):
     pass
 
+def _azure_configured():
+    return bool(
+        getattr(settings, 'AZURE_OPENAI_ENDPOINT', '')
+        and getattr(settings, 'AZURE_OPENAI_API_KEY', '')
+        and getattr(settings, 'AZURE_OPENAI_DEPLOYMENT', '')
+    )
+
 def _active_provider():
     forced = (getattr(settings, 'AI_PROVIDER', '') or '').strip().lower()
-    if forced in ('gemini', 'anthropic'):
+    if forced in ('azure', 'gemini', 'anthropic'):
         return forced
+    if _azure_configured():
+        return 'azure'
     if getattr(settings, 'GEMINI_API_KEY', ''):
         return 'gemini'
     if getattr(settings, 'ANTHROPIC_API_KEY', ''):
@@ -453,6 +462,47 @@ def _parse_suggestions(text):
     suggestions = [s.strip() for s in parts[1:] if s.strip()]
     return answer_text, suggestions[:3]
 
+def _call_azure(system, messages):
+    import requests
+
+    endpoint = settings.AZURE_OPENAI_ENDPOINT.rstrip('/')
+    deployment = settings.AZURE_OPENAI_DEPLOYMENT
+    api_version = getattr(settings, 'AZURE_OPENAI_API_VERSION', '2024-10-21')
+    url = f'{endpoint}/openai/deployments/{deployment}/chat/completions?api-version={api_version}'
+
+    api_messages = [{'role': 'system', 'content': system}]
+    for msg in messages:
+        api_messages.append({'role': msg['role'], 'content': msg['content']})
+
+    try:
+        resp = requests.post(
+            url,
+            headers={
+                'api-key': settings.AZURE_OPENAI_API_KEY,
+                'Content-Type': 'application/json',
+            },
+            json={'messages': api_messages, 'max_tokens': 1024, 'temperature': 0.3},
+            timeout=30,
+        )
+    except requests.RequestException as exc:
+        logger.warning('Azure OpenAI 連線失敗: %s', exc)
+        raise _AIError('AI 助教暫時無法連線，請稍後再試。')
+
+    if resp.status_code == 401:
+        raise _AIError('AI 助教金鑰無效，請聯絡管理者。')
+    if resp.status_code == 429:
+        raise _AIError('AI 助教目前使用量較高，請稍後再試。')
+    if not resp.ok:
+        logger.warning('Azure OpenAI 錯誤 %s: %s', resp.status_code, resp.text[:300])
+        raise _AIError('AI 助教暫時無法使用，請稍後再試。')
+
+    try:
+        data = resp.json()
+        return (data['choices'][0]['message']['content'] or '').strip()
+    except (ValueError, KeyError, IndexError) as exc:
+        logger.warning('Azure OpenAI 回應解析失敗: %s', exc)
+        raise _AIError('AI 助教回應異常，請再試一次。')
+
 def _call_claude(system, messages):
     try:
         import anthropic
@@ -546,6 +596,8 @@ def _call_gemini(system, messages):
 
 def _call_model(system, messages):
     provider = _active_provider()
+    if provider == 'azure':
+        return _call_azure(system, messages)
     if provider == 'gemini':
         return _call_gemini(system, messages)
     if provider == 'anthropic':

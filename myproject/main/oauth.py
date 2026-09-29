@@ -16,6 +16,8 @@ LINE_AUTH_URL = 'https://access.line.me/oauth2/v2.1/authorize'
 LINE_TOKEN_URL = 'https://api.line.me/oauth2/v2.1/token'
 LINE_VERIFY_URL = 'https://api.line.me/oauth2/v2.1/verify'
 
+MICROSOFT_GRAPH_ME_URL = 'https://graph.microsoft.com/v1.0/me'
+
 OAUTH_TIMEOUT = 10
 
 class OAuthError(Exception):
@@ -108,6 +110,55 @@ def fetch_line_profile(request, code):
         raise OAuthError('LINE 回傳資料缺少 sub')
 
     return provider_id, claims.get('email') or '', claims.get('name') or ''
+
+def _microsoft_tenant():
+    return settings.MICROSOFT_OAUTH_TENANT_ID or 'common'
+
+def build_microsoft_auth_url(request, state):
+    params = {
+        'client_id': settings.MICROSOFT_OAUTH_CLIENT_ID,
+        'redirect_uri': _callback_uri(request, 'microsoft_oauth_callback'),
+        'response_type': 'code',
+        'scope': 'openid email profile User.Read',
+        'state': state,
+        'prompt': 'select_account',
+    }
+    query = '&'.join(f'{k}={requests.utils.quote(str(v))}' for k, v in params.items())
+    auth_url = f'https://login.microsoftonline.com/{_microsoft_tenant()}/oauth2/v2.0/authorize'
+    return f'{auth_url}?{query}'
+
+def fetch_microsoft_profile(request, code):
+    token_url = f'https://login.microsoftonline.com/{_microsoft_tenant()}/oauth2/v2.0/token'
+    token_resp = requests.post(token_url, data={
+        'client_id': settings.MICROSOFT_OAUTH_CLIENT_ID,
+        'client_secret': settings.MICROSOFT_OAUTH_CLIENT_SECRET,
+        'code': code,
+        'redirect_uri': _callback_uri(request, 'microsoft_oauth_callback'),
+        'grant_type': 'authorization_code',
+        'scope': 'openid email profile User.Read',
+    }, timeout=OAUTH_TIMEOUT)
+    if not token_resp.ok:
+        raise OAuthError(f'Microsoft token 交換失敗：{token_resp.text}')
+
+    access_token = token_resp.json().get('access_token')
+    if not access_token:
+        raise OAuthError('Microsoft 未回傳 access_token')
+
+    info_resp = requests.get(
+        MICROSOFT_GRAPH_ME_URL,
+        headers={'Authorization': f'Bearer {access_token}'},
+        timeout=OAUTH_TIMEOUT,
+    )
+    if not info_resp.ok:
+        raise OAuthError(f'Microsoft 使用者資料取得失敗：{info_resp.text}')
+
+    info = info_resp.json()
+    provider_id = info.get('id')
+    if not provider_id:
+        raise OAuthError('Microsoft 回傳資料缺少 id')
+
+    email = info.get('mail') or info.get('userPrincipalName') or ''
+    return provider_id, email, info.get('displayName') or ''
 
 def _unique_username(base):
     base = re.sub(r'[^\w.@+-]', '', base) or 'user'

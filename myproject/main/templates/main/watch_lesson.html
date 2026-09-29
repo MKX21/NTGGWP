@@ -120,6 +120,12 @@
           </div>
           {% endif %}
         {% endfor %}
+        {% if chapter.quiz.is_published %}
+        <a href="{% url 'take_quiz' chapter.id %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm mb-1 text-jp-primary hover:bg-brand-50 font-medium transition">
+          <span class="w-5 h-5 flex items-center justify-center shrink-0"><i class="fas fa-clipboard-question"></i></span>
+          <span class="flex-1">第 {{ chapter.sort_order }} 章測驗</span>
+        </a>
+        {% endif %}
         {% endfor %}
       </div>
     </aside>
