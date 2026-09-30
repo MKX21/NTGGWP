@@ -23,6 +23,9 @@ urlpatterns = [
     path('quiz/<int:quiz_id>/submit/', views.submit_quiz, name='submit_quiz'),
     path('quiz/attempt/<int:attempt_id>/result/', views.quiz_result, name='quiz_result'),
 
+    # AI 學習診斷
+    path('course/<int:course_id>/diagnosis/', views.learning_diagnosis, name='learning_diagnosis'),
+
     path('teachers/', views.teacher_catalog, name='teacher_catalog'),
     path('teacher/<int:teacher_id>/profile/', views.teacher_profile, name='teacher_profile'),
     path('course/<int:course_id>/edit/', views.edit_course, name='edit_course'),

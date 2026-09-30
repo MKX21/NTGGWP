@@ -1166,6 +1166,19 @@ def quiz_result(request, attempt_id):
         'answers': answers,
     })
 
+@login_required
+def learning_diagnosis(request, course_id):
+    """AI 學習診斷（POST，回傳 JSON）。依學生在這門課的真實學習數據產生診斷。"""
+    course = get_object_or_404(Course, id=course_id)
+    enrolled = Enrollment.objects.filter(student=request.user, course=course).exists()
+    is_teacher = course.teacher_id == request.user.id
+    if not (enrolled or is_teacher):
+        return JsonResponse({'ok': False, 'error': '請先加入課程再使用學習診斷。'}, status=403)
+
+    from . import ai_diagnosis
+    result = ai_diagnosis.diagnose(request.user, course)
+    return JsonResponse(result)
+
 @require_teacher
 def create_course(request):
 

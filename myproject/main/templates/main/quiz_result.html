@@ -12,6 +12,25 @@
     </p>
   </div>
 
+  <!-- AI 學習診斷 -->
+  <div class="bg-gradient-to-br from-brand-50 to-violet-50 rounded-2xl ring-1 ring-brand-100 p-6 mb-6" data-diagnosis-box>
+    <div class="flex items-center gap-2 mb-1">
+      <span class="text-xl">🎯</span>
+      <h2 class="font-black text-slate-900">AI 學習診斷</h2>
+    </div>
+    <p class="text-sm text-slate-500 mb-4">依你在這門課的真實學習數據（完成率、觀看、測驗錯題）分析學習狀況。</p>
+
+    <button type="button" data-diagnosis-btn
+            class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-5 py-2.5 rounded-lg transition disabled:opacity-60">
+      分析我的學習狀況
+    </button>
+
+    <div data-diagnosis-result class="hidden mt-4">
+      <div data-diagnosis-text class="prose-diagnosis text-slate-700 text-sm leading-relaxed bg-white rounded-xl p-5 ring-1 ring-slate-100"></div>
+      <div data-diagnosis-topics class="flex flex-wrap gap-2 mt-3"></div>
+    </div>
+  </div>
+
   <div class="space-y-4">
     {% for a in answers %}
     <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6">
@@ -47,4 +66,91 @@
     <a href="{% url 'watch_course' course.id %}" class="flex-1 text-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-lg transition">返回課程</a>
   </div>
 </main>
+
+<style>
+  .prose-diagnosis ul { list-style: disc; padding-left: 1.25rem; margin: .4rem 0; }
+  .prose-diagnosis ol { list-style: decimal; padding-left: 1.4rem; margin: .4rem 0; }
+  .prose-diagnosis li { margin: .2rem 0; }
+  .prose-diagnosis strong { color: #0f172a; font-weight: 700; }
+  .prose-diagnosis p { margin: .4rem 0; }
+</style>
+<script>
+(function () {
+  const box = document.querySelector('[data-diagnosis-box]');
+  if (!box) return;
+  const btn = box.querySelector('[data-diagnosis-btn]');
+  const resultWrap = box.querySelector('[data-diagnosis-result]');
+  const textEl = box.querySelector('[data-diagnosis-text]');
+  const topicsEl = box.querySelector('[data-diagnosis-topics]');
+  const url = "{% url 'learning_diagnosis' course.id %}";
+  const csrftoken = "{{ csrf_token }}";
+
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // 極輕量 Markdown：先跳脫 HTML，再處理 **粗體** 與 - / 數字清單
+  function renderMarkdown(md) {
+    const lines = esc(md).split('\n');
+    let html = '', listType = null;
+    const closeList = () => { if (listType) { html += `</${listType}>`; listType = null; } };
+    for (let raw of lines) {
+      let line = raw.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      const ulm = line.match(/^\s*[-・]\s+(.*)$/);
+      const olm = line.match(/^\s*\d+\.\s+(.*)$/);
+      if (ulm) {
+        if (listType !== 'ul') { closeList(); html += '<ul>'; listType = 'ul'; }
+        html += `<li>${ulm[1]}</li>`;
+      } else if (olm) {
+        if (listType !== 'ol') { closeList(); html += '<ol>'; listType = 'ol'; }
+        html += `<li>${olm[1]}</li>`;
+      } else if (line.trim() === '') {
+        closeList();
+      } else {
+        closeList();
+        html += `<p>${line}</p>`;
+      }
+    }
+    closeList();
+    return html;
+  }
+
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    btn.textContent = 'AI 分析中…';
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        textEl.innerHTML = renderMarkdown(data.diagnosis);
+        topicsEl.innerHTML = '';
+        (data.weak_topics || []).forEach(t => {
+          const chip = document.createElement('span');
+          chip.className = 'text-xs bg-amber-100 text-amber-700 font-bold px-3 py-1 rounded-full';
+          chip.textContent = '需加強：' + t;
+          topicsEl.appendChild(chip);
+        });
+        resultWrap.classList.remove('hidden');
+        btn.textContent = '重新分析';
+      } else {
+        textEl.innerHTML = '<p class="text-amber-600">' + esc(data.error || '分析失敗，請稍後再試。') + '</p>';
+        resultWrap.classList.remove('hidden');
+        btn.textContent = '再試一次';
+      }
+    } catch (e) {
+      textEl.innerHTML = '<p class="text-red-500">連線失敗，請稍後再試。</p>';
+      resultWrap.classList.remove('hidden');
+      btn.textContent = '再試一次';
+    } finally {
+      btn.disabled = false;
+    }
+  });
+})();
+</script>
 {% endblock %}
