@@ -453,6 +453,63 @@ def answer_course_question(course, question, history=None):
     answer_text, suggestions = _parse_suggestions(answer)
     return {'ok': True, 'answer': answer_text, 'suggestions': suggestions}
 
+def answer_course_question_rag(course, question, history=None):
+    """RAG 版課程問答：先從 Azure AI Search 撈教材片段，再嚴格依教材回答。
+    找不到教材內容時明確說明，不捏造。回傳格式同 answer_course_question。"""
+    from . import rag
+
+    if not is_enabled():
+        return {'ok': False, 'error': 'AI 助教尚未啟用（管理者尚未設定 API 金鑰）。'}
+
+    question = _truncate_question(question)
+    if not question:
+        return {'ok': False, 'error': '請先輸入問題。'}
+
+    hits = rag.search(question, course.id, top=4)
+    if not hits:
+        return {
+            'ok': True,
+            'answer': '目前提供的課程教材中沒有找到相關資訊，建議你直接詢問老師，或到課程問答區發問。',
+            'suggestions': [],
+            'sources': [],
+        }
+
+    context_parts = []
+    sources = []
+    for i, h in enumerate(hits, 1):
+        label = f"{h['chapter_title']}／{h['material_title']}".strip('／')
+        context_parts.append(f"【教材片段 {i}｜來源：{label}】\n{h['content']}")
+        if label and label not in sources:
+            sources.append(label)
+    context = '\n\n'.join(context_parts)
+
+    system = (
+        f'你是線上課程「{course.title}」的 AI 學習教練。學生問了一個問題，'
+        '下面提供的是從「這門課的教材」中檢索到的相關片段。\n'
+        '嚴格規則：\n'
+        '1. 只能根據下面提供的教材片段回答，不要使用教材以外的知識，也不要捏造。\n'
+        '2. 如果教材片段中找不到足以回答的內容，請明確說：'
+        '「目前提供的課程教材中沒有找到相關資訊，建議詢問老師。」不要硬掰。\n'
+        '3. 用繁體中文、親切、讓學生容易理解的方式回答，可以舉例、可用 Markdown 條列。\n'
+        '4. 回答精簡，不要冗長。\n'
+        '5. 如果可以，最後說明答案主要來自哪個章節／教材。\n'
+        '在回覆的最後一行，用 ||| 分隔附上 2~3 個建議追問，'
+        '格式：|||建議問題1|||建議問題2。若不適合則不加。\n\n'
+        f'=== 檢索到的課程教材片段 ===\n{context}'
+    )
+
+    try:
+        messages = _build_messages(question, history)
+        answer = _call_model(system, messages)
+    except _AIError as exc:
+        return {'ok': False, 'error': str(exc)}
+
+    if not answer:
+        return {'ok': True, 'answer': '（沒有產生回覆，請再試一次）', 'suggestions': [], 'sources': sources}
+
+    answer_text, suggestions = _parse_suggestions(answer)
+    return {'ok': True, 'answer': answer_text, 'suggestions': suggestions, 'sources': sources}
+
 def _parse_suggestions(text):
     if '|||' not in text:
         return text.strip(), []

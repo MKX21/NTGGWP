@@ -179,6 +179,11 @@ AZURE_OPENAI_API_VERSION = os.environ.get('AZURE_OPENAI_API_VERSION', '2024-10-2
 # AI_PROVIDER 可強制指定後端：'azure' / 'gemini' / 'anthropic'；留空則依設定自動選。
 AI_PROVIDER = os.environ.get('AI_PROVIDER', '')
 
+# Azure AI Search（RAG 課程教材檢索）。三個值都設定後，課程 AI 助教會先檢索教材再回答。
+AZURE_SEARCH_ENDPOINT = os.environ.get('AZURE_SEARCH_ENDPOINT', '')
+AZURE_SEARCH_API_KEY = os.environ.get('AZURE_SEARCH_API_KEY', '')
+AZURE_SEARCH_INDEX = os.environ.get('AZURE_SEARCH_INDEX', 'course-materials')
+
 GEMINI_MARKETING_MODEL = os.environ.get('GEMINI_MARKETING_MODEL', 'gemini-3.6-flash')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

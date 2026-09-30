@@ -12,3 +12,6 @@ gunicorn==23.0.0
 whitenoise==6.8.2
 django-storages==1.14.4
 boto3==1.35.99
+pypdf==6.19.0
+python-docx==1.2.0
+python-pptx==1.0.2

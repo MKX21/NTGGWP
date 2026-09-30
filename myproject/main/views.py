@@ -3111,7 +3111,11 @@ def ask_ai(request, course_id):
             'ok': True, 'answer': faq['answer'], 'faq': True, 'suggestions': [],
         })
 
-    result = ai_assistant.answer_course_question(course, question, history=history)
+    from . import rag
+    if rag.is_search_enabled():
+        result = ai_assistant.answer_course_question_rag(course, question, history=history)
+    else:
+        result = ai_assistant.answer_course_question(course, question, history=history)
     return JsonResponse(result)
 
 @login_required
