@@ -69,10 +69,13 @@
                     {% if already_purchased %}
                     <a href="{% url 'watch_course' course.id %}" class="btn-glass-primary px-7 py-3 text-lg"><i class="fas fa-play"></i> 開始上課</a>
                     {% else %}
-                    <a href="{% url 'checkout' course.id %}" class="btn-glass-primary px-7 py-3 text-lg">立即購買 NT$ {{ course.get_effective_price }}</a>
+                    <form method="post" action="{% url 'enroll_free' course.id %}" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-glass-primary px-7 py-3 text-lg"><i class="fas fa-circle-plus"></i> 加入課程</button>
+                    </form>
                     {% endif %}
                 {% else %}
-                    <a href="{% url 'login' %}" class="btn-glass-primary px-7 py-3 text-lg">登入後購買 NT$ {{ course.get_effective_price }}</a>
+                    <a href="{% url 'login' %}" class="btn-glass-primary px-7 py-3 text-lg">登入後開始學習</a>
                 {% endif %}
                 {% if course.intro_video_file or course.intro_video_url %}
                 <button type="button" data-intro-open class="btn-glass px-5 py-3 text-base"><i class="fas fa-circle-play text-lg"></i> 觀看介紹片</button>
@@ -122,7 +125,7 @@
                 </div>
                 <div>
                     <p class="text-jp-muted">開課時間</p>
-                    <p class="font-grotesk tabular-nums text-jp-text font-bold">{{ course.start_date|date:"Y-m-d"|default:"依購買後立即開通" }}</p>
+                    <p class="font-grotesk tabular-nums text-jp-text font-bold">{{ course.start_date|date:"Y-m-d"|default:"加入後立即開通" }}</p>
                 </div>
                 <div>
                     <p class="text-jp-muted">觀看期限</p>
@@ -218,7 +221,7 @@
                                 {% if already_purchased or is_course_teacher or lesson.is_free_preview %}
                                 <a href="{% url 'watch_lesson' lesson.id %}" class="flex items-center justify-between px-4 py-3 hover:bg-jp-bg transition">
                                     <span class="text-jp-text"><i class="fas fa-circle-play text-jp-primary mr-2"></i>{{ chapter.sort_order }}-{{ lesson.sort_order }} {{ lesson.title }}</span>
-                                    <span class="text-jp-muted">{{ lesson.duration_minutes }} 分{% if lesson.is_free_preview %} <span class="text-green-600 font-bold ml-1">免費試看</span>{% endif %}</span>
+                                    <span class="text-jp-muted">{{ lesson.duration_minutes }} 分{% if lesson.is_free_preview %} <span class="text-green-600 font-bold ml-1">試看</span>{% endif %}</span>
                                 </a>
                                 {% else %}
                                 <div class="flex items-center justify-between px-4 py-3">
@@ -270,8 +273,8 @@
                         <button type="submit" class="bg-jp-primary text-white px-5 py-2.5 rounded-lg font-medium hover:bg-jp-primaryHover transition">{% if my_review %}更新評價{% else %}送出評價{% endif %}</button>
                     </form>
                 </div>
-                {% elif not user.is_authenticated %}<p class="text-jp-muted mb-6">登入並購買課程後即可留下評價。</p>
-                {% else %}<p class="text-jp-muted mb-6">購買這門課後即可留下評價。</p>{% endif %}
+                {% elif not user.is_authenticated %}<p class="text-jp-muted mb-6">登入並加入課程後即可留下評價。</p>
+                {% else %}<p class="text-jp-muted mb-6">加入這門課後即可留下評價。</p>{% endif %}
 
                 {% for review in reviews %}
                 <div class="border-b border-jp-border py-4">
@@ -376,17 +379,7 @@
                 </div>
                 {% endif %}
                 <div class="mb-4">
-                    {% if course.has_discount %}
-                    <div class="flex items-baseline gap-2 flex-wrap">
-                        <span class="font-grotesk tabular-nums text-lg text-jp-muted line-through decoration-2">NT$ {{ course.price }}</span>
-                        <span class="font-grotesk tabular-nums text-3xl font-bold text-jp-accent">NT$ {{ course.get_effective_price }}</span>
-                    </div>
-                    {% if course.is_crowdfunding and course.is_funding_active %}
-                    <span class="inline-block mt-1 bg-accent-50 text-accent-600 text-xs font-bold px-2.5 py-1 rounded">早鳥優惠價，僅限募資期間</span>
-                    {% endif %}
-                    {% else %}
-                    <span class="font-grotesk tabular-nums text-3xl font-bold text-jp-accent">NT$ {{ course.price }}</span>
-                    {% endif %}
+                    <span class="font-grotesk text-lg font-bold text-jp-primary"><i class="fas fa-book-open-reader mr-1"></i> 開放式課程</span>
                 </div>
 
                 {% if course.is_crowdfunding and course.is_funding_active %}
@@ -448,10 +441,9 @@
                     <p class="text-green-600 font-bold mb-3 flex items-center gap-2"><i class="fas fa-circle-check"></i> 你已擁有這門課程</p>
                     <a href="{% url 'watch_course' course.id %}" class="block text-center w-full bg-green-600 text-white py-3 rounded-lg font-medium text-lg mb-3 hover:bg-green-700 transition">▶ 開始上課</a>
                     {% else %}
-                    <a href="{% url 'checkout' course.id %}" class="block text-center w-full bg-jp-primary text-white py-3 rounded-lg font-medium text-lg mb-3 hover:bg-jp-primaryHover transition">立即購買</a>
-                    <form method="post" action="{% url 'add_to_cart' course.id %}">
+                    <form method="post" action="{% url 'enroll_free' course.id %}">
                         {% csrf_token %}
-                        <button type="submit" class="w-full border border-jp-primary text-jp-primary py-3 rounded-lg font-medium text-lg mb-3 hover:bg-brand-50 transition">加入購物車</button>
+                        <button type="submit" class="w-full bg-jp-primary text-white py-3 rounded-lg font-medium text-lg mb-3 hover:bg-jp-primaryHover transition"><i class="fas fa-circle-plus mr-1"></i> 加入課程</button>
                     </form>
                     <form method="post" action="{% url 'toggle_favorite' course.id %}">
                         {% csrf_token %}
@@ -462,7 +454,7 @@
                     </form>
                     {% endif %}
                 {% else %}
-                <a href="{% url 'login' %}" class="block text-center w-full bg-jp-primary text-white py-3 rounded-lg font-medium text-lg mb-6 hover:bg-jp-primaryHover transition">登入後購買</a>
+                <a href="{% url 'login' %}" class="block text-center w-full bg-jp-primary text-white py-3 rounded-lg font-medium text-lg mb-6 hover:bg-jp-primaryHover transition">登入後開始學習</a>
                 {% endif %}
 
                 <div class="text-sm text-jp-muted space-y-3">
@@ -531,7 +523,6 @@
                         {% if c.avg_rating %}<span class="text-amber-400 text-xs"><i class="fas fa-star"></i></span><span class="text-xs text-jp-muted">{{ c.avg_rating }}</span>{% endif %}
                         <span class="text-xs text-jp-muted">（{{ c.review_count }}）</span>
                     </div>
-                    <span class="font-grotesk tabular-nums text-sm font-bold text-jp-accent">NT$ {{ c.get_effective_price }}</span>
                 </div>
             </div>
         </a>

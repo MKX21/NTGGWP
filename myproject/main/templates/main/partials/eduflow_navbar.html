@@ -1,10 +1,8 @@
 
 <div id="announcement-bar" class="bg-electric text-white text-sm">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-10 flex items-center justify-center gap-3">
-        <i class="fas fa-bullhorn text-accent-400"></i>
-        <span class="hidden sm:inline">新學期優惠開跑！於購物車輸入折扣碼</span>
-        <code class="bg-white/15 px-2 py-0.5 rounded font-mono tracking-wider text-accent-300">NEW100</code>
-        <span class="hidden md:inline">立即折抵 NT$100</span>
+        <i class="fas fa-graduation-cap text-accent-400"></i>
+        <span>開放式學習平台 — 登入即可開始你的學習旅程</span>
         <button data-close="#announcement-bar" class="ml-2 text-white/60 hover:text-white transition" aria-label="關閉公告">
             <i class="fas fa-xmark"></i>
         </button>
@@ -38,10 +36,6 @@
                         {% if nav_unread_count %}<span class="absolute -top-0.5 -right-0.5 bg-jp-accent text-white text-[10px] font-bold rounded-full h-4 min-w-4 px-1 flex items-center justify-center">{{ nav_unread_count }}</span>{% endif %}
                     </a>
 
-                    <a href="{% url 'view_cart' %}" class="relative p-2 text-satdark-muted hover:text-electric transition" aria-label="購物車">
-                        <i class="fas fa-shopping-cart text-lg"></i>
-                        {% if nav_cart_count %}<span class="absolute -top-0.5 -right-0.5 bg-jp-accent text-white text-[10px] font-bold rounded-full h-4 min-w-4 px-1 flex items-center justify-center">{{ nav_cart_count }}</span>{% endif %}
-                    </a>
 
 
                     <div class="relative hidden sm:block" data-dropdown-wrapper>
@@ -100,9 +94,6 @@
                         </div>
                     </div>
                 {% else %}
-                    <a href="{% url 'view_cart' %}" class="relative p-2 text-satdark-muted hover:text-electric transition" aria-label="購物車">
-                        <i class="fas fa-shopping-cart text-lg"></i>
-                    </a>
                     <a href="{% url 'login' %}" class="hidden sm:inline-block text-satdark-text hover:bg-white/10 px-3 py-2 rounded-lg font-medium transition">登入</a>
                     <a href="{% url 'register' %}" class="bg-electric text-white hover:bg-electric-hover px-4 py-2 rounded-lg font-medium transition">免費註冊</a>
                 {% endif %}
@@ -137,7 +128,6 @@
         </form>
         <a href="{% url 'course_catalog' %}" class="px-3 py-3 rounded-lg hover:bg-white/5 text-satdark-text font-medium">探索課程</a>
         {% if user.is_authenticated %}
-            <a href="{% url 'view_cart' %}" class="px-3 py-3 rounded-lg hover:bg-white/5 text-satdark-text font-medium">購物車{% if nav_cart_count %}（{{ nav_cart_count }}）{% endif %}</a>
             <a href="{% url 'notifications' %}" class="px-3 py-3 rounded-lg hover:bg-white/5 text-satdark-text font-medium">通知{% if nav_unread_count %}（{{ nav_unread_count }}）{% endif %}</a>
             {% if nav_role == 'teacher' %}
             <a href="{% url 'teacher_dashboard' %}" class="px-3 py-3 rounded-lg hover:bg-white/5 text-satdark-text font-medium">教師專區</a>

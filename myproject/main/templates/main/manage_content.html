@@ -39,7 +39,7 @@
     <div class="flex items-center justify-between gap-3 flex-wrap bg-slate-50 rounded-lg px-3 py-2.5 mt-2">
       <div class="text-sm">
         <strong class="text-slate-800">{{ chapter.sort_order }}-{{ lesson.sort_order }} {{ lesson.title }}</strong>
-        <span class="text-slate-400">（{{ lesson.duration_minutes }} 分{% if lesson.is_free_preview %}・免費試看{% endif %}）</span>
+        <span class="text-slate-400">（{{ lesson.duration_minutes }} 分{% if lesson.is_free_preview %}・試看{% endif %}）</span>
         {% if lesson.video_file %}<span class="text-green-600 font-bold text-xs ml-1">🎬 已上傳影片</span>{% elif lesson.video_url %}<span class="text-jp-primary font-bold text-xs ml-1">🔗 影片連結</span>{% endif %}
         <span class="text-jp-primary font-bold text-xs ml-1">📎 教材 {{ lesson.materials.count }}</span>
       </div>

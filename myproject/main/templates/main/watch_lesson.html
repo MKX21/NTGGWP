@@ -25,7 +25,7 @@
         <div class="p-6">
           <p class="text-sm text-slate-400 mb-1">{{ course.title }} ・ 第 {{ lesson.chapter.sort_order }} 章</p>
           <h1 class="text-2xl font-black text-slate-900 mb-2">{{ lesson.chapter.sort_order }}-{{ lesson.sort_order }} {{ lesson.title }}</h1>
-          <div class="text-slate-500 mb-4">影片長度 {{ lesson.duration_minutes }} 分鐘{% if lesson.is_free_preview %} ・ <span class="text-green-600 font-medium">免費試看</span>{% endif %}</div>
+          <div class="text-slate-500 mb-4">影片長度 {{ lesson.duration_minutes }} 分鐘{% if lesson.is_free_preview %} ・ <span class="text-green-600 font-medium">試看</span>{% endif %}</div>
           {% if lesson.content %}<div class="text-slate-700 leading-relaxed whitespace-pre-line">{{ lesson.content }}</div>{% endif %}
 
 

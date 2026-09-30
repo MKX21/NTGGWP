@@ -27,14 +27,6 @@
                 <span class="text-jp-muted">尚無評分</span>
                 {% endif %}
             </div>
-            <div class="flex items-baseline gap-2">
-                {% if course.has_discount %}
-                <span class="font-grotesk tabular-nums text-sm text-jp-muted line-through decoration-2">NT$ {{ course.price }}</span>
-                <span class="font-grotesk tabular-nums text-lg font-bold text-jp-accent">NT$ {{ course.get_effective_price }}</span>
-                {% else %}
-                <span class="font-grotesk tabular-nums text-lg font-bold text-jp-accent">NT$ {{ course.price }}</span>
-                {% endif %}
-            </div>
         </div>
     </a>
 </article>

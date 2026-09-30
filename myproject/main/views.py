@@ -932,6 +932,13 @@ def buy_course(request, course_id):
     return redirect('checkout', course_id=course_id)
 
 @login_required
+def enroll_free(request, course_id):
+    """免費加入課程：直接建立選課紀錄，立即開始學習（開放式課程平台，無金流）。"""
+    course = get_object_or_404(Course, id=course_id, is_published=True)
+    Enrollment.objects.get_or_create(student=request.user, course=course)
+    return redirect('watch_course', course_id=course.id)
+
+@login_required
 def purchase_success(request, course_id):
     course = get_object_or_404(Course, id=course_id)
 

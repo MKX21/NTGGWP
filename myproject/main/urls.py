@@ -8,6 +8,7 @@ urlpatterns = [
 
     path('course/<int:course_id>/', views.course_detail, name='course_detail'),
     path('course/<int:course_id>/buy/', views.buy_course, name='buy_course'),
+    path('course/<int:course_id>/enroll/', views.enroll_free, name='enroll_free'),
     path('course/<int:course_id>/checkout/', views.checkout, name='checkout'),
     path('order/<int:order_id>/payment/', views.payment, name='payment'),
     path('order/<int:order_id>/success/', views.order_success, name='order_success'),
