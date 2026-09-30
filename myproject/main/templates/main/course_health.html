@@ -1,0 +1,124 @@
+{% extends 'main/base_eduflow.html' %}
+{% block title %}課程健康度 | {{ course.title }}{% endblock %}
+
+{% block content %}
+<main class="max-w-4xl mx-auto px-4 py-10">
+  <div class="mb-6">
+    <a href="{% url 'teacher_dashboard' %}" class="text-jp-primary hover:underline text-sm font-medium">← 返回教師專區</a>
+    <h1 class="text-2xl font-black text-slate-900 mt-2">課程健康度</h1>
+    <p class="text-slate-500 mt-1">{{ course.title }} ・ 選課學生 {{ stats.student_count }} 人</p>
+  </div>
+
+  <!-- 逐章數據表 -->
+  <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm overflow-hidden mb-6">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-slate-500">
+          <tr>
+            <th class="text-left font-bold px-5 py-3">章節</th>
+            <th class="text-center font-bold px-4 py-3">完成率</th>
+            <th class="text-center font-bold px-4 py-3">測驗平均</th>
+            <th class="text-center font-bold px-4 py-3">通過率</th>
+            <th class="text-left font-bold px-4 py-3">最常答錯</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for ch in stats.chapters %}
+          <tr>
+            <td class="px-5 py-3 font-medium text-slate-800">第 {{ ch.sort_order }} 章 {{ ch.title }}</td>
+            <td class="px-4 py-3 text-center tabular-nums {% if ch.completion_pct < 50 %}text-amber-600 font-bold{% else %}text-slate-600{% endif %}">{{ ch.completion_pct }}%</td>
+            {% if ch.quiz %}
+            <td class="px-4 py-3 text-center tabular-nums {% if ch.quiz.avg_score < 60 %}text-amber-600 font-bold{% else %}text-slate-600{% endif %}">{{ ch.quiz.avg_score }}</td>
+            <td class="px-4 py-3 text-center tabular-nums text-slate-600">{{ ch.quiz.pass_rate }}%</td>
+            <td class="px-4 py-3 text-slate-500 text-xs">
+              {% for h in ch.quiz.hardest_questions %}
+              <div>・{{ h.question|truncatechars:24 }}（{{ h.wrong_rate }}%）</div>
+              {% empty %}<span class="text-slate-300">—</span>{% endfor %}
+            </td>
+            {% else %}
+            <td class="px-4 py-3 text-center text-slate-300" colspan="3">無測驗 / 無人作答</td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- AI 解讀 -->
+  <div class="bg-gradient-to-br from-brand-50 to-violet-50 rounded-2xl ring-1 ring-brand-100 p-6" data-health-box>
+    <div class="flex items-center gap-2 mb-1">
+      <span class="text-xl">🩺</span>
+      <h2 class="font-black text-slate-900">AI 課程健康度分析</h2>
+    </div>
+    <p class="text-sm text-slate-500 mb-4">Power BI 呈現數據，AI 幫你解讀——找出學習瓶頸章節並給改善建議。</p>
+
+    <button type="button" data-health-btn
+            class="bg-jp-primary hover:bg-jp-primaryHover text-white font-bold px-5 py-2.5 rounded-lg transition disabled:opacity-60">
+      AI 分析課程健康度
+    </button>
+
+    <div data-health-result class="hidden mt-4 prose-diagnosis text-slate-700 text-sm leading-relaxed bg-white rounded-xl p-5 ring-1 ring-slate-100"></div>
+  </div>
+</main>
+
+<style>
+  .prose-diagnosis ul { list-style: disc; padding-left: 1.25rem; margin: .4rem 0; }
+  .prose-diagnosis ol { list-style: decimal; padding-left: 1.4rem; margin: .4rem 0; }
+  .prose-diagnosis li { margin: .2rem 0; }
+  .prose-diagnosis strong { color: #0f172a; font-weight: 700; }
+  .prose-diagnosis p { margin: .4rem 0; }
+</style>
+<script>
+(function () {
+  const box = document.querySelector('[data-health-box]');
+  if (!box) return;
+  const btn = box.querySelector('[data-health-btn]');
+  const resultEl = box.querySelector('[data-health-result]');
+  const url = "{% url 'course_health_analyze' course.id %}";
+  const csrftoken = "{{ csrf_token }}";
+
+  function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  function renderMarkdown(md) {
+    const lines = esc(md).split('\n');
+    let html = '', listType = null;
+    const closeList = () => { if (listType) { html += `</${listType}>`; listType = null; } };
+    for (let raw of lines) {
+      let line = raw.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      const ulm = line.match(/^\s*[-・]\s+(.*)$/);
+      const olm = line.match(/^\s*\d+\.\s+(.*)$/);
+      if (ulm) { if (listType !== 'ul') { closeList(); html += '<ul>'; listType = 'ul'; } html += `<li>${ulm[1]}</li>`; }
+      else if (olm) { if (listType !== 'ol') { closeList(); html += '<ol>'; listType = 'ol'; } html += `<li>${olm[1]}</li>`; }
+      else if (line.trim() === '') { closeList(); }
+      else { closeList(); html += `<p>${line}</p>`; }
+    }
+    closeList();
+    return html;
+  }
+
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    btn.textContent = 'AI 分析中…';
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      resultEl.innerHTML = data.ok
+        ? renderMarkdown(data.analysis)
+        : '<p class="text-amber-600">' + esc(data.error || '分析失敗，請稍後再試。') + '</p>';
+      resultEl.classList.remove('hidden');
+      btn.textContent = data.ok ? '重新分析' : '再試一次';
+    } catch (e) {
+      resultEl.innerHTML = '<p class="text-red-500">連線失敗，請稍後再試。</p>';
+      resultEl.classList.remove('hidden');
+      btn.textContent = '再試一次';
+    } finally {
+      btn.disabled = false;
+    }
+  });
+})();
+</script>
+{% endblock %}

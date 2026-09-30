@@ -1158,12 +1158,24 @@ def quiz_result(request, attempt_id):
         return redirect('home')
 
     answers = attempt.answers.select_related('question').all()
+
+    # 前後對照：找這位學生在同一份測驗、這次之前的上一次作答
+    previous_attempt = (
+        QuizAttempt.objects.filter(
+            user=attempt.user, quiz=attempt.quiz, created_at__lt=attempt.created_at
+        )
+        .order_by('-created_at').first()
+    )
+    score_delta = attempt.score - previous_attempt.score if previous_attempt else None
+
     return render(request, 'main/quiz_result.html', {
         'attempt': attempt,
         'quiz': attempt.quiz,
         'chapter': attempt.quiz.chapter,
         'course': attempt.quiz.chapter.course,
         'answers': answers,
+        'previous_attempt': previous_attempt,
+        'score_delta': score_delta,
     })
 
 @login_required
@@ -1177,6 +1189,20 @@ def learning_diagnosis(request, course_id):
 
     from . import ai_diagnosis
     result = ai_diagnosis.diagnose(request.user, course)
+    return JsonResponse(result)
+
+@login_required
+def remedial_quiz(request, chapter_id):
+    """AI 自適性補救 Quiz（POST，回傳 JSON）。依學生在該章的錯題生成補救練習題。"""
+    chapter = get_object_or_404(CourseChapter.objects.select_related('course'), id=chapter_id)
+    course = chapter.course
+    enrolled = Enrollment.objects.filter(student=request.user, course=course).exists()
+    is_teacher = course.teacher_id == request.user.id
+    if not (enrolled or is_teacher):
+        return JsonResponse({'ok': False, 'error': '請先加入課程。'}, status=403)
+
+    from . import ai_remedial
+    result = ai_remedial.generate_remedial(request.user, chapter)
     return JsonResponse(result)
 
 @require_teacher
@@ -3474,6 +3500,32 @@ def microsoft_oauth_callback(request):
 
     login(request, user, backend='django.contrib.auth.backends.ModelBackend')
     return _post_login_redirect(user)
+
+@require_teacher
+def course_health(request, course_id):
+    """教師端 AI 課程健康度頁面：顯示全體學生逐章聚合數據，並可請 AI 解讀。"""
+    course = get_object_or_404(Course, id=course_id)
+    if course.teacher_id != request.user.id and not request.user.is_superuser:
+        return redirect('teacher_dashboard')
+
+    from . import ai_course_health
+    stats = ai_course_health.build_course_health_stats(course)
+    return render(request, 'main/course_health.html', {
+        'course': course,
+        'stats': stats,
+    })
+
+@require_teacher
+def course_health_analyze(request, course_id):
+    """AI 課程健康度解讀（POST，回傳 JSON）。"""
+    course = get_object_or_404(Course, id=course_id)
+    if course.teacher_id != request.user.id and not request.user.is_superuser:
+        return JsonResponse({'ok': False, 'error': '無權限。'}, status=403)
+
+    from . import ai_course_health
+    result = ai_course_health.analyze(course)
+    result.pop('stats', None)
+    return JsonResponse(result)
 
 @require_teacher
 def teacher_qna(request):

@@ -25,6 +25,11 @@ urlpatterns = [
 
     # AI 學習診斷
     path('course/<int:course_id>/diagnosis/', views.learning_diagnosis, name='learning_diagnosis'),
+    # AI 自適性補救 Quiz
+    path('chapter/<int:chapter_id>/remedial/', views.remedial_quiz, name='remedial_quiz'),
+    # 教師端 AI 課程健康度
+    path('course/<int:course_id>/health/', views.course_health, name='course_health'),
+    path('course/<int:course_id>/health/analyze/', views.course_health_analyze, name='course_health_analyze'),
 
     path('teachers/', views.teacher_catalog, name='teacher_catalog'),
     path('teacher/<int:teacher_id>/profile/', views.teacher_profile, name='teacher_profile'),
