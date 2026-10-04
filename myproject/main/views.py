@@ -993,6 +993,16 @@ def watch_lesson(request, lesson_id):
     is_completed = lesson.id in completed_ids
 
     prog = LessonProgress.objects.filter(user=request.user, lesson=lesson).first()
+    # 記錄單元頁開啟次數（學習行為指標，供 Power BI 分析）。僅對已選課學生計數。
+    if enrolled:
+        if prog:
+            LessonProgress.objects.filter(pk=prog.pk).update(
+                page_open_count=F('page_open_count') + 1
+            )
+        else:
+            prog = LessonProgress.objects.create(
+                user=request.user, course=course, lesson=lesson, page_open_count=1
+            )
     lesson_percent = prog.percent() if prog else 0
     resume_position = 0
     if prog:
@@ -1153,6 +1163,14 @@ def submit_quiz(request, quiz_id):
         attempt.correct_count = correct
         attempt.score = round(correct / len(questions) * 100)
         attempt.save(update_fields=['correct_count', 'score'])
+
+    # 依真實錯題寫入結構化弱點（weak_topics/strong_topics/feedback），供 AI 與 Power BI 使用。
+    # 放在 transaction 之後：即使 AI 診斷失敗也不會回滾學生的作答。
+    try:
+        from . import ai_diagnosis
+        ai_diagnosis.diagnose_attempt(attempt)
+    except Exception:
+        pass
 
     return redirect('quiz_result', attempt_id=attempt.id)
 

@@ -169,3 +169,52 @@ def _parse_weak_topics(text):
     body = parts[0].strip()
     topics = [t.strip() for t in parts[1:] if t.strip()]
     return body, topics[:3]
+
+
+_SEVERITY_ORDER = {'high': 0, 'medium': 1, 'low': 2}
+
+
+def diagnose_attempt(attempt):
+    """依這次作答的錯題（按題目 topic_tag 分組）推導結構化弱點，存回 attempt。
+
+    純資料推導、不呼叫 AI —— 保證每次作答都能落地可進 Power BI 的真實弱點資料
+    （weak_topics / strong_topics / overall_feedback）。資料來源完全是學生實際
+    答對/答錯的題目，不虛構。沒有 topic_tag 的題目不納入知識點統計。
+    """
+    from collections import defaultdict
+
+    stats = defaultdict(lambda: [0, 0])  # topic -> [total, wrong]
+    for ans in attempt.answers.select_related('question').all():
+        topic = (ans.question.topic_tag or '').strip()
+        if not topic:
+            continue
+        stats[topic][0] += 1
+        if not ans.is_correct:
+            stats[topic][1] += 1
+
+    weak, strong = [], []
+    for topic, (total, wrong) in stats.items():
+        if wrong == 0:
+            strong.append(topic)
+            continue
+        ratio = wrong / total if total else 0
+        severity = 'high' if ratio >= 0.67 else ('medium' if ratio >= 0.34 else 'low')
+        weak.append({
+            'topic': topic,
+            'issue_description': f'「{topic}」相關題目答錯 {wrong}/{total} 題，建議加強此知識點。',
+            'severity': severity,
+        })
+    weak.sort(key=lambda w: _SEVERITY_ORDER.get(w['severity'], 9))
+
+    if weak:
+        feedback = '本次最需加強的知識點：' + '、'.join(w['topic'] for w in weak) + '。'
+    elif strong:
+        feedback = '本次測驗各知識點表現良好，繼續保持。'
+    else:
+        feedback = ''
+
+    attempt.weak_topics = weak
+    attempt.strong_topics = strong
+    attempt.overall_feedback = feedback
+    attempt.save(update_fields=['weak_topics', 'strong_topics', 'overall_feedback'])
+    return attempt

@@ -37,3 +37,6 @@ myproject/media/lesson_materials/
 .elasticbeanstalk/app_versions/
 .elasticbeanstalk/logs/
 .claude/
+
+# AI 匯出的 Power BI 資料(含學生資料,不進版控)
+outputs/

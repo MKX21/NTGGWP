@@ -354,6 +354,9 @@ class LessonProgress(models.Model):
     last_position = models.PositiveIntegerField(default=0, verbose_name="上次觀看位置(秒)")
     duration = models.PositiveIntegerField(default=0, verbose_name="影片總長(秒)")
     is_completed = models.BooleanField(default=False, verbose_name="是否完成")
+    view_count = models.PositiveIntegerField(default=0, verbose_name="開啟觀看次數")
+    page_open_count = models.PositiveIntegerField(default=0, verbose_name="單元頁開啟次數")
+    replayed_seconds = models.PositiveIntegerField(default=0, verbose_name="重複觀看秒數")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="更新時間")
 
     def percent(self):
@@ -1458,6 +1461,11 @@ class VMAccessRequest(models.Model):
 
 
 class Quiz(models.Model):
+    QUIZ_TYPE_CHOICES = [
+        ('standard', '章節測驗'),
+        ('remedial', 'AI 補救練習'),
+    ]
+
     chapter = models.OneToOneField(
         CourseChapter, on_delete=models.CASCADE, related_name="quiz", verbose_name="章節"
     )
@@ -1468,6 +1476,15 @@ class Quiz(models.Model):
         verbose_name="及格分數"
     )
     is_published = models.BooleanField(default=True, verbose_name="是否啟用")
+    quiz_type = models.CharField(
+        max_length=20, choices=QUIZ_TYPE_CHOICES,
+        default='standard', verbose_name="測驗類型"
+    )
+    source_attempt = models.ForeignKey(
+        'QuizAttempt', on_delete=models.SET_NULL, blank=True, null=True,
+        related_name='remedial_quizzes',
+        verbose_name="弱點來源作答（僅 AI 補救練習使用）"
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="建立時間")
 
     def question_count(self):
@@ -1489,6 +1506,9 @@ class QuizQuestion(models.Model):
     correct_index = models.PositiveSmallIntegerField(default=0, verbose_name="正確選項索引")
     explanation = models.TextField(blank=True, default='', verbose_name="解析")
     sort_order = models.PositiveIntegerField(default=1, verbose_name="題目順序")
+    topic_tag = models.CharField(
+        max_length=100, blank=True, default='', verbose_name="知識點標籤"
+    )
 
     def __str__(self):
         return f"{self.quiz.title} - Q{self.sort_order}"
@@ -1506,7 +1526,17 @@ class QuizAttempt(models.Model):
     score = models.PositiveSmallIntegerField(default=0, verbose_name="分數")
     correct_count = models.PositiveSmallIntegerField(default=0, verbose_name="答對題數")
     total_count = models.PositiveSmallIntegerField(default=0, verbose_name="總題數")
+    weak_topics = models.JSONField(
+        default=list, blank=True, verbose_name="AI 弱點知識點",
+        help_text='[{"topic": str, "issue_description": str, "severity": "low|medium|high"}, ...]'
+    )
+    strong_topics = models.JSONField(default=list, blank=True, verbose_name="AI 已掌握知識點")
+    overall_feedback = models.TextField(blank=True, default='', verbose_name="AI 整體回饋")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="作答時間")
+
+    @property
+    def accuracy_rate(self):
+        return self.correct_count / self.total_count if self.total_count else 0
 
     def is_passed(self):
         return self.score >= self.quiz.pass_score
@@ -1536,3 +1566,26 @@ class QuizAnswer(models.Model):
         verbose_name = "測驗答題明細"
         verbose_name_plural = "測驗答題明細"
         ordering = ['attempt', 'question']
+
+class CourseSummary(models.Model):
+    course = models.OneToOneField(
+        Course, on_delete=models.CASCADE, related_name="ai_summary", verbose_name="課程"
+    )
+    summary = models.TextField(blank=True, default='', verbose_name="摘要內容")
+    core_concepts = models.JSONField(
+        default=list, blank=True, verbose_name="核心概念",
+        help_text='[{"concept": str, "explanation": str}, ...]'
+    )
+    key_terms = models.JSONField(
+        default=list, blank=True, verbose_name="關鍵名詞",
+        help_text='[{"term": str, "definition": str}, ...]'
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="建立時間")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新時間")
+
+    def __str__(self):
+        return f"{self.course.title} - AI 摘要"
+
+    class Meta:
+        verbose_name = "AI 課程摘要"
+        verbose_name_plural = "AI 課程摘要"
